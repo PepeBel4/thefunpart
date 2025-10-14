@@ -7,13 +7,90 @@ import { RouterLink } from '@angular/router';
   standalone: true,
   selector: 'app-orders',
   imports: [AsyncPipe, DatePipe, CurrencyPipe, RouterLink, NgFor, NgIf],
+  styles: [`
+    :host {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    h2 {
+      font-size: clamp(2rem, 3vw, 2.4rem);
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      margin-bottom: 0.25rem;
+    }
+
+    .orders-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius-card);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(10, 10, 10, 0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .card header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .status {
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(6, 193, 103, 0.12);
+      color: var(--brand-green);
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+
+    .meta {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    a.view-link {
+      align-self: flex-start;
+      text-decoration: none;
+      color: var(--brand-green);
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    a.view-link::after {
+      content: '›';
+      font-size: 1.1rem;
+    }
+  `],
   template: `
-    <h2>Your Orders</h2>
-    <div *ngIf="orders$ | async as orders">
-      <div *ngFor="let o of orders" style="border:1px solid #eee; padding:1rem; border-radius:12px; margin-bottom:.75rem;">
-        <div><strong>#{{ o.id }}</strong> — {{ o.status }} — {{ o.created_at | date:'short' }}</div>
-        <div>Total: {{ (o.total_cents/100) | currency:'EUR' }}</div>
-        <a [routerLink]="['/orders', o.id]">View</a>
+    <section>
+      <h2>Your orders</h2>
+      <p class="meta">Track deliveries and revisit your favourite meals.</p>
+    </section>
+    <div class="orders-list" *ngIf="orders$ | async as orders">
+      <div class="card" *ngFor="let o of orders">
+        <header>
+          <div>
+            <strong>#{{ o.id }}</strong>
+            <span class="meta">— {{ o.created_at | date:'short' }}</span>
+          </div>
+          <span class="status">{{ o.status }}</span>
+        </header>
+        <div class="meta">Total: {{ (o.total_cents/100) | currency:'EUR' }}</div>
+        <a class="view-link" [routerLink]="['/orders', o.id]">View details</a>
       </div>
     </div>
   `
