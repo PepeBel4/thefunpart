@@ -1,6 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { AsyncPipe, NgFor, NgIf } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { map } from 'rxjs';
+import { Restaurant } from '../core/models';
 import { RestaurantService } from './restaurant.service';
 
 @Component({
@@ -67,13 +69,25 @@ import { RestaurantService } from './restaurant.service';
     }
 
     .card-media {
+      position: relative;
       width: 100%;
       aspect-ratio: 3 / 2;
       border-radius: calc(var(--radius-card) - 6px);
+      overflow: hidden;
       background: linear-gradient(135deg, rgba(6, 193, 103, 0.2), rgba(6, 193, 103, 0.05));
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+
+    .card-media img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .card-media .placeholder {
       font-size: 2rem;
       font-weight: 700;
       color: rgba(10, 10, 10, 0.6);
@@ -112,7 +126,14 @@ import { RestaurantService } from './restaurant.service';
     </div>
     <div class="grid" *ngIf="restaurants$ | async as restaurants">
       <a class="card" *ngFor="let r of restaurants" [routerLink]="['/restaurants', r.id]">
-        <div class="card-media">{{ r.name.charAt(0) }}</div>
+        <div class="card-media">
+          <ng-container *ngIf="r.heroPhoto; else placeholder">
+            <img [src]="r.heroPhoto" [alt]="r.name" loading="lazy" />
+          </ng-container>
+          <ng-template #placeholder>
+            <span class="placeholder">{{ r.name.charAt(0) }}</span>
+          </ng-template>
+        </div>
         <div class="card-body">
           <h3>{{ r.name }}</h3>
           <p>{{ r.description || 'Popular choices • Comfort food' }}</p>
@@ -128,5 +149,30 @@ import { RestaurantService } from './restaurant.service';
 })
 export class RestaurantListPage {
   private svc = inject(RestaurantService);
-  restaurants$ = this.svc.list();
+  private heroPhotoCache = new Map<number, string>();
+
+  private ensureHeroPhoto(restaurant: Restaurant): string | undefined {
+    const cached = this.heroPhotoCache.get(restaurant.id);
+    if (cached) {
+      return cached;
+    }
+
+    const urls = restaurant.photo_urls;
+    if (!urls?.length) {
+      return undefined;
+    }
+
+    const choice = urls[Math.floor(Math.random() * urls.length)];
+    this.heroPhotoCache.set(restaurant.id, choice);
+    return choice;
+  }
+
+  restaurants$ = this.svc.list().pipe(
+    map((restaurants) =>
+      restaurants.map((restaurant) => ({
+        ...restaurant,
+        heroPhoto: this.ensureHeroPhoto(restaurant),
+      })),
+    ),
+  );
 }
