@@ -72,8 +72,10 @@ import { AsyncPipe, CurrencyPipe, DatePipe, NgFor, NgIf } from '@angular/common'
         <div>
           <h3>Items</h3>
           <ul>
-            <li *ngFor="let it of o.items">
-              <span>#{{ it.menu_item_id }} × {{ it.quantity }}</span>
+            <li *ngFor="let it of o.order_items">
+              <span>
+                {{ it.menu_item?.name || ('#' + it.menu_item_id) }} × {{ it.quantity }}
+              </span>
               <span>{{ (it.price_cents/100) | currency:'EUR' }}</span>
             </li>
           </ul>
