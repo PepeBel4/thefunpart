@@ -2,11 +2,12 @@ import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { NavbarComponent } from './shared/navbar.component';
 import { CartSidebarComponent } from './cart/card-sidebar.component';
+import { CookieConsentComponent } from './shared/cookie-consent.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NavbarComponent, CartSidebarComponent],
+  imports: [RouterOutlet, NavbarComponent, CartSidebarComponent, CookieConsentComponent],
   styles: [`
     :host {
       display: grid;
@@ -53,6 +54,7 @@ import { CartSidebarComponent } from './cart/card-sidebar.component';
       </section>
       <app-cart-sidebar />
     </main>
+    <app-cookie-consent />
   `
 })
 export class AppComponent {}
