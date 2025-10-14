@@ -8,7 +8,7 @@
   },
   "include": [
     "src/**/*.ts"
-  ],
+, "src/environments/environment.tsobsole"  ],
   "exclude": [
     "src/**/*.spec.ts"
   ]

@@ -1,6 +1,14 @@
 import { bootstrapApplication } from '@angular/platform-browser';
-import { appConfig } from './app/app.config';
-import { App } from './app/app';
+import { provideRouter } from '@angular/router';
+import { provideHttpClient, withInterceptors, withFetch } from '@angular/common/http';
+import { AppComponent } from './app/app.component';
+import { appRoutes } from './app/app.routes';
+import { authInterceptor } from './app/core/auth.interceptor';
+import 'zone.js'; // Required unless you enable experimental zoneless mode
 
-bootstrapApplication(App, appConfig)
-  .catch((err) => console.error(err));
+bootstrapApplication(AppComponent, {
+  providers: [
+    provideRouter(appRoutes),
+    provideHttpClient(withFetch(), withInterceptors([authInterceptor]))
+  ]
+}).catch(err => console.error(err));
