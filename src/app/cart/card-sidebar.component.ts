@@ -76,16 +76,39 @@ import { RouterLink } from '@angular/router';
     .qty-controls {
       display: flex;
       align-items: center;
-      gap: 0.35rem;
+      gap: 0.4rem;
     }
 
-    input[type='number'] {
-      width: 64px;
-      border: 1px solid var(--border-soft);
+    .qty-btn {
+      background: rgba(10, 10, 10, 0.05);
+      border: 0;
+      color: var(--text-secondary);
       border-radius: 10px;
-      padding: 0.45rem 0.5rem;
-      background: var(--surface-elevated);
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: 700;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .qty-btn:hover:not(:disabled) {
+      background: rgba(6, 193, 103, 0.12);
+      color: var(--brand-green);
+    }
+
+    .qty-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .qty-display {
+      min-width: 1.5rem;
+      text-align: center;
       font-weight: 600;
+      color: var(--text-primary);
     }
 
     button.remove {
@@ -100,6 +123,10 @@ import { RouterLink } from '@angular/router';
       justify-content: center;
       cursor: pointer;
       transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .qty-controls button.remove {
+      margin-left: 0.2rem;
     }
 
     button.remove:hover {
@@ -171,13 +198,27 @@ import { RouterLink } from '@angular/router';
             <div class="line-price">{{ (l.item.price_cents / 100) | currency:'EUR' }}</div>
           </div>
           <div class="qty-controls">
-            <input
-              type="number"
-              min="1"
-              [value]="l.quantity"
-              (input)="cart.changeQty(l.item.id, $any($event.target).valueAsNumber)"
-            />
-            <button class="remove" (click)="cart.remove(l.item.id)">✕</button>
+            <button
+              class="qty-btn"
+              type="button"
+              (click)="cart.changeQty(l.item.id, l.quantity - 1)"
+              [disabled]="l.quantity === 1"
+              aria-label="Decrease quantity"
+            >
+              &minus;
+            </button>
+            <span class="qty-display" aria-live="polite">{{ l.quantity }}</span>
+            <button
+              class="qty-btn"
+              type="button"
+              (click)="cart.changeQty(l.item.id, l.quantity + 1)"
+              aria-label="Increase quantity"
+            >
+              +
+            </button>
+            <button class="remove" type="button" (click)="cart.remove(l.item.id)" aria-label="Remove item">
+              🗑️
+            </button>
           </div>
         </div>
       </div>
