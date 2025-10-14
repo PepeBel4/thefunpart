@@ -11,5 +11,14 @@ private api = inject(ApiService);
 
 list(): Observable<Order[]> { return this.api.get<Order[]>('/orders'); }
 get(id: number): Observable<Order> { return this.api.get<Order>(`/orders/${id}`); }
-create(payload: { items: OrderItemInput[] }): Observable<Order> { return this.api.post<Order>('/orders', payload); }
+create(payload: { restaurantId: number; items: OrderItemInput[] }): Observable<Order> {
+  const body = {
+    order: {
+      restaurant_id: payload.restaurantId,
+      order_items: payload.items,
+    },
+  };
+
+  return this.api.post<Order>('/orders', body);
+}
 }

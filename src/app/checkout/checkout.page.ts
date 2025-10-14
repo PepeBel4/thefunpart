@@ -28,8 +28,12 @@ export class CheckoutPage {
   private router = inject(Router);
 
   async placeOrder(){
-    const items = this.cart.lines().map(l => ({ menu_item_id: l.item.id, quantity: l.quantity }));
-    const order: Order = await firstValueFrom(this.orders.create({ items }));
+    const lines = this.cart.lines();
+    if (!lines.length) return;
+
+    const restaurantId = lines[0].item.restaurant_id;
+    const items = lines.map(l => ({ menu_item_id: l.item.id, quantity: l.quantity }));
+    const order: Order = await firstValueFrom(this.orders.create({ restaurantId, items }));
     this.cart.clear();
     this.router.navigate(['/orders', order!.id]);
   }
