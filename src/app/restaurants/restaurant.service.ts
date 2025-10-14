@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { ApiService } from '../core/api.service';
 import { Restaurant } from '../core/models';
-import { map } from 'rxjs/operators';
+import { Observable } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class RestaurantService {
@@ -9,4 +9,10 @@ export class RestaurantService {
 
   list() { return this.api.get<Restaurant[]>('/restaurants'); }
   get(id: number) { return this.api.get<Restaurant>(`/restaurants/${id}`); }
+
+  uploadPhotos(id: number, files: File[]): Observable<Restaurant> {
+    const formData = new FormData();
+    files.forEach(file => formData.append('photos[]', file));
+    return this.api.post<Restaurant>(`/restaurants/${id}/photos`, formData);
+  }
 }

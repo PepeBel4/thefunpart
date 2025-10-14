@@ -2,6 +2,7 @@ export interface Restaurant {
   id: number;
   name: string;
   description?: string;
+  photo_urls?: string[];
 }
 
 export interface MenuItem {
