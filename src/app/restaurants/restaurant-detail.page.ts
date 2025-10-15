@@ -108,6 +108,13 @@ type MenuCategoryGroup = {
       gap: 0.75rem;
       flex-wrap: wrap;
       margin-bottom: 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      padding: 0.75rem 0;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(10, 10, 10, 0.06);
     }
 
     .category-nav button {
@@ -132,6 +139,7 @@ type MenuCategoryGroup = {
       flex-direction: column;
       gap: 1rem;
       margin-bottom: 2.5rem;
+      scroll-margin-top: clamp(4.5rem, 10vh, 7rem);
     }
 
     .menu-section:last-child {
