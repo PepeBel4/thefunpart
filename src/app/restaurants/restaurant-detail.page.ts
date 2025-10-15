@@ -1,11 +1,11 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, HostListener, OnDestroy, effect, inject, signal, computed } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { MenuService } from '../menu/menu.service';
 import { RestaurantService } from './restaurant.service';
 import { AsyncPipe, CurrencyPipe, NgIf, NgFor, NgStyle, DOCUMENT } from '@angular/common';
 import { MenuItem, Restaurant } from '../core/models';
 import { Observable, firstValueFrom, map, of, shareReplay, startWith, switchMap, timer } from 'rxjs';
-import { CartCategorySelection, CartService } from '../cart/cart.service';
+import { CartCategorySelection, CartRestaurant, CartService } from '../cart/cart.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
 import { MenuItemPhotoSliderComponent } from './menu-item-photo-slider.component';
@@ -15,6 +15,14 @@ type MenuCategoryGroup = {
   anchor: string;
   items: MenuItem[];
   cartCategory: CartCategorySelection | null;
+};
+
+type PendingCartAddition = {
+  item: MenuItem;
+  category: CartCategorySelection | null;
+  incomingRestaurant: CartRestaurant;
+  currentRestaurantName: string;
+  incomingRestaurantName: string;
 };
 
 @Component({
@@ -187,7 +195,7 @@ type MenuCategoryGroup = {
       font-size: 1.1rem;
     }
 
-    button {
+    .card button {
       align-self: flex-start;
       background: var(--brand-green);
       color: #042f1a;
@@ -200,9 +208,82 @@ type MenuCategoryGroup = {
       transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
-    button:hover {
+    .card button:hover {
       transform: translateY(-2px);
       box-shadow: 0 16px 32px rgba(6, 193, 103, 0.28);
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: #0418108c;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1200;
+      padding: 1.5rem;
+      backdrop-filter: blur(2px);
+    }
+
+    .modal {
+      background: var(--surface, #ffffff);
+      border-radius: 24px;
+      max-width: 480px;
+      width: min(100%, 480px);
+      padding: clamp(1.75rem, 4vw, 2.5rem);
+      box-shadow: 0 24px 64px #041e1266;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .modal h3 {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .modal p {
+      margin: 0;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .modal-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .modal-button {
+      border-radius: 999px;
+      padding: 0.85rem 1.25rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    }
+
+    .modal-button.primary {
+      background: var(--brand-green);
+      color: #042f1a;
+      border: none;
+      box-shadow: 0 16px 32px #06c16747;
+    }
+
+    .modal-button.primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 20px 40px #06c16752;
+    }
+
+    .modal-button.secondary {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid #042f1a2d;
+    }
+
+    .modal-button.secondary:hover {
+      background: #06c16719;
     }
 
     @media (max-width: 720px) {
@@ -268,9 +349,42 @@ type MenuCategoryGroup = {
       </ng-container>
 
     </ng-container>
+
+    <ng-container *ngIf="restaurantMismatchState() as mismatch">
+      <div class="modal-backdrop" (click)="dismissRestaurantMismatch()">
+        <div
+          class="modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cart-mismatch-title"
+          aria-describedby="cart-mismatch-description"
+          (click)="$event.stopPropagation()"
+        >
+          <h3 id="cart-mismatch-title">
+            {{ 'cart.newOrderConfirmTitle' | translate: 'Start a new order?' }}
+          </h3>
+          <p id="cart-mismatch-description">
+            {{
+              'cart.newOrderConfirmMessage'
+                | translate
+                  : 'Your cart has items from {{current}}. Empty the cart and start a new order with {{next}}?'
+                  : { current: mismatch.currentRestaurantName, next: mismatch.incomingRestaurantName }
+            }}
+          </p>
+          <div class="modal-actions">
+            <button type="button" class="modal-button secondary" (click)="dismissRestaurantMismatch()">
+              {{ 'cart.newOrderConfirmCancel' | translate: 'Keep current order' }}
+            </button>
+            <button type="button" class="modal-button primary" (click)="confirmRestaurantMismatch()">
+              {{ 'cart.newOrderConfirmAccept' | translate: 'Start new order' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </ng-container>
   `
 })
-export class RestaurantDetailPage {
+export class RestaurantDetailPage implements OnDestroy {
   private route = inject(ActivatedRoute);
   private menuSvc = inject(MenuService);
   private rSvc = inject(RestaurantService);
@@ -305,6 +419,10 @@ export class RestaurantDetailPage {
   statusMessage = '';
   statusType: 'success' | 'error' | '' = '';
 
+  private restaurantMismatchContext = signal<PendingCartAddition | null>(null);
+  restaurantMismatchState = computed(() => this.restaurantMismatchContext());
+  private bodyOverflowBackup: string | null = null;
+
   constructor() {
     let initial = true;
     effect(() => {
@@ -315,6 +433,10 @@ export class RestaurantDetailPage {
       }
       this.refreshMenu();
     });
+  }
+
+  ngOnDestroy(): void {
+    this.unlockBodyScroll();
   }
 
   onPhotoSelection(files: FileList | null) {
@@ -359,29 +481,78 @@ export class RestaurantDetailPage {
   addToCart(item: MenuItem, category: CartCategorySelection | null, restaurant: Restaurant) {
     const cartRestaurant = this.cart.restaurant();
     const incomingRestaurantName = this.getRestaurantName(restaurant);
-    const incomingRestaurant = { id: restaurant.id, name: incomingRestaurantName };
+    const incomingRestaurant: CartRestaurant = { id: restaurant.id, name: incomingRestaurantName };
 
     if (cartRestaurant && cartRestaurant.id !== restaurant.id) {
       const currentName =
-        cartRestaurant.name ||
-        this.i18n.translate('cart.restaurantFallback', 'this restaurant');
-      const confirmationMessage = this.i18n.translate(
-        'cart.newOrderConfirm',
-        'Your cart has items from {{current}}. Empty the cart and start a new order with {{next}}?',
-        {
-          current: currentName,
-          next: incomingRestaurantName,
-        }
-      );
+        cartRestaurant.name || this.i18n.translate('cart.restaurantFallback', 'this restaurant');
 
-      if (!window.confirm(confirmationMessage)) {
-        return;
-      }
+      this.openRestaurantMismatchModal({
+        item,
+        category: category ?? null,
+        incomingRestaurant,
+        currentRestaurantName: currentName,
+        incomingRestaurantName,
+      });
 
-      this.cart.clear();
+      return;
     }
 
     this.cart.add(item, category, incomingRestaurant);
+  }
+
+  confirmRestaurantMismatch() {
+    const pending = this.restaurantMismatchContext();
+    if (!pending) {
+      return;
+    }
+
+    this.cart.clear();
+    this.cart.add(pending.item, pending.category, pending.incomingRestaurant);
+    this.closeRestaurantMismatchModal();
+  }
+
+  dismissRestaurantMismatch() {
+    this.closeRestaurantMismatchModal();
+  }
+
+  private openRestaurantMismatchModal(context: PendingCartAddition) {
+    this.restaurantMismatchContext.set(context);
+    this.lockBodyScroll();
+  }
+
+  private closeRestaurantMismatchModal() {
+    if (this.restaurantMismatchContext()) {
+      this.restaurantMismatchContext.set(null);
+    }
+    this.unlockBodyScroll();
+  }
+
+  private lockBodyScroll() {
+    if (this.bodyOverflowBackup === null) {
+      const currentOverflow = this.document.body.style.overflow;
+      this.bodyOverflowBackup = currentOverflow ?? '';
+      this.document.body.style.overflow = 'hidden';
+    }
+  }
+
+  private unlockBodyScroll() {
+    if (this.bodyOverflowBackup !== null) {
+      if (this.bodyOverflowBackup.length) {
+        this.document.body.style.overflow = this.bodyOverflowBackup;
+      } else {
+        this.document.body.style.removeProperty('overflow');
+      }
+      this.bodyOverflowBackup = null;
+    }
+  }
+
+  @HostListener('document:keydown.escape', ['$event'])
+  onEscape(event: Event) {
+    if (this.restaurantMismatchContext()) {
+      event.preventDefault();
+      this.dismissRestaurantMismatch();
+    }
   }
 
   scrollTo(anchor: string) {

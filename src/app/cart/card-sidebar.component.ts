@@ -18,11 +18,10 @@ import { OrderScenario, OrderTargetTimeType } from '../core/models';
       border-radius: var(--radius-card);
       box-shadow: var(--shadow-soft);
       padding: 1.75rem 1.75rem 2rem;
-      border: 1px solid rgba(10, 10, 10, 0.06);
+      border: 1px solid #0a0a0a0f;
       display: flex;
       flex-direction: column;
       gap: 1.5rem;
-      min-width: 300px;
     }
 
     .cart-restaurant {
@@ -31,7 +30,7 @@ import { OrderScenario, OrderTargetTimeType } from '../core/models';
       gap: 0.25rem;
       padding: 0.75rem 1rem;
       border-radius: 12px;
-      background: rgba(6, 193, 103, 0.1);
+      background: #06c16719;
       color: #056333;
       font-weight: 600;
     }
@@ -39,8 +38,7 @@ import { OrderScenario, OrderTargetTimeType } from '../core/models';
     .cart-restaurant-label {
       font-size: 0.75rem;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: rgba(5, 99, 51, 0.8);
+      color: #056333cc;
     }
 
     .cart-restaurant-name {
@@ -64,7 +62,6 @@ import { OrderScenario, OrderTargetTimeType } from '../core/models';
       font-weight: 600;
       color: var(--text-secondary);
       text-transform: uppercase;
-      letter-spacing: 0.06em;
     }
 
     .option-group {
@@ -111,8 +108,8 @@ import { OrderScenario, OrderTargetTimeType } from '../core/models';
     }
 
     .option.active {
-      background: rgba(6, 193, 103, 0.14);
-      border-color: rgba(6, 193, 103, 0.4);
+      background: #06c16723;
+      border-color: #06c16766;
       color: #056333;
     }
 
@@ -127,16 +124,15 @@ import { OrderScenario, OrderTargetTimeType } from '../core/models';
     .target-time-input:focus {
       border-color: var(--brand-green);
       outline: none;
-      box-shadow: 0 0 0 3px rgba(6, 193, 103, 0.16);
+      box-shadow: 0 0 0 3px #06c16729;
     }
 
     .help-text {
       font-size: 0.8rem;
       color: #b85c00;
-      background: rgba(255, 170, 43, 0.16);
+      background: #ffaa2b29;
       padding: 0.4rem 0.6rem;
       border-radius: 10px;
-      width: fit-content;
     }
 
     header {
@@ -154,7 +150,7 @@ import { OrderScenario, OrderTargetTimeType } from '../core/models';
     .badge {
       padding: 0.25rem 0.75rem;
       border-radius: 999px;
-      background: rgba(6, 193, 103, 0.12);
+      background: #06c1671f;
       color: var(--brand-green);
       font-size: 0.8rem;
       font-weight: 600;
@@ -202,7 +198,7 @@ import { OrderScenario, OrderTargetTimeType } from '../core/models';
     }
 
     .qty-btn {
-      background: rgba(10, 10, 10, 0.05);
+      background: #0a0a0a0d;
       border: 0;
       color: var(--text-secondary);
       border-radius: 10px;
@@ -217,7 +213,7 @@ import { OrderScenario, OrderTargetTimeType } from '../core/models';
     }
 
     .qty-btn:hover:not(:disabled) {
-      background: rgba(6, 193, 103, 0.12);
+      background: #06c1671f;
       color: var(--brand-green);
     }
 
@@ -234,7 +230,7 @@ import { OrderScenario, OrderTargetTimeType } from '../core/models';
     }
 
     button.remove {
-      background: rgba(10, 10, 10, 0.05);
+      background: #0a0a0a0d;
       border: 0;
       color: var(--text-secondary);
       border-radius: 10px;
@@ -252,7 +248,7 @@ import { OrderScenario, OrderTargetTimeType } from '../core/models';
     }
 
     button.remove:hover {
-      background: rgba(6, 193, 103, 0.12);
+      background: #06c1671f;
       color: var(--brand-green);
     }
 
@@ -284,13 +280,13 @@ import { OrderScenario, OrderTargetTimeType } from '../core/models';
       padding: 0.85rem 1rem;
       font-weight: 700;
       text-decoration: none;
-      box-shadow: 0 16px 30px rgba(6, 193, 103, 0.28);
+      box-shadow: 0 16px 30px #06c16747;
       transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
     .checkout:hover {
       transform: translateY(-1px);
-      box-shadow: 0 20px 40px rgba(6, 193, 103, 0.32);
+      box-shadow: 0 20px 40px #06c16752;
     }
 
     .checkout.disabled {

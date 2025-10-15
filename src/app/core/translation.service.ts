@@ -62,8 +62,11 @@ export class TranslationService {
       'cart.targetTime.required': 'Select a time to continue.',
       'cart.restaurantLabel': 'Ordering from',
       'cart.restaurantFallback': 'this restaurant',
-      'cart.newOrderConfirm':
+      'cart.newOrderConfirmTitle': 'Start a new order?',
+      'cart.newOrderConfirmMessage':
         'Your cart has items from {{current}}. Empty the cart and start a new order with {{next}}?',
+      'cart.newOrderConfirmAccept': 'Start new order',
+      'cart.newOrderConfirmCancel': 'Keep current order',
 
       'checkout.title': 'Checkout',
       'checkout.subtitle': 'Confirm your delivery and get ready for a delicious drop-off.',
@@ -249,8 +252,11 @@ export class TranslationService {
       'cart.targetTime.required': 'Kies een tijd om door te gaan.',
       'cart.restaurantLabel': 'Bestelling bij',
       'cart.restaurantFallback': 'dit restaurant',
-      'cart.newOrderConfirm':
-        'Je winkelwagen bevat items van {{current}}. Winkelwagen legen en een nieuwe bestelling starten bij {{next}}?',
+      'cart.newOrderConfirmTitle': 'Nieuwe bestelling starten?',
+      'cart.newOrderConfirmMessage':
+        'Je winkelwagen bevat items van {{current}}. Wil je deze legen en een nieuwe bestelling beginnen bij {{next}}?',
+      'cart.newOrderConfirmAccept': 'Nieuwe bestelling starten',
+      'cart.newOrderConfirmCancel': 'Huidige bestelling behouden',
 
       'checkout.title': 'Afrekenen',
       'checkout.subtitle': 'Bevestig je bezorging en maak je klaar voor een heerlijke levering.',
@@ -437,8 +443,11 @@ export class TranslationService {
       'cart.targetTime.required': 'Sélectionnez une heure pour continuer.',
       'cart.restaurantLabel': 'Commande auprès de',
       'cart.restaurantFallback': 'ce restaurant',
-      'cart.newOrderConfirm':
-        'Votre panier contient des articles de {{current}}. Vider le panier et commencer une nouvelle commande avec {{next}} ?',
+      'cart.newOrderConfirmTitle': 'Commencer une nouvelle commande ?',
+      'cart.newOrderConfirmMessage':
+        'Votre panier contient actuellement des articles de {{current}}. Voulez-vous le vider et commencer une nouvelle commande avec {{next}} ?',
+      'cart.newOrderConfirmAccept': 'Commencer une nouvelle commande',
+      'cart.newOrderConfirmCancel': 'Conserver la commande en cours',
 
       'checkout.title': 'Paiement',
       'checkout.subtitle': 'Confirmez votre livraison et préparez-vous à une arrivée gourmande.',
@@ -625,8 +634,11 @@ export class TranslationService {
       'cart.targetTime.required': 'Wähle eine Uhrzeit, um fortzufahren.',
       'cart.restaurantLabel': 'Bestellung von',
       'cart.restaurantFallback': 'diesem Restaurant',
-      'cart.newOrderConfirm':
-        'Dein Warenkorb enthält Artikel von {{current}}. Warenkorb leeren und eine neue Bestellung bei {{next}} beginnen?',
+      'cart.newOrderConfirmTitle': 'Neue Bestellung starten?',
+      'cart.newOrderConfirmMessage':
+        'Ihr Warenkorb enthält derzeit Artikel von {{current}}. Möchten Sie ihn leeren und eine neue Bestellung bei {{next}} beginnen?',
+      'cart.newOrderConfirmAccept': 'Neue Bestellung starten',
+      'cart.newOrderConfirmCancel': 'Aktuelle Bestellung behalten',
 
       'checkout.title': 'Zur Kasse',
       'checkout.subtitle': 'Bestätige deine Lieferung und freu dich auf eine köstliche Ankunft.',
