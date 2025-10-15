@@ -7,11 +7,12 @@ import { AuthService } from '../core/auth.service';
 import { Restaurant } from '../core/models';
 import { Observable, firstValueFrom } from 'rxjs';
 import { CartService } from '../cart/cart.service';
+import { MenuManagerComponent } from '../menu/menu-manager.component';
 
 @Component({
   standalone: true,
   selector: 'app-restaurant-detail',
-  imports: [AsyncPipe, CurrencyPipe, NgFor, NgIf],
+  imports: [AsyncPipe, CurrencyPipe, NgFor, NgIf, MenuManagerComponent],
   styles: [`
     :host {
       display: block;
@@ -239,6 +240,12 @@ import { CartService } from '../cart/cart.service';
           <button (click)="add(m)">Add to cart</button>
         </div>
       </div>
+
+      <app-menu-manager
+        *ngIf="auth.isLoggedIn()"
+        [restaurantId]="r.id"
+        (menuChanged)="refreshMenu()"
+      />
     </ng-container>
   `
 })
@@ -278,6 +285,7 @@ export class RestaurantDetailPage {
       this.statusMessage = 'Photos uploaded successfully!';
       this.statusType = 'success';
       this.restaurant$ = this.rSvc.get(this.id);
+      this.refreshMenu();
     } catch (err) {
       console.error(err);
       this.statusMessage = 'Something went wrong while uploading photos. Please try again.';
@@ -285,5 +293,9 @@ export class RestaurantDetailPage {
     } finally {
       this.uploading = false;
     }
+  }
+
+  refreshMenu() {
+    this.menu$ = this.menuSvc.listByRestaurant(this.id);
   }
 }
