@@ -517,8 +517,8 @@ export class MenuManagerComponent implements OnChanges, OnInit {
       }));
       this.newItem = this.createEmptyForm();
       this.creationStatus = this.i18n.translate('menu.form.status', 'Menu item added!');
-      void this.loadMenu(true);
-      void this.fetchCategories();
+      await this.loadMenu(true);
+      await this.fetchCategories();
       this.menuChanged.emit();
     } catch (err) {
       console.error(err);
@@ -547,8 +547,8 @@ export class MenuManagerComponent implements OnChanges, OnInit {
         ...(categories ? { menu_item_categories: categories } : {}),
       }));
       this.cancelEdit();
-      void this.loadMenu(true);
-      void this.fetchCategories();
+      await this.loadMenu(true);
+      await this.fetchCategories();
       this.menuChanged.emit();
     } catch (err) {
       console.error(err);
@@ -564,7 +564,7 @@ export class MenuManagerComponent implements OnChanges, OnInit {
     this.error = '';
     try {
       await firstValueFrom(this.menu.delete(id));
-      void this.loadMenu(true);
+      await this.loadMenu(true);
       this.menuChanged.emit();
     } catch (err) {
       console.error(err);
