@@ -92,6 +92,7 @@ import { MenuManagerComponent } from '../menu/menu-manager.component';
       overflow: hidden;
       aspect-ratio: 4/3;
       background: rgba(10, 10, 10, 0.04);
+      position: relative;
     }
 
     .photo-grid img {
@@ -99,6 +100,30 @@ import { MenuManagerComponent } from '../menu/menu-manager.component';
       height: 100%;
       object-fit: cover;
       display: block;
+    }
+
+    .photo-grid button.remove-photo {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      border: 0;
+      border-radius: 999px;
+      background: rgba(16, 16, 16, 0.72);
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.35rem 0.75rem;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .photo-grid button.remove-photo:hover {
+      background: rgba(16, 16, 16, 0.85);
+    }
+
+    .photo-grid button.remove-photo[disabled] {
+      opacity: 0.7;
+      cursor: default;
     }
 
     .upload-controls {
@@ -222,6 +247,14 @@ import { MenuManagerComponent } from '../menu/menu-manager.component';
               <div class="photo-grid" *ngIf="restaurant.photo_urls?.length">
                 <figure *ngFor="let url of restaurant.photo_urls">
                   <img [src]="url" [alt]="restaurant.name + ' photo'" loading="lazy" />
+                  <button
+                    type="button"
+                    class="remove-photo"
+                    (click)="removePhoto(url)"
+                    [disabled]="removingPhotoUrl === url"
+                  >
+                    {{ removingPhotoUrl === url ? 'Removing…' : 'Remove' }}
+                  </button>
                 </figure>
               </div>
 
@@ -314,6 +347,7 @@ export class AdminDashboardPage {
   uploading = false;
   statusMessage = '';
   statusType: 'success' | 'error' | '' = '';
+  removingPhotoUrl: string | null = null;
 
   onRestaurantChange(value: string | number) {
     const id = Number(value);
@@ -352,10 +386,38 @@ export class AdminDashboardPage {
     }
   }
 
+  async removePhoto(url: string) {
+    if (this.selectedRestaurantId === null || this.removingPhotoUrl !== null) {
+      return;
+    }
+
+    if (!confirm('Remove this photo?')) {
+      return;
+    }
+
+    this.removingPhotoUrl = url;
+    this.statusMessage = '';
+    this.statusType = '';
+
+    try {
+      await firstValueFrom(this.restaurantService.deletePhoto(this.selectedRestaurantId, url));
+      this.statusMessage = 'Photo removed.';
+      this.statusType = 'success';
+      this.selectedRestaurantIdSubject.next(this.selectedRestaurantId);
+    } catch (err) {
+      console.error(err);
+      this.statusMessage = 'Unable to remove the photo. Please try again.';
+      this.statusType = 'error';
+    } finally {
+      this.removingPhotoUrl = null;
+    }
+  }
+
   private resetUploadState() {
     this.selectedPhotos = [];
     this.statusMessage = '';
     this.statusType = '';
     this.uploading = false;
+    this.removingPhotoUrl = null;
   }
 }

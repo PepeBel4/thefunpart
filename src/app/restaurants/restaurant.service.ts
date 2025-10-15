@@ -15,4 +15,10 @@ export class RestaurantService {
     files.forEach(file => formData.append('photos[]', file));
     return this.api.post<Restaurant>(`/restaurants/${id}/photos`, formData);
   }
+
+  deletePhoto(id: number, url: string): Observable<Restaurant> {
+    return this.api.delete<Restaurant>(`/restaurants/${id}/photos`, {
+      body: { url },
+    });
+  }
 }
