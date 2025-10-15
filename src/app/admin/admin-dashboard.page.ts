@@ -1,10 +1,11 @@
-import { AsyncPipe, CurrencyPipe, DatePipe, NgFor, NgIf } from '@angular/common';
+import { AsyncPipe, CurrencyPipe, DatePipe, NgFor, NgIf, TitleCasePipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { BehaviorSubject, Observable, filter, firstValueFrom, shareReplay, switchMap, tap } from 'rxjs';
 import { OrderService } from '../orders/order.service';
 import { RestaurantService } from '../restaurants/restaurant.service';
 import { Chain, Restaurant, RestaurantPhoto, RestaurantUpdateInput } from '../core/models';
+import { RESTAURANT_CUISINES } from '../restaurants/cuisines';
 import { ChainService } from '../chains/chain.service';
 import { MenuManagerComponent } from '../menu/menu-manager.component';
 import { TranslatePipe } from '../shared/translate.pipe';
@@ -13,7 +14,17 @@ import { TranslationService } from '../core/translation.service';
 @Component({
   standalone: true,
   selector: 'app-admin-dashboard',
-  imports: [AsyncPipe, CurrencyPipe, DatePipe, FormsModule, MenuManagerComponent, NgFor, NgIf, TranslatePipe],
+  imports: [
+    AsyncPipe,
+    CurrencyPipe,
+    DatePipe,
+    FormsModule,
+    MenuManagerComponent,
+    NgFor,
+    NgIf,
+    TitleCasePipe,
+    TranslatePipe,
+  ],
   styles: [`
     :host {
       display: flex;
@@ -167,6 +178,52 @@ import { TranslationService } from '../core/translation.service';
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
+    }
+
+    .cuisine-selector {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .cuisine-selector-header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .cuisine-selector-header span:first-child {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .cuisine-selector-header span:last-child {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      font-weight: 400;
+    }
+
+    .cuisine-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 0.5rem;
+    }
+
+    .cuisine-option {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.45rem 0.65rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(10, 10, 10, 0.1);
+      background: rgba(255, 255, 255, 0.85);
+      font-size: 0.9rem;
+    }
+
+    .cuisine-option input[type='checkbox'] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--brand-green);
     }
 
     .details-form input,
@@ -415,6 +472,29 @@ import { TranslationService } from '../core/translation.service';
                   </div>
                 </div>
 
+                <div class="cuisine-selector">
+                  <div class="cuisine-selector-header">
+                    <span>{{ 'admin.details.cuisinesLabel' | translate: 'Cuisines' }}</span>
+                    <span>
+                      {{
+                        'admin.details.cuisinesDescription'
+                          | translate: 'Select every cuisine that fits this restaurant.'
+                      }}
+                    </span>
+                  </div>
+                  <div class="cuisine-grid">
+                    <label class="cuisine-option" *ngFor="let cuisine of cuisines; trackBy: trackCuisine">
+                      <input
+                        type="checkbox"
+                        [value]="cuisine"
+                        [checked]="isCuisineSelected(cuisine)"
+                        (change)="onCuisineToggle(cuisine, $event.target.checked)"
+                      />
+                      <span>{{ cuisine | titlecase }}</span>
+                    </label>
+                  </div>
+                </div>
+
                 <div class="details-actions">
                   <span
                     *ngIf="detailsMessage"
@@ -591,12 +671,15 @@ export class AdminDashboardPage {
   chainMessageType: 'success' | 'error' | '' = '';
   readonly createChainOptionValue = '__create__';
 
+  readonly cuisines = [...RESTAURANT_CUISINES];
+
   languages = this.i18n.languages;
   primaryLanguageCode = this.languages[0]?.code ?? 'en';
 
-  detailsForm: { name: string; descriptions: Record<string, string> } = {
+  detailsForm: { name: string; descriptions: Record<string, string>; cuisines: string[] } = {
     name: '',
     descriptions: {},
+    cuisines: [],
   };
   detailsSaving = false;
   detailsMessage = '';
@@ -699,7 +782,22 @@ export class AdminDashboardPage {
       this.primaryLanguageCode
     );
 
-    this.detailsForm = { name, descriptions };
+    const incomingCuisines = restaurant.cuisines?.filter((cuisine): cuisine is string => !!cuisine?.trim()) ?? [];
+    const normalizedCuisines = Array.from(
+      new Set(
+        incomingCuisines.map(cuisine => cuisine.trim().toLowerCase())
+      ),
+    );
+    const orderedCuisines = this.cuisines.filter(cuisine => normalizedCuisines.includes(cuisine));
+    const remainingCuisines = normalizedCuisines.filter(
+      cuisine => !this.cuisines.includes(cuisine)
+    );
+
+    this.detailsForm = {
+      name,
+      descriptions,
+      cuisines: [...orderedCuisines, ...remainingCuisines],
+    };
     this.setRestaurantChain(restaurant);
     this.resetDetailsStatus();
     this.resetChainStatus();
@@ -794,7 +892,34 @@ export class AdminDashboardPage {
       payload.description_translations = descriptionTranslations;
     }
 
+    payload.cuisines = [...this.detailsForm.cuisines];
+
     return payload;
+  }
+
+  trackCuisine = (_: number, cuisine: string) => cuisine;
+
+  isCuisineSelected(cuisine: string): boolean {
+    return this.detailsForm.cuisines.includes(cuisine);
+  }
+
+  onCuisineToggle(cuisine: string, checked: boolean) {
+    const current = new Set(this.detailsForm.cuisines);
+
+    if (checked) {
+      current.add(cuisine);
+    } else {
+      current.delete(cuisine);
+    }
+
+    const orderedSelection = this.cuisines
+      .filter(option => current.has(option))
+      .concat(Array.from(current).filter(option => !this.cuisines.includes(option)));
+
+    this.detailsForm = {
+      ...this.detailsForm,
+      cuisines: orderedSelection,
+    };
   }
 
   private sortChains(chains: Chain[]): Chain[] {

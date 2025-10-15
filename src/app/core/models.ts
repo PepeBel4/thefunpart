@@ -21,6 +21,7 @@ export interface Restaurant {
   photo_urls?: string[];
   chain_id?: number | null;
   chain?: Chain | null;
+  cuisines?: string[];
 }
 
 export interface RestaurantUpdateInput {
@@ -29,6 +30,7 @@ export interface RestaurantUpdateInput {
   name_translations?: Record<string, string>;
   description_translations?: Record<string, string>;
   chain_id?: number | null;
+  cuisines?: string[];
 }
 
 export interface MenuItemCategory {

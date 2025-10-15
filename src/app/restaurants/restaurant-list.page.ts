@@ -1,5 +1,5 @@
 import { Component, effect, inject, signal } from '@angular/core';
-import { AsyncPipe, NgFor, NgIf } from '@angular/common';
+import { AsyncPipe, NgFor, NgIf, TitleCasePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 import { Restaurant, SessionUser, UserProfile } from '../core/models';
@@ -8,11 +8,12 @@ import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
 import { AuthService } from '../core/auth.service';
 import { ProfileService } from '../core/profile.service';
+import { RESTAURANT_CUISINES } from './cuisines';
 
 @Component({
   standalone: true,
   selector: 'app-restaurant-list',
-  imports: [AsyncPipe, RouterLink, NgFor, NgIf, TranslatePipe],
+  imports: [AsyncPipe, RouterLink, NgFor, NgIf, TitleCasePipe, TranslatePipe],
   styles: [`
     :host {
       display: flex;
@@ -148,6 +149,26 @@ import { ProfileService } from '../core/profile.service';
       gap: 0.5rem;
     }
 
+    .cuisine-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .cuisine-tags li {
+      background: rgba(10, 10, 10, 0.05);
+      color: var(--text-secondary);
+      padding: 0.3rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
     .meta {
       display: flex;
       align-items: center;
@@ -202,16 +223,19 @@ import { ProfileService } from '../core/profile.service';
             <span class="placeholder">{{ getRestaurantInitial(r) }}</span>
           </ng-template>
         </div>
-        <div class="card-body">
-          <h3>{{ getRestaurantName(r) }}</h3>
-          <p>
-            {{ getRestaurantDescription(r) }}
-          </p>
-          <div class="meta">
-            <span class="pill">{{ 'restaurants.express' | translate: 'Express' }}</span>
-            <span>{{ 'restaurants.duration' | translate: '20-30 min' }}</span>
-            <span>€€</span>
-          </div>
+          <div class="card-body">
+            <h3>{{ getRestaurantName(r) }}</h3>
+            <p>
+              {{ getRestaurantDescription(r) }}
+            </p>
+            <ul class="cuisine-tags" *ngIf="r.cuisines?.length">
+              <li *ngFor="let cuisine of r.cuisines">{{ cuisine | titlecase }}</li>
+            </ul>
+            <div class="meta">
+              <span class="pill">{{ 'restaurants.express' | translate: 'Express' }}</span>
+              <span>{{ 'restaurants.duration' | translate: '20-30 min' }}</span>
+              <span>€€</span>
+            </div>
         </div>
       </a>
     </div>
@@ -223,6 +247,7 @@ export class RestaurantListPage {
   private auth = inject(AuthService);
   private profile = inject(ProfileService);
   private heroPhotoCache = new Map<number, string>();
+  private readonly cuisineOrder = RESTAURANT_CUISINES;
   private profilePromptState = signal<{ loading: boolean; profile: UserProfile | null }>({
     loading: false,
     profile: null,
@@ -280,11 +305,34 @@ export class RestaurantListPage {
     return choice;
   }
 
+  private normalizeCuisines(cuisines: string[] | undefined): string[] | undefined {
+    if (!cuisines?.length) {
+      return undefined;
+    }
+
+    const sanitized = cuisines
+      .map(cuisine => cuisine?.trim())
+      .filter((cuisine): cuisine is string => Boolean(cuisine))
+      .map(cuisine => cuisine.toLowerCase());
+
+    if (!sanitized.length) {
+      return undefined;
+    }
+
+    const unique = Array.from(new Set(sanitized));
+    const ordered = this.cuisineOrder.filter(cuisine => unique.includes(cuisine));
+    const extras = unique.filter(cuisine => !this.cuisineOrder.includes(cuisine));
+    const combined = [...ordered, ...extras];
+
+    return combined.length ? combined : undefined;
+  }
+
   restaurants$ = this.svc.list().pipe(
     map((restaurants) =>
       restaurants.map((restaurant) => ({
         ...restaurant,
         heroPhoto: this.ensureHeroPhoto(restaurant),
+        cuisines: this.normalizeCuisines(restaurant.cuisines),
       })),
     ),
   );
