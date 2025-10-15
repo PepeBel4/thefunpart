@@ -8,12 +8,20 @@ export interface CartCategorySelection {
 
 export interface CartLine { item: MenuItem; quantity: number; category?: CartCategorySelection | null; }
 
+export interface CartRestaurant {
+  id: number;
+  name?: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CartService {
   private _lines = signal<CartLine[]>([]);
   lines = computed(() => this._lines());
   count = computed(() => this._lines().reduce((a, l) => a + l.quantity, 0));
   subtotalCents = computed(() => this._lines().reduce((a, l) => a + l.item.price_cents * l.quantity, 0));
+
+  private _restaurant = signal<CartRestaurant | null>(null);
+  restaurant = computed(() => this._restaurant());
 
   readonly scenarioOptions: OrderScenario[] = ['takeaway', 'delivery', 'eatin'];
   readonly targetTimeTypeOptions: OrderTargetTimeType[] = ['asap', 'scheduled'];
@@ -43,9 +51,22 @@ export class CartService {
   requiresTargetTime = computed(() => this._targetTimeType() === 'scheduled');
   hasValidTargetTime = computed(() => !this.requiresTargetTime() || this.targetTime() !== null);
 
-  add(item: MenuItem, category?: CartCategorySelection | null) {
+  add(item: MenuItem, category?: CartCategorySelection | null, restaurant?: CartRestaurant | null) {
     const lines = [...this._lines()];
     const normalized = this.normalizeCategory(category);
+    const normalizedRestaurant = this.normalizeRestaurant(restaurant, item.restaurant_id);
+    const currentRestaurant = this._restaurant();
+
+    if (currentRestaurant && currentRestaurant.id !== normalizedRestaurant.id) {
+      throw new Error('cart:restaurant-mismatch');
+    }
+
+    if (!currentRestaurant) {
+      this._restaurant.set(normalizedRestaurant);
+    } else if (normalizedRestaurant.name && normalizedRestaurant.name !== currentRestaurant.name) {
+      this._restaurant.set({ ...currentRestaurant, name: normalizedRestaurant.name });
+    }
+
     const found = lines.find(
       l =>
         l.item.id === item.id &&
@@ -66,11 +87,15 @@ export class CartService {
 
   remove(itemId: number, category?: CartCategorySelection | null) {
     const normalizedId = category?.id ?? null;
-    this._lines.set(
-      this._lines().filter(
-        l => !(l.item.id === itemId && (l.category?.id ?? null) === normalizedId)
-      )
+    const next = this._lines().filter(
+      l => !(l.item.id === itemId && (l.category?.id ?? null) === normalizedId)
     );
+
+    this._lines.set(next);
+
+    if (!next.length) {
+      this._restaurant.set(null);
+    }
   }
 
   changeQty(itemId: number, qty: number, category?: CartCategorySelection | null) {
@@ -109,6 +134,7 @@ export class CartService {
     this._scenario.set('takeaway');
     this._targetTimeType.set('asap');
     this._targetTimeInput.set(null);
+    this._restaurant.set(null);
   }
 
   private normalizeCategory(category?: CartCategorySelection | null): CartCategorySelection | null {
@@ -120,5 +146,15 @@ export class CartService {
     const label = category.label?.trim();
 
     return { id, label: label ?? null };
+  }
+
+  private normalizeRestaurant(restaurant: CartRestaurant | null | undefined, fallbackId: number): CartRestaurant {
+    const id = restaurant?.id ?? fallbackId;
+    const name = restaurant?.name?.trim();
+
+    return {
+      id,
+      name: name?.length ? name : null,
+    };
   }
 }

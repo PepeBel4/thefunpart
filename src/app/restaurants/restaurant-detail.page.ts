@@ -259,7 +259,7 @@ type MenuCategoryGroup = {
                 }}
               </p>
               <span class="price">{{ (m.price_cents / 100) | currency:'EUR' }}</span>
-              <button (click)="addToCart(m, category.cartCategory)">
+              <button (click)="addToCart(m, category.cartCategory, r)">
                 {{ 'restaurantDetail.addToCart' | translate: 'Add to cart' }}
               </button>
             </div>
@@ -356,8 +356,32 @@ export class RestaurantDetailPage {
     this.menuCategories$ = this.menuSvc.listByRestaurant(this.id).pipe(map(items => this.organizeMenu(items)));
   }
 
-  addToCart(item: MenuItem, category: CartCategorySelection | null) {
-    this.cart.add(item, category);
+  addToCart(item: MenuItem, category: CartCategorySelection | null, restaurant: Restaurant) {
+    const cartRestaurant = this.cart.restaurant();
+    const incomingRestaurantName = this.getRestaurantName(restaurant);
+    const incomingRestaurant = { id: restaurant.id, name: incomingRestaurantName };
+
+    if (cartRestaurant && cartRestaurant.id !== restaurant.id) {
+      const currentName =
+        cartRestaurant.name ||
+        this.i18n.translate('cart.restaurantFallback', 'this restaurant');
+      const confirmationMessage = this.i18n.translate(
+        'cart.newOrderConfirm',
+        'Your cart has items from {{current}}. Empty the cart and start a new order with {{next}}?',
+        {
+          current: currentName,
+          next: incomingRestaurantName,
+        }
+      );
+
+      if (!window.confirm(confirmationMessage)) {
+        return;
+      }
+
+      this.cart.clear();
+    }
+
+    this.cart.add(item, category, incomingRestaurant);
   }
 
   scrollTo(anchor: string) {

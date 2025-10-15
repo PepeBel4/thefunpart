@@ -60,6 +60,10 @@ export class TranslationService {
       'cart.targetTimeType.scheduled': 'Schedule',
       'cart.targetTime.label': 'Schedule for',
       'cart.targetTime.required': 'Select a time to continue.',
+      'cart.restaurantLabel': 'Ordering from',
+      'cart.restaurantFallback': 'this restaurant',
+      'cart.newOrderConfirm':
+        'Your cart has items from {{current}}. Empty the cart and start a new order with {{next}}?',
 
       'checkout.title': 'Checkout',
       'checkout.subtitle': 'Confirm your delivery and get ready for a delicious drop-off.',
@@ -243,6 +247,10 @@ export class TranslationService {
       'cart.targetTimeType.scheduled': 'Inplannen',
       'cart.targetTime.label': 'Inplannen op',
       'cart.targetTime.required': 'Kies een tijd om door te gaan.',
+      'cart.restaurantLabel': 'Bestelling bij',
+      'cart.restaurantFallback': 'dit restaurant',
+      'cart.newOrderConfirm':
+        'Je winkelwagen bevat items van {{current}}. Winkelwagen legen en een nieuwe bestelling starten bij {{next}}?',
 
       'checkout.title': 'Afrekenen',
       'checkout.subtitle': 'Bevestig je bezorging en maak je klaar voor een heerlijke levering.',
@@ -427,6 +435,10 @@ export class TranslationService {
       'cart.targetTimeType.scheduled': 'Programmer',
       'cart.targetTime.label': 'Programmer pour',
       'cart.targetTime.required': 'Sélectionnez une heure pour continuer.',
+      'cart.restaurantLabel': 'Commande auprès de',
+      'cart.restaurantFallback': 'ce restaurant',
+      'cart.newOrderConfirm':
+        'Votre panier contient des articles de {{current}}. Vider le panier et commencer une nouvelle commande avec {{next}} ?',
 
       'checkout.title': 'Paiement',
       'checkout.subtitle': 'Confirmez votre livraison et préparez-vous à une arrivée gourmande.',
@@ -611,6 +623,10 @@ export class TranslationService {
       'cart.targetTimeType.scheduled': 'Geplant',
       'cart.targetTime.label': 'Geplant für',
       'cart.targetTime.required': 'Wähle eine Uhrzeit, um fortzufahren.',
+      'cart.restaurantLabel': 'Bestellung von',
+      'cart.restaurantFallback': 'diesem Restaurant',
+      'cart.newOrderConfirm':
+        'Dein Warenkorb enthält Artikel von {{current}}. Warenkorb leeren und eine neue Bestellung bei {{next}} beginnen?',
 
       'checkout.title': 'Zur Kasse',
       'checkout.subtitle': 'Bestätige deine Lieferung und freu dich auf eine köstliche Ankunft.',

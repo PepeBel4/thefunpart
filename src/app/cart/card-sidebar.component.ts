@@ -25,6 +25,28 @@ import { OrderScenario, OrderTargetTimeType } from '../core/models';
       min-width: 300px;
     }
 
+    .cart-restaurant {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      background: rgba(6, 193, 103, 0.1);
+      color: #056333;
+      font-weight: 600;
+    }
+
+    .cart-restaurant-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: rgba(5, 99, 51, 0.8);
+    }
+
+    .cart-restaurant-name {
+      font-size: 1rem;
+    }
+
     .order-settings {
       display: flex;
       flex-direction: column;
@@ -286,6 +308,15 @@ import { OrderScenario, OrderTargetTimeType } from '../core/models';
   `],
   template: `
     <aside>
+      <div class="cart-restaurant" *ngIf="cart.restaurant() as restaurant">
+        <span class="cart-restaurant-label">
+          {{ 'cart.restaurantLabel' | translate: 'Ordering from' }}
+        </span>
+        <span class="cart-restaurant-name">
+          {{ restaurant.name || ('cart.restaurantFallback' | translate: 'this restaurant') }}
+        </span>
+      </div>
+
       <section class="order-settings">
         <div class="field">
           <span class="field-label">{{ 'cart.scenario.label' | translate: 'Order type' }}</span>
