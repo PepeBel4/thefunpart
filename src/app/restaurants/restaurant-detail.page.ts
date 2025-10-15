@@ -1,4 +1,4 @@
-import { Component, LOCALE_ID, effect, inject } from '@angular/core';
+import { Component, effect, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { MenuService } from '../menu/menu.service';
 import { RestaurantService } from './restaurant.service';
@@ -212,11 +212,10 @@ type MenuCategoryGroup = {
         [ngStyle]="{ 'background-image': (heroBackground$ | async) || defaultHeroBackground }"
       >
         <div class="hero-content">
-          <h2 class="hero-title">{{ r.name }}</h2>
-          <p> {{
-            r.description ||
-              ('restaurantDetail.descriptionFallback' | translate: 'Fresh meals, crafted for delivery.')
-          }}</p>
+          <h2 class="hero-title">{{ getRestaurantName(r) }}</h2>
+          <p>
+            {{ getRestaurantDescription(r) }}
+          </p>
           <div class="hero-meta">
             <span class="tag">{{ 'restaurantDetail.tagPopular' | translate: 'Popular' }}</span>
             <span>⭐ 4.8</span>
@@ -261,7 +260,6 @@ export class RestaurantDetailPage {
   private rSvc = inject(RestaurantService);
   private cart = inject(CartService);
   private document = inject(DOCUMENT);
-  private locale = inject(LOCALE_ID);
   private i18n = inject(TranslationService);
 
   id = Number(this.route.snapshot.paramMap.get('id'));
@@ -350,6 +348,18 @@ export class RestaurantDetailPage {
     this.document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  getRestaurantName(restaurant: Restaurant): string {
+    return this.resolveRestaurantField(restaurant.name, restaurant.name_translations) || restaurant.name;
+  }
+
+  getRestaurantDescription(restaurant: Restaurant): string {
+    const resolved = this.resolveRestaurantField(restaurant.description, restaurant.description_translations);
+    return (
+      resolved ||
+      this.i18n.translate('restaurantDetail.descriptionFallback', 'Fresh meals, crafted for delivery.')
+    );
+  }
+
   private organizeMenu(items: MenuItem[]): MenuCategoryGroup[] {
     const grouped = new Map<string, MenuCategoryGroup>();
     const fallback: MenuItem[] = [];
@@ -402,6 +412,30 @@ export class RestaurantDetailPage {
     return result;
   }
 
+  private resolveRestaurantField(
+    fallback: string | undefined,
+    translations: Record<string, string> | undefined
+  ): string {
+    if (translations && Object.keys(translations).length) {
+      const localeCandidates = this.buildLocaleCandidates();
+
+      for (const locale of localeCandidates) {
+        const localized = this.tryResolveTranslation(translations, locale);
+        if (localized) {
+          return localized;
+        }
+      }
+
+      for (const value of Object.values(translations)) {
+        if (value?.trim()) {
+          return value.trim();
+        }
+      }
+    }
+
+    return fallback?.trim() ?? '';
+  }
+
   private buildAnchor(category: NonNullable<MenuItem['categories']>[number], fallbackName: string) {
     if (category.id != null) {
       return `category-${category.id}`;
@@ -452,15 +486,21 @@ export class RestaurantDetailPage {
   }
 
   private buildLocaleCandidates(): string[] {
-    const normalized = (this.locale ?? '').toString().trim().toLowerCase();
     const candidates = new Set<string>();
+    const localeValue = this.i18n.currentLocale();
+    const currentLocale = localeValue ? localeValue.toLowerCase() : '';
+    const currentLanguage = this.i18n.currentLanguageCode().toLowerCase();
 
-    if (normalized) {
-      candidates.add(normalized);
-      const [languagePart] = normalized.split('-');
+    if (currentLocale) {
+      candidates.add(currentLocale);
+      const [languagePart] = currentLocale.split('-');
       if (languagePart) {
         candidates.add(languagePart);
       }
+    }
+
+    if (currentLanguage) {
+      candidates.add(currentLanguage);
     }
 
     candidates.add('en');
