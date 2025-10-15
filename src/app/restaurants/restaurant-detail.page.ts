@@ -105,9 +105,14 @@ type MenuCategoryGroup = {
 
     .category-nav {
       display: flex;
-      gap: 0.75rem;
+      gap: 1rem;
       flex-wrap: wrap;
       margin-bottom: 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      padding: 0.75rem 0;
+      background: transparent;
     }
 
     .category-nav button {
@@ -118,13 +123,17 @@ type MenuCategoryGroup = {
       cursor: pointer;
       font-weight: 600;
       color: var(--text-secondary);
-      transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+      transition: color 0.2s ease;
     }
 
-    .category-nav button:hover {
-      background: rgba(6, 193, 103, 0.12);
+    .category-nav button:hover,
+    .category-nav button:focus {
       color: var(--brand-green);
-      box-shadow: 0 6px 16px rgba(6, 193, 103, 0.16);
+    }
+
+    .category-nav button:focus-visible {
+      outline: 2px solid var(--brand-green);
+      outline-offset: 2px;
     }
 
     .menu-section {
@@ -132,6 +141,7 @@ type MenuCategoryGroup = {
       flex-direction: column;
       gap: 1rem;
       margin-bottom: 2.5rem;
+      scroll-margin-top: clamp(4.5rem, 10vh, 7rem);
     }
 
     .menu-section:last-child {
