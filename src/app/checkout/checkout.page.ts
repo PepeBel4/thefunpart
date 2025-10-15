@@ -75,7 +75,10 @@ import { Order } from '../core/models';
         <span>{{ 'checkout.total' | translate: 'Total' }}</span>
         <span>{{ (cart.subtotalCents()/100) | currency:'EUR' }}</span>
       </div>
-      <button (click)="placeOrder()" [disabled]="cart.lines().length === 0 || isPlacingOrder">
+      <button
+        (click)="placeOrder()"
+        [disabled]="cart.lines().length === 0 || isPlacingOrder || !cart.hasValidTargetTime()"
+      >
         {{ 'checkout.placeOrder' | translate: 'Place order' }}
       </button>
     </div>
@@ -90,6 +93,7 @@ export class CheckoutPage {
   async placeOrder(){
     const lines = this.cart.lines();
     if (!lines.length || this.isPlacingOrder) return;
+    if (!this.cart.hasValidTargetTime()) return;
 
     const restaurantId = lines[0].item.restaurant_id;
     const items = lines.map(l => ({
@@ -97,10 +101,15 @@ export class CheckoutPage {
       quantity: l.quantity,
       category_id: l.category?.id ?? null,
     }));
+    const scenario = this.cart.scenario();
+    const targetTimeType = this.cart.targetTimeType();
+    const targetTime = this.cart.targetTime();
     this.isPlacingOrder = true;
 
     try {
-      const order: Order = await firstValueFrom(this.orders.create({ restaurantId, items }));
+      const order: Order = await firstValueFrom(
+        this.orders.create({ restaurantId, items, scenario, targetTimeType, targetTime })
+      );
 
       const paymentResponse = await firstValueFrom(
         this.orders.createPayment(order.id, {

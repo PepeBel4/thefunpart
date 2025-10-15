@@ -1,3 +1,6 @@
+export type OrderScenario = 'takeaway' | 'delivery' | 'eatin';
+export type OrderTargetTimeType = 'asap' | 'scheduled';
+
 export interface RestaurantPhoto {
   id: number;
   url: string;
@@ -57,6 +60,9 @@ export interface Order {
   paid_cents?: number;
   remaining_balance_cents?: number;
   order_items: OrderItem[];
+  scenario?: OrderScenario;
+  target_time_type?: OrderTargetTimeType;
+  target_time?: string | null;
   restaurant?: {
     id: number;
     name: string;
