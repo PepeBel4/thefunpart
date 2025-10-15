@@ -1,4 +1,4 @@
-import { Component, LOCALE_ID, inject } from '@angular/core';
+import { Component, LOCALE_ID, effect, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { MenuService } from '../menu/menu.service';
 import { RestaurantService } from './restaurant.service';
@@ -6,6 +6,8 @@ import { AsyncPipe, CurrencyPipe, NgIf, NgFor, DOCUMENT } from '@angular/common'
 import { MenuItem, Restaurant } from '../core/models';
 import { Observable, firstValueFrom, map } from 'rxjs';
 import { CartCategorySelection, CartService } from '../cart/cart.service';
+import { TranslatePipe } from '../shared/translate.pipe';
+import { TranslationService } from '../core/translation.service';
 
 type MenuCategoryGroup = {
   name: string;
@@ -17,7 +19,7 @@ type MenuCategoryGroup = {
 @Component({
   standalone: true,
   selector: 'app-restaurant-detail',
-  imports: [AsyncPipe, CurrencyPipe, NgFor, NgIf],
+  imports: [AsyncPipe, CurrencyPipe, NgFor, NgIf, TranslatePipe],
   styles: [`
     :host {
       display: block;
@@ -198,12 +200,17 @@ type MenuCategoryGroup = {
     <ng-container *ngIf="(restaurant$ | async) as r">
       <section class="hero">
         <h2 class="hero-title">{{ r.name }}</h2>
-        <p>{{ r.description || 'Fresh meals, crafted for delivery.' }}</p>
+        <p>
+          {{
+            r.description ||
+              ('restaurantDetail.descriptionFallback' | translate: 'Fresh meals, crafted for delivery.')
+          }}
+        </p>
         <div class="hero-meta">
-          <span class="tag">Popular</span>
+          <span class="tag">{{ 'restaurantDetail.tagPopular' | translate: 'Popular' }}</span>
           <span>⭐ 4.8</span>
-          <span>20-30 min</span>
-          <span>Free delivery over €15</span>
+          <span>{{ 'restaurants.duration' | translate: '20-30 min' }}</span>
+          <span>{{ 'restaurants.freeDelivery' | translate: 'Free delivery over €15' }}</span>
         </div>
       </section>
 
@@ -213,7 +220,7 @@ type MenuCategoryGroup = {
         </figure>
       </section>
       <ng-container *ngIf="(menuCategories$ | async) as menuCategories">
-        <h3 *ngIf="menuCategories.length">Menu</h3>
+        <h3 *ngIf="menuCategories.length">{{ 'restaurants.menuHeading' | translate: 'Menu' }}</h3>
         <nav class="category-nav" *ngIf="menuCategories.length">
           <button type="button" *ngFor="let category of menuCategories" (click)="scrollTo(category.anchor)">
             {{ category.name }}
@@ -224,9 +231,16 @@ type MenuCategoryGroup = {
           <div class="menu-grid">
             <div class="card" *ngFor="let m of category.items">
               <h4>{{ m.name }}</h4>
-              <p>{{ m.description || 'Customer favourite' }}</p>
+              <p>
+                {{
+                  m.description ||
+                    ('restaurantDetail.customerFavourite' | translate: 'Customer favourite')
+                }}
+              </p>
               <span class="price">{{ (m.price_cents / 100) | currency:'EUR' }}</span>
-              <button (click)="addToCart(m, category.cartCategory)">Add to cart</button>
+              <button (click)="addToCart(m, category.cartCategory)">
+                {{ 'restaurantDetail.addToCart' | translate: 'Add to cart' }}
+              </button>
             </div>
           </div>
         </section>
@@ -242,6 +256,7 @@ export class RestaurantDetailPage {
   private cart = inject(CartService);
   private document = inject(DOCUMENT);
   private locale = inject(LOCALE_ID);
+  private i18n = inject(TranslationService);
 
   id = Number(this.route.snapshot.paramMap.get('id'));
   restaurant$: Observable<Restaurant> = this.rSvc.get(this.id);
@@ -253,6 +268,18 @@ export class RestaurantDetailPage {
   uploading = false;
   statusMessage = '';
   statusType: 'success' | 'error' | '' = '';
+
+  constructor() {
+    let initial = true;
+    effect(() => {
+      this.i18n.languageSignal();
+      if (initial) {
+        initial = false;
+        return;
+      }
+      this.refreshMenu();
+    });
+  }
 
   onPhotoSelection(files: FileList | null) {
     this.selectedPhotos = files ? Array.from(files) : [];
@@ -270,13 +297,19 @@ export class RestaurantDetailPage {
     try {
       await firstValueFrom(this.rSvc.uploadPhotos(this.id, this.selectedPhotos));
       this.selectedPhotos = [];
-      this.statusMessage = 'Photos uploaded successfully!';
+      this.statusMessage = this.i18n.translate(
+        'restaurantDetail.photosUploaded',
+        'Photos uploaded successfully!'
+      );
       this.statusType = 'success';
       this.restaurant$ = this.rSvc.get(this.id);
       this.refreshMenu();
     } catch (err) {
       console.error(err);
-      this.statusMessage = 'Something went wrong while uploading photos. Please try again.';
+      this.statusMessage = this.i18n.translate(
+        'restaurantDetail.photosError',
+        'Something went wrong while uploading photos. Please try again.'
+      );
       this.statusType = 'error';
     } finally {
       this.uploading = false;
@@ -337,7 +370,7 @@ export class RestaurantDetailPage {
 
     if (fallback.length) {
       result.push({
-        name: 'Other items',
+        name: this.i18n.translate('restaurants.otherItems', 'Other items'),
         anchor: 'category-uncategorized',
         items: fallback,
         cartCategory: null,

@@ -2,11 +2,12 @@ import { Component, inject } from '@angular/core';
 import { NgFor, CurrencyPipe, NgIf } from '@angular/common';
 import { CartService } from './cart.service';
 import { RouterLink } from '@angular/router';
+import { TranslatePipe } from '../shared/translate.pipe';
 
 @Component({
   selector: 'app-cart-sidebar',
   standalone: true,
-  imports: [NgFor, CurrencyPipe, NgIf, RouterLink],
+  imports: [NgFor, CurrencyPipe, NgIf, RouterLink, TranslatePipe],
   styles: [`
     aside {
       position: sticky;
@@ -193,8 +194,16 @@ import { RouterLink } from '@angular/router';
   template: `
     <aside>
       <header>
-        <h3>Your cart</h3>
-        <span class="badge">{{ cart.count() }} items</span>
+        <h3>{{ 'cart.title' | translate: 'Your cart' }}</h3>
+        <ng-container *ngIf="cart.count() as count">
+          <span class="badge">
+            {{
+              count === 1
+                ? ('cart.itemsOne' | translate: '{{count}} item': { count })
+                : ('cart.itemsMany' | translate: '{{count}} items': { count })
+            }}
+          </span>
+        </ng-container>
       </header>
 
       <div class="cart-lines" *ngIf="cart.lines().length; else empty">
@@ -210,7 +219,7 @@ import { RouterLink } from '@angular/router';
               type="button"
               (click)="cart.changeQty(l.item.id, l.quantity - 1, l.category)"
               [disabled]="l.quantity === 1"
-              aria-label="Decrease quantity"
+              [attr.aria-label]="'cart.decrease' | translate: 'Decrease quantity'"
             >
               &minus;
             </button>
@@ -219,11 +228,16 @@ import { RouterLink } from '@angular/router';
               class="qty-btn"
               type="button"
               (click)="cart.changeQty(l.item.id, l.quantity + 1, l.category)"
-              aria-label="Increase quantity"
+              [attr.aria-label]="'cart.increase' | translate: 'Increase quantity'"
             >
               +
             </button>
-            <button class="remove" type="button" (click)="cart.remove(l.item.id, l.category)" aria-label="Remove item">
+            <button
+              class="remove"
+              type="button"
+              (click)="cart.remove(l.item.id, l.category)"
+              [attr.aria-label]="'cart.remove' | translate: 'Remove item'"
+            >
               🗑️
             </button>
           </div>
@@ -231,15 +245,19 @@ import { RouterLink } from '@angular/router';
       </div>
 
       <ng-template #empty>
-        <div class="empty-state">Add something tasty from the menu to start an order.</div>
+        <div class="empty-state">
+          {{ 'cart.empty' | translate: 'Add something tasty from the menu to start an order.' }}
+        </div>
       </ng-template>
 
       <div class="summary">
-        <span>Subtotal</span>
+        <span>{{ 'cart.subtotal' | translate: 'Subtotal' }}</span>
         <span>{{ (cart.subtotalCents()/100) | currency:'EUR' }}</span>
       </div>
 
-      <a class="checkout" routerLink="/checkout" [class.disabled]="cart.lines().length === 0">Go to checkout</a>
+      <a class="checkout" routerLink="/checkout" [class.disabled]="cart.lines().length === 0">
+        {{ 'cart.checkout' | translate: 'Go to checkout' }}
+      </a>
     </aside>
   `
 })

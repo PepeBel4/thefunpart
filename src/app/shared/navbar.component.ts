@@ -1,13 +1,15 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
-import { NgIf } from '@angular/common';
+import { NgFor, NgIf } from '@angular/common';
 import { CartService } from '../cart/cart.service';
+import { TranslatePipe } from './translate.pipe';
+import { TranslationService } from '../core/translation.service';
 
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [RouterLink, NgIf],
+  imports: [RouterLink, NgIf, NgFor, TranslatePipe],
   styles: [`
     nav {
       position: sticky;
@@ -93,6 +95,49 @@ import { CartService } from '../cart/cart.service';
       color: #fff;
     }
 
+    .language-select {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .language-select select {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+      padding-right: 1.1rem;
+    }
+
+    .language-select select:focus-visible {
+      outline: 2px solid rgba(255, 255, 255, 0.5);
+      outline-offset: 2px;
+    }
+
+    .language-select::after {
+      content: '▾';
+      font-size: 0.75rem;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
     .cart-pill {
       text-decoration: none;
       background: var(--brand-green);
@@ -152,6 +197,10 @@ import { CartService } from '../cart/cart.service';
         justify-content: center;
       }
 
+      .language-select {
+        order: 4;
+      }
+
       .spacer {
         display: none;
       }
@@ -165,20 +214,26 @@ import { CartService } from '../cart/cart.service';
       .nav-links {
         width: 100%;
         justify-content: center;
-        order: 4;
+        order: 5;
       }
 
       .cart-pill {
-        order: 5;
+        order: 6;
         width: 100%;
         text-align: center;
       }
 
       button,
       .login-link {
-        order: 6;
+        order: 7;
         width: 100%;
         text-align: center;
+      }
+
+      .language-select {
+        order: 4;
+        width: 100%;
+        justify-content: center;
       }
     }
   `],
@@ -188,17 +243,33 @@ import { CartService } from '../cart/cart.service';
         <span class="brand-icon">🛵</span>
         thefunpart <span>eats</span>
       </a>
-      <div class="location-chip">Deliver now • 15-25 min</div>
+      <div class="location-chip">
+        {{ 'nav.deliveryChip' | translate: 'Deliver now • 15-25 min' }}
+      </div>
       <span class="spacer"></span>
       <div class="nav-links">
-        <a routerLink="/">Discover</a>
-        <a routerLink="/orders">Orders</a>
-        <a *ngIf="auth.isLoggedIn()" routerLink="/admin">Manage</a>
+        <a routerLink="/">{{ 'nav.discover' | translate: 'Discover' }}</a>
+        <a routerLink="/orders">{{ 'nav.orders' | translate: 'Orders' }}</a>
+        <a *ngIf="auth.isLoggedIn()" routerLink="/admin">{{ 'nav.manage' | translate: 'Manage' }}</a>
       </div>
-      <a routerLink="/checkout" class="cart-pill">Cart ({{ cart.count() }})</a>
-      <button *ngIf="auth.isLoggedIn(); else login" (click)="auth.logout()">Logout</button>
+      <label class="language-select">
+        <span class="sr-only">{{ 'nav.languageLabel' | translate: 'Language' }}</span>
+        <select
+          [value]="language()"
+          (change)="onLanguageChange($event)"
+          [attr.aria-label]="'nav.languageAria' | translate: 'Select website language'"
+        >
+          <option *ngFor="let lang of languages" [value]="lang.code">{{ lang.label }}</option>
+        </select>
+      </label>
+      <a routerLink="/checkout" class="cart-pill">
+        {{ 'nav.cart' | translate: 'Cart ({{count}})': { count: cart.count() } }}
+      </a>
+      <button *ngIf="auth.isLoggedIn(); else login" (click)="auth.logout()">
+        {{ 'nav.logout' | translate: 'Logout' }}
+      </button>
       <ng-template #login>
-        <a routerLink="/login" class="login-link">Log in</a>
+        <a routerLink="/login" class="login-link">{{ 'nav.login' | translate: 'Log in' }}</a>
       </ng-template>
     </nav>
   `
@@ -206,4 +277,15 @@ import { CartService } from '../cart/cart.service';
 export class NavbarComponent {
   auth = inject(AuthService);
   cart = inject(CartService);
+  private i18n = inject(TranslationService);
+  languages = this.i18n.languages;
+  language = this.i18n.languageSignal;
+
+  onLanguageChange(event: Event) {
+    const element = event.target as HTMLSelectElement | null;
+    if (!element) {
+      return;
+    }
+    this.i18n.setLanguage(element.value);
+  }
 }

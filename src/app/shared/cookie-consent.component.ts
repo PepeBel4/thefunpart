@@ -1,10 +1,11 @@
 import { Component, Inject, OnInit, signal } from '@angular/core';
 import { DOCUMENT, NgIf } from '@angular/common';
+import { TranslatePipe } from './translate.pipe';
 
 @Component({
   selector: 'app-cookie-consent',
   standalone: true,
-  imports: [NgIf],
+  imports: [NgIf, TranslatePipe],
   styles: [`
     :host {
       position: fixed;
@@ -98,16 +99,22 @@ import { DOCUMENT, NgIf } from '@angular/common';
   template: `
     <section *ngIf="isVisible()" class="banner" role="dialog" aria-live="polite">
       <div>
-        <strong>We use cookies</strong>
+        <strong>{{ 'cookie.title' | translate: 'We use cookies' }}</strong>
         <p>
-          This website uses cookies to enhance your experience, provide essential site
-          functionality, and analyze traffic. By clicking \"Accept all\" you agree to the storing of
-          cookies on your device.
+          {{
+            'cookie.message'
+              | translate:
+                'This website uses cookies to enhance your experience, provide essential site functionality, and analyze traffic. By clicking "Accept all" you agree to the storing of cookies on your device.'
+          }}
         </p>
       </div>
       <div class="actions">
-        <button type="button" class="primary" (click)="accept()">Accept all</button>
-        <button type="button" class="secondary" (click)="decline()">Decline</button>
+        <button type="button" class="primary" (click)="accept()">
+          {{ 'cookie.accept' | translate: 'Accept all' }}
+        </button>
+        <button type="button" class="secondary" (click)="decline()">
+          {{ 'cookie.decline' | translate: 'Decline' }}
+        </button>
       </div>
     </section>
   `

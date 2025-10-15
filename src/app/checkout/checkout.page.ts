@@ -3,13 +3,14 @@ import { CartService } from '../cart/cart.service';
 import { OrderService } from '../orders/order.service';
 import { Router } from '@angular/router';
 import { CurrencyPipe } from '@angular/common';
+import { TranslatePipe } from '../shared/translate.pipe';
 import { firstValueFrom } from 'rxjs';
 import { Order } from '../core/models';
 
 @Component({
   standalone: true,
   selector: 'app-checkout',
-  imports: [CurrencyPipe],
+  imports: [CurrencyPipe, TranslatePipe],
   styles: [`
     .card {
       max-width: 720px;
@@ -67,14 +68,16 @@ import { Order } from '../core/models';
   template: `
     <div class="card">
       <div>
-        <h2>Checkout</h2>
-        <p>Confirm your delivery and get ready for a delicious drop-off.</p>
+        <h2>{{ 'checkout.title' | translate: 'Checkout' }}</h2>
+        <p>{{ 'checkout.subtitle' | translate: 'Confirm your delivery and get ready for a delicious drop-off.' }}</p>
       </div>
       <div class="summary">
-        <span>Total</span>
+        <span>{{ 'checkout.total' | translate: 'Total' }}</span>
         <span>{{ (cart.subtotalCents()/100) | currency:'EUR' }}</span>
       </div>
-      <button (click)="placeOrder()" [disabled]="cart.lines().length === 0">Place order</button>
+      <button (click)="placeOrder()" [disabled]="cart.lines().length === 0">
+        {{ 'checkout.placeOrder' | translate: 'Place order' }}
+      </button>
     </div>
   `
 })

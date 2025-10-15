@@ -6,11 +6,13 @@ import { OrderService } from '../orders/order.service';
 import { RestaurantService } from '../restaurants/restaurant.service';
 import { Restaurant, RestaurantPhoto } from '../core/models';
 import { MenuManagerComponent } from '../menu/menu-manager.component';
+import { TranslatePipe } from '../shared/translate.pipe';
+import { TranslationService } from '../core/translation.service';
 
 @Component({
   standalone: true,
   selector: 'app-admin-dashboard',
-  imports: [AsyncPipe, CurrencyPipe, DatePipe, FormsModule, MenuManagerComponent, NgFor, NgIf],
+  imports: [AsyncPipe, CurrencyPipe, DatePipe, FormsModule, MenuManagerComponent, NgFor, NgIf, TranslatePipe],
   styles: [`
     :host {
       display: flex;
@@ -205,22 +207,28 @@ import { MenuManagerComponent } from '../menu/menu-manager.component';
   `],
   template: `
     <header>
-      <h2>Restaurant admin</h2>
-      <p>Upload fresh visuals and keep track of recent orders — all in one convenient place.</p>
+      <h2>{{ 'admin.title' | translate: 'Restaurant admin' }}</h2>
+      <p>
+        {{
+          'admin.subtitle'
+            | translate:
+              'Upload fresh visuals and keep track of recent orders — all in one convenient place.'
+        }}
+      </p>
     </header>
 
     <div class="grid">
       <div class="stack">
         <section class="card">
           <header>
-            <h3>Manage restaurant</h3>
-            <p>Choose which location you'd like to update.</p>
+            <h3>{{ 'admin.manage.heading' | translate: 'Manage restaurant' }}</h3>
+            <p>{{ 'admin.manage.description' | translate: "Choose which location you'd like to update." }}</p>
           </header>
 
           <ng-container *ngIf="restaurants$ | async as restaurants; else loading">
             <ng-container *ngIf="restaurants.length; else noRestaurants">
               <label>
-                Choose restaurant
+                {{ 'admin.manage.select' | translate: 'Choose restaurant' }}
                 <select [ngModel]="selectedRestaurantId" (ngModelChange)="onRestaurantChange($event)">
                   <option *ngFor="let restaurant of restaurants" [value]="restaurant.id">{{ restaurant.name }}</option>
                 </select>
@@ -229,10 +237,10 @@ import { MenuManagerComponent } from '../menu/menu-manager.component';
           </ng-container>
 
           <ng-template #loading>
-            <p>Loading restaurants…</p>
+            <p>{{ 'admin.manage.loading' | translate: 'Loading restaurants…' }}</p>
           </ng-template>
           <ng-template #noRestaurants>
-            <p>No restaurants found.</p>
+            <p>{{ 'admin.manage.empty' | translate: 'No restaurants found.' }}</p>
           </ng-template>
         </section>
 
@@ -240,8 +248,8 @@ import { MenuManagerComponent } from '../menu/menu-manager.component';
           <ng-container *ngIf="selectedRestaurant$ | async as restaurant">
             <section class="card">
               <header>
-                <h3>Restaurant photos</h3>
-                <p>Keep your storefront up to date by refreshing the gallery.</p>
+                <h3>{{ 'admin.photos.heading' | translate: 'Restaurant photos' }}</h3>
+                <p>{{ 'admin.photos.description' | translate: 'Keep your storefront up to date by refreshing the gallery.' }}</p>
               </header>
 
               <div class="photo-grid" *ngIf="restaurant.photos?.length">
@@ -253,7 +261,11 @@ import { MenuManagerComponent } from '../menu/menu-manager.component';
                     (click)="removePhoto(photo)"
                     [disabled]="removingPhotoId === photo.id"
                   >
-                    {{ removingPhotoId === photo.id ? 'Removing…' : 'Remove' }}
+                    {{
+                      removingPhotoId === photo.id
+                        ? ('admin.photos.removing' | translate: 'Removing…')
+                        : ('admin.photos.remove' | translate: 'Remove')
+                    }}
                   </button>
                 </figure>
               </div>
@@ -261,9 +273,19 @@ import { MenuManagerComponent } from '../menu/menu-manager.component';
               <div class="upload-controls">
                 <input type="file" #photoInput multiple accept="image/*" (change)="onPhotoSelection(photoInput.files)" [disabled]="uploading" />
                 <button type="button" (click)="uploadPhotos()" [disabled]="!selectedPhotos.length || uploading">
-                  {{ uploading ? 'Uploading…' : 'Upload photos' }}
+                  {{
+                    uploading
+                      ? ('admin.photos.uploading' | translate: 'Uploading…')
+                      : ('admin.photos.upload' | translate: 'Upload photos')
+                  }}
                 </button>
-                <span class="file-info" *ngIf="selectedPhotos.length">{{ selectedPhotos.length }} file{{ selectedPhotos.length === 1 ? '' : 's' }} ready</span>
+                <span class="file-info" *ngIf="selectedPhotos.length">
+                  {{
+                    selectedPhotos.length === 1
+                      ? ('admin.photos.readyOne' | translate: '1 file ready')
+                      : ('admin.photos.readyMany' | translate: '{{count}} files ready': { count: selectedPhotos.length })
+                  }}
+                </span>
               </div>
 
               <div *ngIf="statusMessage" class="status" [class.error]="statusType === 'error'" [class.success]="statusType === 'success'">
@@ -278,8 +300,8 @@ import { MenuManagerComponent } from '../menu/menu-manager.component';
 
       <section class="card">
         <header>
-          <h3>Recent orders</h3>
-          <p>Review recent activity to keep operations running smoothly.</p>
+          <h3>{{ 'admin.orders.heading' | translate: 'Recent orders' }}</h3>
+          <p>{{ 'admin.orders.description' | translate: 'Review recent activity to keep operations running smoothly.' }}</p>
         </header>
 
         <ng-container *ngIf="orders$ | async as orders; else loadingOrders">
@@ -287,22 +309,33 @@ import { MenuManagerComponent } from '../menu/menu-manager.component';
             <div class="orders-list">
               <article class="order-card" *ngFor="let order of orders">
                 <header>
-                  <span>#{{ order.id }} · {{ order.restaurant?.name || 'Unknown restaurant' }}</span>
+                  <span>
+                    #{{ order.id }} ·
+                    {{ order.restaurant?.name || ('admin.orders.unknownRestaurant' | translate: 'Unknown restaurant') }}
+                  </span>
                   <span>{{ order.total_cents / 100 | currency:'EUR' }}</span>
                 </header>
                 <div class="meta">
-                  Placed {{ order.created_at | date:'medium' }} · Status: {{ order.status }}
+                  {{
+                    'admin.orders.meta'
+                      | translate: 'Placed {{date}} · Status: {{status}}': {
+                          date: (order.created_at | date:'medium') || '',
+                          status: order.status
+                        }
+                  }}
                 </div>
-                <div class="meta" *ngIf="order.user?.email">Customer: {{ order.user?.email }}</div>
+                <div class="meta" *ngIf="order.user?.email">
+                  {{ 'admin.orders.customer' | translate: 'Customer: {{email}}': { email: order.user?.email || '' } }}
+                </div>
               </article>
             </div>
           </ng-container>
         </ng-container>
         <ng-template #loadingOrders>
-          <p>Loading orders…</p>
+          <p>{{ 'admin.orders.loading' | translate: 'Loading orders…' }}</p>
         </ng-template>
         <ng-template #emptyOrders>
-          <p>No orders yet.</p>
+          <p>{{ 'admin.orders.empty' | translate: 'No orders yet.' }}</p>
         </ng-template>
       </section>
     </div>
@@ -310,9 +343,14 @@ import { MenuManagerComponent } from '../menu/menu-manager.component';
     <ng-template #managePlaceholder>
       <section class="card">
         <header>
-          <h3>Manage restaurant content</h3>
+          <h3>{{ 'admin.managePlaceholder.title' | translate: 'Manage restaurant content' }}</h3>
         </header>
-        <p>Choose a restaurant above to start uploading photos and editing menus.</p>
+        <p>
+          {{
+            'admin.managePlaceholder.description'
+              | translate: 'Choose a restaurant above to start uploading photos and editing menus.'
+          }}
+        </p>
       </section>
     </ng-template>
   `
@@ -320,6 +358,7 @@ import { MenuManagerComponent } from '../menu/menu-manager.component';
 export class AdminDashboardPage {
   private restaurantService = inject(RestaurantService);
   private orderService = inject(OrderService);
+  private i18n = inject(TranslationService);
 
   restaurants$: Observable<Restaurant[]> = this.restaurantService.list().pipe(
     tap(restaurants => {
@@ -374,12 +413,15 @@ export class AdminDashboardPage {
     try {
       await firstValueFrom(this.restaurantService.uploadPhotos(this.selectedRestaurantId, this.selectedPhotos));
       this.selectedPhotos = [];
-      this.statusMessage = 'Photos uploaded successfully!';
+      this.statusMessage = this.i18n.translate('restaurantDetail.photosUploaded', 'Photos uploaded successfully!');
       this.statusType = 'success';
       this.selectedRestaurantIdSubject.next(this.selectedRestaurantId);
     } catch (err) {
       console.error(err);
-      this.statusMessage = 'Something went wrong while uploading photos. Please try again.';
+      this.statusMessage = this.i18n.translate(
+        'restaurantDetail.photosError',
+        'Something went wrong while uploading photos. Please try again.'
+      );
       this.statusType = 'error';
     } finally {
       this.uploading = false;
@@ -391,7 +433,7 @@ export class AdminDashboardPage {
       return;
     }
 
-    if (!confirm('Remove this photo?')) {
+    if (!confirm(this.i18n.translate('restaurantDetail.removePhotoConfirm', 'Remove this photo?'))) {
       return;
     }
 
@@ -401,12 +443,15 @@ export class AdminDashboardPage {
 
     try {
       await firstValueFrom(this.restaurantService.deletePhoto(this.selectedRestaurantId, photo.id));
-      this.statusMessage = 'Photo removed.';
+      this.statusMessage = this.i18n.translate('restaurantDetail.photoRemoved', 'Photo removed.');
       this.statusType = 'success';
       this.selectedRestaurantIdSubject.next(this.selectedRestaurantId);
     } catch (err) {
       console.error(err);
-      this.statusMessage = 'Unable to remove the photo. Please try again.';
+      this.statusMessage = this.i18n.translate(
+        'restaurantDetail.photoRemoveError',
+        'Unable to remove the photo. Please try again.'
+      );
       this.statusType = 'error';
     } finally {
       this.removingPhotoId = null;

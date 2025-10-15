@@ -4,11 +4,12 @@ import { RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 import { Restaurant } from '../core/models';
 import { RestaurantService } from './restaurant.service';
+import { TranslatePipe } from '../shared/translate.pipe';
 
 @Component({
   standalone: true,
   selector: 'app-restaurant-list',
-  imports: [AsyncPipe, RouterLink, NgFor, NgIf],
+  imports: [AsyncPipe, RouterLink, NgFor, NgIf, TranslatePipe],
   styles: [`
     :host {
       display: flex;
@@ -121,8 +122,10 @@ import { RestaurantService } from './restaurant.service';
   `],
   template: `
     <div>
-      <h2>Discover near you</h2>
-      <p class="subhead">Hand-picked favourites delivering fast, just like the Uber Eats app.</p>
+      <h2>{{ 'restaurants.heading' | translate: 'Discover near you' }}</h2>
+      <p class="subhead">
+        {{ 'restaurants.subheading' | translate: 'Hand-picked favourites delivering fast, just like the Uber Eats app.' }}
+      </p>
     </div>
     <div class="grid" *ngIf="restaurants$ | async as restaurants">
       <a class="card" *ngFor="let r of restaurants" [routerLink]="['/restaurants', r.id]">
@@ -136,10 +139,12 @@ import { RestaurantService } from './restaurant.service';
         </div>
         <div class="card-body">
           <h3>{{ r.name }}</h3>
-          <p>{{ r.description || 'Popular choices • Comfort food' }}</p>
+          <p>
+            {{ r.description || ('restaurants.defaultDescription' | translate: 'Popular choices • Comfort food') }}
+          </p>
           <div class="meta">
-            <span class="pill">Express</span>
-            <span>20-30 min</span>
+            <span class="pill">{{ 'restaurants.express' | translate: 'Express' }}</span>
+            <span>{{ 'restaurants.duration' | translate: '20-30 min' }}</span>
             <span>€€</span>
           </div>
         </div>

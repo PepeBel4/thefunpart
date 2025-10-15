@@ -2,11 +2,12 @@ import { Component, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { OrderService } from './order.service';
 import { AsyncPipe, CurrencyPipe, DatePipe, NgFor, NgIf } from '@angular/common';
+import { TranslatePipe } from '../shared/translate.pipe';
 
 @Component({
   standalone: true,
   selector: 'app-order-detail',
-  imports: [AsyncPipe, CurrencyPipe, DatePipe, NgFor, NgIf],
+  imports: [AsyncPipe, CurrencyPipe, DatePipe, NgFor, NgIf, TranslatePipe],
   styles: [`
     :host {
       display: block;
@@ -66,11 +67,19 @@ import { AsyncPipe, CurrencyPipe, DatePipe, NgFor, NgIf } from '@angular/common'
     <ng-container *ngIf="order$ | async as o">
       <div class="card">
         <div>
-          <h2>Order #{{ o.id }}</h2>
-          <div class="meta">{{ o.status }} • Placed {{ o.created_at | date:'short' }}</div>
+          <h2>{{ 'orderDetail.title' | translate: 'Order #{{id}}': { id: o.id } }}</h2>
+          <div class="meta">
+            {{
+              'orderDetail.subtitle'
+                | translate: '{{status}} • Placed {{date}}': {
+                    status: o.status,
+                    date: (o.created_at | date:'short') || ''
+                  }
+            }}
+          </div>
         </div>
         <div>
-          <h3>Items</h3>
+          <h3>{{ 'orderDetail.itemsHeading' | translate: 'Items' }}</h3>
           <ul>
             <li *ngFor="let it of o.order_items">
               <span>
@@ -81,7 +90,7 @@ import { AsyncPipe, CurrencyPipe, DatePipe, NgFor, NgIf } from '@angular/common'
           </ul>
         </div>
         <div class="total">
-          <span>Total</span>
+          <span>{{ 'orderDetail.total' | translate: 'Total' }}</span>
           <span>{{ (o.total_cents/100) | currency:'EUR' }}</span>
         </div>
       </div>

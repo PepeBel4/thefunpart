@@ -2,11 +2,12 @@ import { Component, inject } from '@angular/core';
 import { OrderService } from './order.service';
 import { AsyncPipe, DatePipe, CurrencyPipe, NgFor, NgIf } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { TranslatePipe } from '../shared/translate.pipe';
 
 @Component({
   standalone: true,
   selector: 'app-orders',
-  imports: [AsyncPipe, DatePipe, CurrencyPipe, RouterLink, NgFor, NgIf],
+  imports: [AsyncPipe, DatePipe, CurrencyPipe, RouterLink, NgFor, NgIf, TranslatePipe],
   styles: [`
     :host {
       display: flex;
@@ -77,8 +78,8 @@ import { RouterLink } from '@angular/router';
   `],
   template: `
     <section>
-      <h2>Your orders</h2>
-      <p class="meta">Track deliveries and revisit your favourite meals.</p>
+      <h2>{{ 'orders.title' | translate: 'Your orders' }}</h2>
+      <p class="meta">{{ 'orders.subtitle' | translate: 'Track deliveries and revisit your favourite meals.' }}</p>
     </section>
     <div class="orders-list" *ngIf="orders$ | async as orders">
       <div class="card" *ngFor="let o of orders">
@@ -89,8 +90,12 @@ import { RouterLink } from '@angular/router';
           </div>
           <span class="status">{{ o.status }}</span>
         </header>
-        <div class="meta">Total: {{ (o.total_cents/100) | currency:'EUR' }}</div>
-        <a class="view-link" [routerLink]="['/orders', o.id]">View details</a>
+        <div class="meta">
+          {{ 'orders.totalLabel' | translate: 'Total:' }} {{ (o.total_cents/100) | currency:'EUR' }}
+        </div>
+        <a class="view-link" [routerLink]="['/orders', o.id]">
+          {{ 'orders.view' | translate: 'View details' }}
+        </a>
       </div>
     </div>
   `

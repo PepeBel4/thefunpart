@@ -1,11 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { AuthService } from '../core/auth.service';
 import { FormsModule } from '@angular/forms';
+import { TranslatePipe } from '../shared/translate.pipe';
 
 @Component({
   standalone: true,
   selector: 'app-login',
-  imports: [FormsModule],
+  imports: [FormsModule, TranslatePipe],
   styles: [`
     .card {
       max-width: 420px;
@@ -64,15 +65,15 @@ import { FormsModule } from '@angular/forms';
   template: `
     <div class="card">
       <div>
-        <h2>Welcome back</h2>
-        <p>Sign in to keep your cravings satisfied.</p>
+        <h2>{{ 'login.title' | translate: 'Welcome back' }}</h2>
+        <p>{{ 'login.subtitle' | translate: 'Sign in to keep your cravings satisfied.' }}</p>
       </div>
       <form (ngSubmit)="submit()">
-        <label>Email</label>
+        <label>{{ 'login.email' | translate: 'Email' }}</label>
         <input [(ngModel)]="email" name="email" type="email" required />
-        <label>Password</label>
+        <label>{{ 'login.password' | translate: 'Password' }}</label>
         <input [(ngModel)]="password" name="password" type="password" required />
-        <button type="submit">Log in</button>
+        <button type="submit">{{ 'login.submit' | translate: 'Log in' }}</button>
       </form>
     </div>
   `
