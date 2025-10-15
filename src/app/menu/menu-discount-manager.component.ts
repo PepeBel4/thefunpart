@@ -814,7 +814,7 @@ export class MenuDiscountManagerComponent implements OnDestroy {
 
     this.savingAssignment = true;
     try {
-      await firstValueFrom(
+      const created = await firstValueFrom(
         this.assignmentsApi.create({
           menu_item_id: this.newAssignment.menu_item_id,
           menu_item_discount_id: this.newAssignment.menu_item_discount_id,
@@ -825,7 +825,8 @@ export class MenuDiscountManagerComponent implements OnDestroy {
         'Assignment created.'
       );
       this.newAssignment = this.createEmptyAssignmentForm();
-      await this.refreshDiscountsAndAssignments();
+      this.addAssignmentToCollections(created);
+      void this.refreshDiscountsAndAssignments();
     } catch (error) {
       console.error(error);
       this.assignmentError =
@@ -870,9 +871,11 @@ export class MenuDiscountManagerComponent implements OnDestroy {
       return;
     }
 
+    const previous = this.assignments.find(assignment => assignment.id === id) || null;
+
     this.savingAssignment = true;
     try {
-      await firstValueFrom(
+      const updated = await firstValueFrom(
         this.assignmentsApi.update(id, {
           menu_item_id: this.editAssignmentForm.menu_item_id,
           menu_item_discount_id: this.editAssignmentForm.menu_item_discount_id,
@@ -883,7 +886,11 @@ export class MenuDiscountManagerComponent implements OnDestroy {
         'Assignment updated.'
       );
       this.cancelAssignmentEdit();
-      await this.refreshDiscountsAndAssignments();
+      if (previous) {
+        this.removeAssignmentFromCollections(previous);
+      }
+      this.addAssignmentToCollections(updated);
+      void this.refreshDiscountsAndAssignments();
     } catch (error) {
       console.error(error);
       this.assignmentError =
@@ -919,7 +926,8 @@ export class MenuDiscountManagerComponent implements OnDestroy {
         'menu.discounts.assignments.deleted',
         'Assignment removed.'
       );
-      await this.refreshDiscountsAndAssignments();
+      this.removeAssignmentFromCollections(assignment);
+      void this.refreshDiscountsAndAssignments();
     } catch (error) {
       console.error(error);
       this.assignmentError =
@@ -982,6 +990,90 @@ export class MenuDiscountManagerComponent implements OnDestroy {
   private teardownOngoingLoad() {
     this.loadSubscription?.unsubscribe();
     this.loadSubscription = null;
+  }
+
+  private addAssignmentToCollections(assignment: MenuItemDiscountAssignment) {
+    const restaurantId = this.restaurantIdValue;
+    if (restaurantId !== null && assignment.menu_item.restaurant_id !== restaurantId) {
+      return;
+    }
+
+    const index = this.assignments.findIndex(existing => existing.id === assignment.id);
+    if (index === -1) {
+      this.assignments = [...this.assignments, assignment];
+    } else {
+      const updated = [...this.assignments];
+      updated[index] = assignment;
+      this.assignments = updated;
+    }
+
+    this.applyAssignmentToDiscount(assignment);
+  }
+
+  private removeAssignmentFromCollections(assignment: MenuItemDiscountAssignment) {
+    this.assignments = this.assignments.filter(existing => existing.id !== assignment.id);
+    this.removeAssignmentFromDiscount(assignment);
+  }
+
+  private applyAssignmentToDiscount(assignment: MenuItemDiscountAssignment) {
+    const discountIndex = this.discounts.findIndex(
+      discount => discount.id === assignment.menu_item_discount_id
+    );
+    if (discountIndex === -1) {
+      return;
+    }
+
+    const discount = this.discounts[discountIndex];
+    const hasMenuItem = discount.menu_item_ids.includes(assignment.menu_item_id);
+    const menu_item_ids = hasMenuItem
+      ? [...discount.menu_item_ids]
+      : [...discount.menu_item_ids, assignment.menu_item_id];
+    const menu_items = hasMenuItem
+      ? discount.menu_items.map(item =>
+          item.id === assignment.menu_item.id ? assignment.menu_item : item
+        )
+      : [...discount.menu_items, assignment.menu_item];
+
+    const updated: MenuItemDiscount = {
+      ...discount,
+      menu_item_ids,
+      menu_items,
+    };
+
+    const nextDiscounts = [...this.discounts];
+    nextDiscounts[discountIndex] = {
+      ...updated,
+      menu_item_ids: [...updated.menu_item_ids],
+      menu_items: [...updated.menu_items],
+    };
+    this.discounts = nextDiscounts;
+  }
+
+  private removeAssignmentFromDiscount(assignment: MenuItemDiscountAssignment) {
+    const discountIndex = this.discounts.findIndex(
+      discount => discount.id === assignment.menu_item_discount_id
+    );
+    if (discountIndex === -1) {
+      return;
+    }
+
+    const discount = this.discounts[discountIndex];
+    const menu_item_ids = discount.menu_item_ids.filter(id => id !== assignment.menu_item_id);
+    const menu_items = discount.menu_items.filter(item => item.id !== assignment.menu_item_id);
+
+    const updated: MenuItemDiscount = {
+      ...discount,
+      menu_item_ids,
+      menu_items,
+    };
+
+    const nextDiscounts = [...this.discounts];
+    nextDiscounts[discountIndex] = {
+      ...updated,
+      menu_item_ids: [...updated.menu_item_ids],
+      menu_items: [...updated.menu_items],
+    };
+    this.discounts = nextDiscounts;
   }
 
   private async refreshDiscountsAndAssignments() {
