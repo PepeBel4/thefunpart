@@ -1,5 +1,5 @@
 import { CurrencyPipe, NgFor, NgIf } from '@angular/common';
-import { Component, EventEmitter, Input, Output, inject, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { MenuItem, MenuItemCategory, MenuItemInput } from '../core/models';
@@ -18,6 +18,11 @@ interface MenuFormModel {
   description: string;
   price: string;
   categories: CategoryFormModel[];
+}
+
+interface QueuedPhoto {
+  file: File;
+  preview: string;
 }
 
 @Component({
@@ -219,6 +224,61 @@ interface MenuFormModel {
       font-weight: 600;
     }
 
+    .photo-section {
+      display: grid;
+      gap: 0.5rem;
+    }
+
+    .photo-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .photo-info {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .photo-grid {
+      display: grid;
+      gap: 0.6rem;
+      grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    }
+
+    .photo-grid figure {
+      position: relative;
+      border-radius: 0.75rem;
+      overflow: hidden;
+      background: var(--surface);
+      min-height: 96px;
+    }
+
+    .photo-grid img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .photo-grid button.remove-photo {
+      position: absolute;
+      top: 0.4rem;
+      right: 0.4rem;
+      background: rgba(0, 0, 0, 0.65);
+      color: #fff;
+      border-radius: 999px;
+      padding: 0.2rem 0.6rem;
+      font-size: 0.75rem;
+      box-shadow: none;
+    }
+
+    .photo-grid button.remove-photo:hover {
+      transform: none;
+      text-decoration: underline;
+    }
+
     @media (max-width: 640px) {
       .manager-card {
         margin-top: 2rem;
@@ -296,6 +356,45 @@ interface MenuFormModel {
             </datalist>
           </div>
         </div>
+        <div class="photo-section">
+          <label>{{ 'menu.photos.label' | translate: 'Item photos' }}</label>
+          <div class="photo-controls">
+            <input
+              type="file"
+              #newPhotoInput
+              multiple
+              accept="image/*"
+              (change)="onPhotoSelection('new', newPhotoInput.files); newPhotoInput.value = ''"
+              [disabled]="saving"
+            />
+            <button type="button" class="link remove" *ngIf="newPhotos.length" (click)="clearQueuedPhotos('new')">
+              {{ 'menu.photos.clear' | translate: 'Clear selection' }}
+            </button>
+          </div>
+          <div class="photo-grid queued" *ngIf="newPhotos.length">
+            <figure *ngFor="let photo of newPhotos; index as i">
+              <img [src]="photo.preview" [alt]="'Selected photo ' + (i + 1)" />
+              <button
+                type="button"
+                class="remove-photo"
+                (click)="removeQueuedPhoto('new', i)"
+                [disabled]="saving"
+              >
+                {{ 'menu.photos.removeQueued' | translate: 'Remove photo' }}
+              </button>
+            </figure>
+          </div>
+          <span class="photo-info" *ngIf="newPhotos.length">
+            {{
+              newPhotos.length === 1
+                ? ('menu.photos.readyOne' | translate: '1 photo ready to upload')
+                : ('menu.photos.readyMany' | translate: '{{count}} photos ready to upload': { count: newPhotos.length })
+            }}
+          </span>
+          <span class="photo-info" *ngIf="!newPhotos.length">
+            {{ 'menu.photos.noteCreate' | translate: 'Optional: upload images to highlight this dish.' }}
+          </span>
+        </div>
         <div class="actions">
           <span *ngIf="creationStatus" class="status">{{ creationStatus }}</span>
           <button type="submit" class="primary" [disabled]="saving">
@@ -360,6 +459,65 @@ interface MenuFormModel {
                   </datalist>
                 </div>
               </div>
+              <div class="photo-section">
+                <label>{{ 'menu.photos.label' | translate: 'Item photos' }}</label>
+                <div class="photo-grid" *ngIf="item.photos?.length; else noMenuItemPhotos">
+                  <figure *ngFor="let photo of item.photos">
+                    <img [src]="photo.url" [alt]="item.name" />
+                    <button
+                      type="button"
+                      class="remove-photo"
+                      (click)="removePhoto(item.id, photo.id)"
+                      [disabled]="saving || removingPhotoId === photo.id"
+                    >
+                      {{
+                        removingPhotoId === photo.id
+                          ? ('menu.photos.removing' | translate: 'Removing…')
+                          : ('menu.photos.remove' | translate: 'Remove')
+                      }}
+                    </button>
+                  </figure>
+                </div>
+                <ng-template #noMenuItemPhotos>
+                  <span class="photo-info">{{ 'menu.photos.empty' | translate: 'No photos yet.' }}</span>
+                </ng-template>
+                <div class="photo-controls">
+                  <input
+                    type="file"
+                    #editPhotoInput
+                    multiple
+                    accept="image/*"
+                    (change)="onPhotoSelection('edit', editPhotoInput.files); editPhotoInput.value = ''"
+                    [disabled]="saving"
+                  />
+                  <button type="button" class="link remove" *ngIf="editPhotos.length" (click)="clearQueuedPhotos('edit')">
+                    {{ 'menu.photos.clear' | translate: 'Clear selection' }}
+                  </button>
+                </div>
+                <div class="photo-grid queued" *ngIf="editPhotos.length">
+                  <figure *ngFor="let photo of editPhotos; index as i">
+                    <img [src]="photo.preview" [alt]="'Selected photo ' + (i + 1)" />
+                    <button
+                      type="button"
+                      class="remove-photo"
+                      (click)="removeQueuedPhoto('edit', i)"
+                      [disabled]="saving"
+                    >
+                      {{ 'menu.photos.removeQueued' | translate: 'Remove photo' }}
+                    </button>
+                  </figure>
+                </div>
+                <span class="photo-info" *ngIf="editPhotos.length">
+                  {{
+                    editPhotos.length === 1
+                      ? ('menu.photos.readyOne' | translate: '1 photo ready to upload')
+                      : ('menu.photos.readyMany' | translate: '{{count}} photos ready to upload': { count: editPhotos.length })
+                  }}
+                </span>
+                <span class="photo-info">
+                  {{ 'menu.photos.noteEdit' | translate: 'New photos upload when you save changes.' }}
+                </span>
+              </div>
               <div class="actions">
                 <button type="button" class="secondary" (click)="cancelEdit()">
                   {{ 'menu.items.cancel' | translate: 'Cancel' }}
@@ -405,7 +563,7 @@ interface MenuFormModel {
     </section>
   `,
 })
-export class MenuManagerComponent implements OnChanges, OnInit {
+export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
   @Input({ required: true }) restaurantId!: number;
   @Output() menuChanged = new EventEmitter<void>();
 
@@ -424,9 +582,17 @@ export class MenuManagerComponent implements OnChanges, OnInit {
   editingId: number | null = null;
   newItem: MenuFormModel = this.createEmptyForm();
   editItem: MenuFormModel = this.createEmptyForm();
+  newPhotos: QueuedPhoto[] = [];
+  editPhotos: QueuedPhoto[] = [];
+  removingPhotoId: number | null = null;
 
   ngOnInit() {
     void this.fetchCategories();
+  }
+
+  ngOnDestroy() {
+    this.releaseQueuedPhotos(this.newPhotos);
+    this.releaseQueuedPhotos(this.editPhotos);
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -483,6 +649,9 @@ export class MenuManagerComponent implements OnChanges, OnInit {
 
   startEdit(item: MenuItem) {
     this.editingId = item.id;
+    this.releaseQueuedPhotos(this.editPhotos);
+    this.editPhotos = [];
+    this.removingPhotoId = null;
     this.editItem = {
       name: item.name,
       description: item.description ?? '',
@@ -494,6 +663,9 @@ export class MenuManagerComponent implements OnChanges, OnInit {
   cancelEdit() {
     this.editingId = null;
     this.editItem = this.createEmptyForm();
+    this.releaseQueuedPhotos(this.editPhotos);
+    this.editPhotos = [];
+    this.removingPhotoId = null;
   }
 
   async createItem() {
@@ -509,16 +681,28 @@ export class MenuManagerComponent implements OnChanges, OnInit {
     this.creationStatus = '';
     try {
       const categories = this.prepareCategories(this.newItem.categories);
-      const createdItem = await firstValueFrom(this.menu.create(this.restaurantId, {
+      const created = await firstValueFrom(this.menu.create(this.restaurantId, {
         name: this.newItem.name,
         description: this.newItem.description || undefined,
         price_cents,
         ...(categories ? { menu_item_categories: categories } : {}),
       }));
+      if (created?.id && this.newPhotos.length) {
+        try {
+          await this.uploadMenuItemPhotos(created.id, this.newPhotos.map(photo => photo.file));
+        } catch (uploadError) {
+          console.error(uploadError);
+          this.error = this.i18n.translate(
+            'menu.photos.error.upload',
+            'Could not upload item photos. Please try again.'
+          );
+        }
+      }
+      this.releaseQueuedPhotos(this.newPhotos);
+      this.newPhotos = [];
       this.newItem = this.createEmptyForm();
       this.creationStatus = this.i18n.translate('menu.form.status', 'Menu item added!');
-      this.menuItems = [...this.menuItems, createdItem];
-      void this.loadMenu(true);
+      await this.loadMenu(true);
       await this.fetchCategories();
       this.menuChanged.emit();
     } catch (err) {
@@ -533,7 +717,7 @@ export class MenuManagerComponent implements OnChanges, OnInit {
     if (!this.editItem.name || !this.editItem.price) { return; }
     const price_cents = this.toCents(this.editItem.price);
     if (price_cents === null) {
-    this.error = this.i18n.translate('menu.form.error.price', 'Enter a valid price (e.g. 9.99).');
+      this.error = this.i18n.translate('menu.form.error.price', 'Enter a valid price (e.g. 9.99).');
       return;
     }
 
@@ -541,17 +725,27 @@ export class MenuManagerComponent implements OnChanges, OnInit {
     this.error = '';
     try {
       const categories = this.prepareCategories(this.editItem.categories);
-      const updatedItem = await firstValueFrom(this.menu.update(id, {
+      const updated = await firstValueFrom(this.menu.update(id, {
         name: this.editItem.name,
         description: this.editItem.description || undefined,
         price_cents,
         ...(categories ? { menu_item_categories: categories } : {}),
       }));
-      this.menuItems = this.menuItems.map((item) => (item.id === id ? updatedItem : item));
+      if (updated) {
+        this.mergeMenuItemUpdate(updated);
+      }
+
+      const queuedPhotos = this.editPhotos;
+      const pendingPhotos = queuedPhotos.length ? queuedPhotos.map(photo => photo.file) : [];
       this.cancelEdit();
-      void this.loadMenu(true);
-      await this.fetchCategories();
+      void this.fetchCategories();
       this.menuChanged.emit();
+
+      if (pendingPhotos.length) {
+        void this.finishPhotoUpload(id, pendingPhotos);
+      } else {
+        void this.loadMenu(true);
+      }
     } catch (err) {
       console.error(err);
       this.error = this.i18n.translate('menu.form.error.update', 'Unable to save changes. Please try again.');
@@ -577,11 +771,116 @@ export class MenuManagerComponent implements OnChanges, OnInit {
     }
   }
 
+  onPhotoSelection(target: 'new' | 'edit', files: FileList | null) {
+    const selection = files ? Array.from(files) : [];
+    if (!selection.length) { return; }
+    this.error = '';
+    const queued = this.createQueuedPhotos(selection);
+    if (target === 'new') {
+      this.newPhotos = [...this.newPhotos, ...queued];
+    } else {
+      this.editPhotos = [...this.editPhotos, ...queued];
+    }
+  }
+
+  clearQueuedPhotos(target: 'new' | 'edit') {
+    if (target === 'new') {
+      this.releaseQueuedPhotos(this.newPhotos);
+      this.newPhotos = [];
+    } else {
+      this.releaseQueuedPhotos(this.editPhotos);
+      this.editPhotos = [];
+    }
+  }
+
+  removeQueuedPhoto(target: 'new' | 'edit', index: number) {
+    const list = target === 'new' ? this.newPhotos : this.editPhotos;
+    const working = [...list];
+    const [removed] = working.splice(index, 1);
+    if (removed) {
+      URL.revokeObjectURL(removed.preview);
+    }
+    if (target === 'new') {
+      this.newPhotos = working;
+    } else {
+      this.editPhotos = working;
+    }
+  }
+
+  async removePhoto(itemId: number, photoId: number) {
+    this.error = '';
+    this.removingPhotoId = photoId;
+    const previousSaving = this.saving;
+    this.saving = true;
+    try {
+      await firstValueFrom(this.menu.deletePhoto(itemId, photoId));
+      const target = this.menuItems.find(entry => entry.id === itemId);
+      if (target) {
+        const photos = target.photos ?? [];
+        target.photos = photos.filter(photo => photo.id !== photoId);
+      }
+      this.menuChanged.emit();
+    } catch (err) {
+      console.error(err);
+      this.error = this.i18n.translate('menu.photos.error.delete', 'Could not remove the photo. Please try again.');
+    } finally {
+      this.removingPhotoId = null;
+      this.saving = previousSaving;
+    }
+  }
+
   private toCents(value: string): number | null {
     const sanitized = value.replace(/[^0-9.,]/g, '').replace(',', '.');
     const amount = Number.parseFloat(sanitized);
     if (Number.isNaN(amount)) { return null; }
     return Math.round(amount * 100);
+  }
+
+  private async uploadMenuItemPhotos(menuItemId: number, files: File[]): Promise<MenuItem | null> {
+    if (!files.length) { return null; }
+    return await firstValueFrom(this.menu.uploadPhotos(menuItemId, files));
+  }
+
+  private createQueuedPhotos(files: File[]): QueuedPhoto[] {
+    return files.map(file => ({ file, preview: URL.createObjectURL(file) }));
+  }
+
+  private releaseQueuedPhotos(list: QueuedPhoto[]) {
+    for (const photo of list) {
+      if (photo?.preview) {
+        URL.revokeObjectURL(photo.preview);
+      }
+    }
+  }
+
+  private mergeMenuItemUpdate(updated: MenuItem) {
+    const index = this.menuItems.findIndex(item => item.id === updated.id);
+    if (index === -1) { return; }
+
+    const current = this.menuItems[index];
+    this.menuItems[index] = {
+      ...current,
+      ...updated,
+      photos: updated.photos ?? current.photos,
+    };
+  }
+
+  private async finishPhotoUpload(menuItemId: number, files: File[]) {
+    try {
+      const uploadedItem = await this.uploadMenuItemPhotos(menuItemId, files);
+      if (uploadedItem) {
+        this.mergeMenuItemUpdate(uploadedItem);
+      }
+    } catch (uploadError) {
+      console.error(uploadError);
+      this.error = this.i18n.translate(
+        'menu.photos.error.upload',
+        'Could not upload item photos. Please try again.'
+      );
+    } finally {
+      void this.loadMenu(true);
+      this.menuChanged.emit();
+    }
   }
 
   private formatPrice(priceCents: number): string {
@@ -598,6 +897,11 @@ export class MenuManagerComponent implements OnChanges, OnInit {
     this.newItem = this.createEmptyForm();
     this.editItem = this.createEmptyForm();
     this.availableCategories = [];
+    this.releaseQueuedPhotos(this.newPhotos);
+    this.releaseQueuedPhotos(this.editPhotos);
+    this.newPhotos = [];
+    this.editPhotos = [];
+    this.removingPhotoId = null;
     this.loadToken++;
   }
 

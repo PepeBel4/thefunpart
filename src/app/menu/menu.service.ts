@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { ApiService } from '../core/api.service';
 import { MenuItem, MenuItemInput } from '../core/models';
+import { Observable } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class MenuService {
@@ -15,5 +16,13 @@ export class MenuService {
   }
   delete(id: number) {
     return this.api.delete<void>(`/menu_items/${id}`);
+  }
+  uploadPhotos(menuItemId: number, files: File[]): Observable<MenuItem> {
+    const formData = new FormData();
+    files.forEach(file => formData.append('photos[]', file));
+    return this.api.post<MenuItem>(`/menu_items/${menuItemId}/photos`, formData);
+  }
+  deletePhoto(menuItemId: number, photoId: number): Observable<MenuItem> {
+    return this.api.delete<MenuItem>(`/menu_items/${menuItemId}/photos/${photoId}`);
   }
 }

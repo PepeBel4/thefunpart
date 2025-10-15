@@ -8,6 +8,7 @@ import { Observable, firstValueFrom, map, of, shareReplay, startWith, switchMap,
 import { CartCategorySelection, CartService } from '../cart/cart.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
+import { MenuItemPhotoSliderComponent } from './menu-item-photo-slider.component';
 
 type MenuCategoryGroup = {
   name: string;
@@ -19,7 +20,7 @@ type MenuCategoryGroup = {
 @Component({
   standalone: true,
   selector: 'app-restaurant-detail',
-  imports: [AsyncPipe, CurrencyPipe, NgFor, NgIf, TranslatePipe, NgStyle],
+  imports: [AsyncPipe, CurrencyPipe, NgFor, NgIf, TranslatePipe, NgStyle, MenuItemPhotoSliderComponent],
   styles: [`
     :host {
       display: block;
@@ -162,7 +163,7 @@ type MenuCategoryGroup = {
       border: 1px solid rgba(10, 10, 10, 0.05);
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
+      gap: 1rem;
       position: relative;
       overflow: hidden;
     }
@@ -245,6 +246,11 @@ type MenuCategoryGroup = {
           <h4>{{ category.name }}</h4>
           <div class="menu-grid">
             <div class="card" *ngFor="let m of category.items">
+              <app-menu-item-photo-slider
+                *ngIf="m.photos?.length"
+                [photos]="m.photos"
+                [itemName]="m.name"
+              ></app-menu-item-photo-slider>
               <h4>{{ m.name }}</h4>
               <p>
                 {{
