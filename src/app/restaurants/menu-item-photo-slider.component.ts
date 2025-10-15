@@ -1,5 +1,5 @@
 import { NgForOf, NgIf } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Input, NgZone, OnChanges, OnDestroy, SimpleChanges, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, NgZone, OnChanges, OnDestroy, OnInit, SimpleChanges, inject } from '@angular/core';
 import { RestaurantPhoto } from '../core/models';
 
 @Component({
@@ -70,7 +70,7 @@ import { RestaurantPhoto } from '../core/models';
     </div>
   `,
 })
-export class MenuItemPhotoSliderComponent implements OnChanges, OnDestroy {
+export class MenuItemPhotoSliderComponent implements OnChanges, OnDestroy, OnInit {
   @Input() photos: RestaurantPhoto[] | null | undefined = [];
   @Input() itemName = '';
 
@@ -80,6 +80,11 @@ export class MenuItemPhotoSliderComponent implements OnChanges, OnDestroy {
   private readonly intervalMs = 5000;
   private timerId: number | null = null;
   private readonly zone = inject(NgZone);
+  private readonly cdr = inject(ChangeDetectorRef);
+
+  ngOnInit() {
+    this.restartTimer();
+  }
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['photos']) {
@@ -103,6 +108,7 @@ export class MenuItemPhotoSliderComponent implements OnChanges, OnDestroy {
         this.zone.run(() => {
           this.previousIndex = this.currentIndex;
           this.currentIndex = (this.currentIndex + 1) % total;
+          this.cdr.markForCheck();
         });
       }, this.intervalMs);
     });
