@@ -1,9 +1,10 @@
 import { CurrencyPipe, NgFor, NgIf } from '@angular/common';
-import { Component, EventEmitter, Input, Output, inject, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject, OnChanges, OnInit, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
-import { MenuItem, MenuItemInput } from '../core/models';
+import { MenuItem, MenuItemCategory, MenuItemInput } from '../core/models';
 import { MenuService } from './menu.service';
+import { CategoriesService } from './categories.service';
 
 interface CategoryFormModel {
   id?: number;
@@ -168,6 +169,14 @@ interface MenuFormModel {
       flex: 1;
     }
 
+    .category-row select {
+      flex: 1;
+    }
+
+    datalist {
+      display: none;
+    }
+
     button.link {
       background: transparent;
       color: var(--brand-green);
@@ -243,6 +252,8 @@ interface MenuFormModel {
                 [(ngModel)]="newItem.categories[i].name"
                 name="newCategory-{{ i }}"
                 placeholder="e.g. Starters"
+                [attr.list]="availableCategories.length ? 'new-category-options' : null"
+                (ngModelChange)="onCategoryNameChange('new', i, $event)"
               />
               <button
                 type="button"
@@ -254,6 +265,13 @@ interface MenuFormModel {
               </button>
             </div>
             <button type="button" class="link add" (click)="addCategory('new')">+ Add category</button>
+            <datalist id="new-category-options" *ngIf="availableCategories.length">
+              <ng-container *ngFor="let option of availableCategories">
+                <ng-container *ngIf="resolveCategoryName(option) as label">
+                  <option [value]="label"></option>
+                </ng-container>
+              </ng-container>
+            </datalist>
           </div>
         </div>
         <div class="actions">
@@ -290,6 +308,8 @@ interface MenuFormModel {
                       [(ngModel)]="editItem.categories[i].name"
                       name="editCategory-{{ item.id }}-{{ i }}"
                       placeholder="e.g. Starters"
+                      [attr.list]="availableCategories.length ? 'edit-category-options' : null"
+                      (ngModelChange)="onCategoryNameChange('edit', i, $event)"
                     />
                     <button
                       type="button"
@@ -301,6 +321,13 @@ interface MenuFormModel {
                     </button>
                   </div>
                   <button type="button" class="link add" (click)="addCategory('edit')">+ Add category</button>
+                  <datalist id="edit-category-options" *ngIf="availableCategories.length">
+                    <ng-container *ngFor="let option of availableCategories">
+                      <ng-container *ngIf="resolveCategoryName(option) as label">
+                        <option [value]="label"></option>
+                      </ng-container>
+                    </ng-container>
+                  </datalist>
                 </div>
               </div>
               <div class="actions">
@@ -336,15 +363,17 @@ interface MenuFormModel {
     </section>
   `,
 })
-export class MenuManagerComponent implements OnChanges {
+export class MenuManagerComponent implements OnChanges, OnInit {
   @Input({ required: true }) restaurantId!: number;
   @Output() menuChanged = new EventEmitter<void>();
 
   private menu = inject(MenuService);
+  private categories = inject(CategoriesService);
 
   private loadToken = 0;
 
   menuItems: MenuItem[] = [];
+  availableCategories: MenuItemCategory[] = [];
   loading = false;
   saving = false;
   error = '';
@@ -353,13 +382,32 @@ export class MenuManagerComponent implements OnChanges {
   newItem: MenuFormModel = this.createEmptyForm();
   editItem: MenuFormModel = this.createEmptyForm();
 
+  ngOnInit() {
+    void this.fetchCategories();
+  }
+
   ngOnChanges(changes: SimpleChanges) {
     if ('restaurantId' in changes) {
       const id = changes['restaurantId'].currentValue;
       if (typeof id === 'number' && !Number.isNaN(id)) {
         this.resetState();
+        void this.fetchCategories(id);
         void this.loadMenu();
       }
+    }
+  }
+
+  private async fetchCategories(restaurantId = this.restaurantId) {
+    if (restaurantId === null || restaurantId === undefined) { return; }
+
+    try {
+      const categories = await firstValueFrom(this.categories.list(restaurantId));
+      this.availableCategories = categories ?? [];
+      this.syncCategoryList('new');
+      this.syncCategoryList('edit');
+    } catch (err) {
+      console.error('Could not load categories', err);
+      this.availableCategories = [];
     }
   }
 
@@ -427,6 +475,7 @@ export class MenuManagerComponent implements OnChanges {
       this.newItem = this.createEmptyForm();
       this.creationStatus = 'Menu item added!';
       void this.loadMenu(true);
+      void this.fetchCategories();
       this.menuChanged.emit();
     } catch (err) {
       console.error(err);
@@ -456,6 +505,7 @@ export class MenuManagerComponent implements OnChanges {
       }));
       this.cancelEdit();
       void this.loadMenu(true);
+      void this.fetchCategories();
       this.menuChanged.emit();
     } catch (err) {
       console.error(err);
@@ -501,22 +551,23 @@ export class MenuManagerComponent implements OnChanges {
     this.editingId = null;
     this.newItem = this.createEmptyForm();
     this.editItem = this.createEmptyForm();
+    this.availableCategories = [];
     this.loadToken++;
   }
 
   addCategory(target: 'new' | 'edit') {
-    this.getCategoryList(target).push({ name: '' });
+    this.getCategoryList(target).push(this.createEmptyCategory());
   }
 
   removeCategory(target: 'new' | 'edit', index: number) {
     const list = this.getCategoryList(target);
     list.splice(index, 1);
     if (!list.length) {
-      list.push({ name: '' });
+      list.push(this.createEmptyCategory());
     }
   }
 
-  resolveCategoryName(category: NonNullable<MenuItem['categories']>[number]): string {
+  resolveCategoryName(category: MenuItemCategory): string {
     if (!category) { return ''; }
 
     const direct = category.name?.trim();
@@ -535,7 +586,7 @@ export class MenuManagerComponent implements OnChanges {
   }
 
   private createEmptyForm(): MenuFormModel {
-    return { name: '', description: '', price: '', categories: [{ name: '' }] };
+    return { name: '', description: '', price: '', categories: [this.createEmptyCategory()] };
   }
 
   private getCategoryList(target: 'new' | 'edit') {
@@ -544,17 +595,17 @@ export class MenuManagerComponent implements OnChanges {
 
   private mapCategoriesForForm(categories: MenuItem['categories'] | undefined): CategoryFormModel[] {
     if (!categories || !categories.length) {
-      return [{ name: '' }];
+      return [this.createEmptyCategory()];
     }
 
     const mapped = categories
       .map(category => ({
         id: category?.id ?? undefined,
-        name: this.resolveCategoryName(category),
+        name: this.resolveCategoryName(category as MenuItemCategory),
       }))
       .filter(category => category.name.trim().length > 0);
 
-    return mapped.length ? mapped : [{ name: '' }];
+    return mapped.length ? mapped : [this.createEmptyCategory()];
   }
 
   private prepareCategories(list: CategoryFormModel[]): MenuItemInput['menu_item_categories'] {
@@ -568,5 +619,54 @@ export class MenuManagerComponent implements OnChanges {
       );
 
     return sanitized.length ? sanitized : undefined;
+  }
+
+  onCategoryNameChange(target: 'new' | 'edit', index: number, value: string) {
+    const list = this.getCategoryList(target);
+    const entry = list[index];
+    if (!entry) { return; }
+
+    entry.name = value;
+    this.applyCategoryMatch(entry);
+  }
+
+  private applyCategoryMatch(entry: CategoryFormModel, preserveExistingId = false) {
+    const trimmed = entry.name.trim();
+    if (!trimmed) {
+      entry.id = undefined;
+      entry.name = '';
+      return;
+    }
+
+    const match = this.findMatchingCategory(trimmed);
+    if (match) {
+      entry.id = match.id;
+      entry.name = this.resolveCategoryName(match);
+    } else {
+      entry.name = trimmed;
+      if (!preserveExistingId) {
+        entry.id = undefined;
+      }
+    }
+  }
+
+  private findMatchingCategory(name: string): MenuItemCategory | undefined {
+    const normalized = name.trim().toLowerCase();
+    if (!normalized) { return undefined; }
+
+    return this.availableCategories.find(category => this.resolveCategoryName(category).toLowerCase() === normalized);
+  }
+
+  private syncCategoryList(target: 'new' | 'edit') {
+    const list = this.getCategoryList(target);
+    list.forEach(entry => {
+      if (entry.name) {
+        this.applyCategoryMatch(entry, true);
+      }
+    });
+  }
+
+  private createEmptyCategory(): CategoryFormModel {
+    return { id: undefined, name: '' };
   }
 }
