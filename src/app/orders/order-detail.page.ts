@@ -4,6 +4,12 @@ import { OrderService } from './order.service';
 import { AsyncPipe, CurrencyPipe, DatePipe, NgFor, NgIf, TitleCasePipe } from '@angular/common';
 import { TranslatePipe } from '../shared/translate.pipe';
 
+type IconPath = {
+  d: string;
+  filled?: boolean;
+  strokeWidth?: number;
+};
+
 @Component({
   standalone: true,
   selector: 'app-order-detail',
@@ -68,18 +74,22 @@ import { TranslatePipe } from '../shared/translate.pipe';
     }
 
     .dot {
-      width: 1.25rem;
-      height: 1.25rem;
+      width: 2.25rem;
+      height: 2.25rem;
       border-radius: 999px;
       border: 2px solid rgba(6, 193, 103, 0.4);
       background: var(--surface);
       display: grid;
       place-items: center;
-      font-size: 0.65rem;
-      font-weight: 700;
       color: rgba(6, 193, 103, 0.7);
       z-index: 1;
       transition: background 200ms ease, border-color 200ms ease, color 200ms ease;
+    }
+
+    .dot svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      display: block;
     }
 
     .step.completed .dot {
@@ -87,6 +97,10 @@ import { TranslatePipe } from '../shared/translate.pipe';
       border-color: var(--brand-green);
       color: #fff;
       box-shadow: 0 8px 18px rgba(6, 193, 103, 0.25);
+    }
+
+    .step.completed .dot svg {
+      stroke: currentColor;
     }
 
     .step.active {
@@ -204,7 +218,20 @@ import { TranslatePipe } from '../shared/translate.pipe';
               [class.completed]="stateStatus(i, o.status) === 'completed'"
               [class.active]="stateStatus(i, o.status) === 'active'"
             >
-              <div class="dot">{{ i + 1 }}</div>
+              <div class="dot">
+                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                  <ng-container *ngFor="let path of pathsForState(state); trackBy: trackByIndex">
+                    <path
+                      [attr.d]="path.d"
+                      [attr.fill]="path.filled ? 'currentColor' : 'none'"
+                      [attr.stroke]="path.filled ? 'none' : 'currentColor'"
+                      [attr.stroke-width]="path.strokeWidth ?? 1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    ></path>
+                  </ng-container>
+                </svg>
+              </div>
               <div class="label">{{ state | titlecase }}</div>
             </div>
           </div>
@@ -255,6 +282,48 @@ export class OrderDetailPage {
     'distributed'
   ] as const;
 
+  private readonly defaultIcon: IconPath[] = [
+    { d: 'M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18z', strokeWidth: 1.6 },
+    { d: 'M9 12l2.5 2.5L15 11', strokeWidth: 1.8 }
+  ];
+
+  readonly stateIcons: Record<(typeof this.states)[number], IconPath[]> = {
+    composing: [
+      { d: 'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z', filled: true },
+      {
+        d: 'M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z'
+      }
+    ],
+    sent: [
+      { d: 'M2.5 12.5L21 3 11.5 21.5 10 14 2.5 12.5z', filled: true },
+      { d: 'M10 14L21 3' }
+    ],
+    received: [
+      { d: 'M4 7h16v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7z', strokeWidth: 1.6 },
+      { d: 'M4 7l6.5 6a2 2 0 0 0 3 0L20 7', strokeWidth: 1.6 },
+      { d: 'M8 4h8', strokeWidth: 1.6 }
+    ],
+    printed: [
+      { d: 'M6 4h12v4H6z', filled: true },
+      { d: 'M5 8h14a2 2 0 0 1 2 2v6h-4v4H7v-4H3v-6a2 2 0 0 1 2-2z', strokeWidth: 1.6 },
+      { d: 'M9 14h6', strokeWidth: 1.6 }
+    ],
+    preparing: [
+      { d: 'M3 10h18v6a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5v-6z', strokeWidth: 1.6 },
+      { d: 'M7 7a5 5 0 0 1 10 0', strokeWidth: 1.6 }
+    ],
+    prepared: [
+      { d: 'M12 4a8 8 0 1 1 0 16 8 8 0 0 1 0-16z', strokeWidth: 1.6 },
+      { d: 'M9 12.5l2 2 4-4', strokeWidth: 1.8 }
+    ],
+    distributed: [
+      { d: 'M7 4a3 3 0 1 1 0 6 3 3 0 0 1 0-6z', strokeWidth: 1.6 },
+      { d: 'M17 4a3 3 0 1 1 0 6 3 3 0 0 1 0-6z', strokeWidth: 1.6 },
+      { d: 'M4 18a4 4 0 0 1 4-4h0a4 4 0 0 1 4 4v2H4z', strokeWidth: 1.6 },
+      { d: 'M12 20v-2a4 4 0 0 1 4-4h0a4 4 0 0 1 4 4v2H12z', strokeWidth: 1.6 }
+    ]
+  };
+
   currentStateIndex(status: string): number {
     return this.states.indexOf(status as (typeof this.states)[number]);
   }
@@ -280,4 +349,10 @@ export class OrderDetailPage {
 
     return 'upcoming';
   }
+
+  pathsForState(state: string): IconPath[] {
+    return this.stateIcons[state as (typeof this.states)[number]] ?? this.defaultIcon;
+  }
+
+  trackByIndex = (index: number) => index;
 }
