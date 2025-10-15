@@ -45,3 +45,28 @@ a {
 button {
   font-family: inherit;
 }
+
+.admin-chain-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(6, 193, 103, 0.12);
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+.admin-chain-pill button {
+  border: 0;
+  background: rgba(6, 193, 103, 0.25);
+  color: #064420;
+  border-radius: 999px;
+  padding: 0.2rem 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-chain-pill button[disabled] {
+  opacity: 0.6;
+  cursor: default;
+}
