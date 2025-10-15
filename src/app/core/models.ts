@@ -11,12 +11,19 @@ export interface Restaurant {
   photo_urls?: string[];
 }
 
+export interface MenuItemCategory {
+  id?: number;
+  name?: string;
+  name_translations?: Record<string, string>;
+}
+
 export interface MenuItem {
   id: number;
   restaurant_id: number;
   name: string;
   price_cents: number; // integer cents from Rails
   description?: string;
+  categories?: MenuItemCategory[];
 }
 
 export interface MenuItemInput {
@@ -25,7 +32,11 @@ export interface MenuItemInput {
   price_cents: number;
 }
 
-export interface OrderItemInput { menu_item_id: number; quantity: number; }
+export interface OrderItemInput {
+  menu_item_id: number;
+  quantity: number;
+  category_id?: number | null;
+}
 
 export interface Order {
   id: number;
@@ -55,6 +66,8 @@ export interface OrderItem {
     name: string;
     price_cents: number;
   };
+  category_id?: number | null;
+  category?: string | null;
 }
 
 export interface SessionUser { id: number; email: string; }

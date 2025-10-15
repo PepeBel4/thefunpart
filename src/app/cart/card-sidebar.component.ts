@@ -50,7 +50,7 @@ import { RouterLink } from '@angular/router';
       gap: 1rem;
     }
 
-    .line {
+    .line { 
       display: flex;
       justify-content: space-between;
       gap: 0.75rem;
@@ -66,6 +66,12 @@ import { RouterLink } from '@angular/router';
     .line-name {
       font-weight: 600;
       color: var(--text-primary);
+    }
+
+    .line-category {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 0.15rem;
     }
 
     .line-price {
@@ -196,12 +202,13 @@ import { RouterLink } from '@angular/router';
           <div>
             <div class="line-name">{{ l.item.name }}</div>
             <div class="line-price">{{ (l.item.price_cents / 100) | currency:'EUR' }}</div>
+            <div class="line-category" *ngIf="l.category?.label as label">{{ label }}</div>
           </div>
           <div class="qty-controls">
             <button
               class="qty-btn"
               type="button"
-              (click)="cart.changeQty(l.item.id, l.quantity - 1)"
+              (click)="cart.changeQty(l.item.id, l.quantity - 1, l.category)"
               [disabled]="l.quantity === 1"
               aria-label="Decrease quantity"
             >
@@ -211,12 +218,12 @@ import { RouterLink } from '@angular/router';
             <button
               class="qty-btn"
               type="button"
-              (click)="cart.changeQty(l.item.id, l.quantity + 1)"
+              (click)="cart.changeQty(l.item.id, l.quantity + 1, l.category)"
               aria-label="Increase quantity"
             >
               +
             </button>
-            <button class="remove" type="button" (click)="cart.remove(l.item.id)" aria-label="Remove item">
+            <button class="remove" type="button" (click)="cart.remove(l.item.id, l.category)" aria-label="Remove item">
               🗑️
             </button>
           </div>

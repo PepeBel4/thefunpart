@@ -88,7 +88,11 @@ export class CheckoutPage {
     if (!lines.length) return;
 
     const restaurantId = lines[0].item.restaurant_id;
-    const items = lines.map(l => ({ menu_item_id: l.item.id, quantity: l.quantity }));
+    const items = lines.map(l => ({
+      menu_item_id: l.item.id,
+      quantity: l.quantity,
+      category_id: l.category?.id ?? null,
+    }));
     const order: Order = await firstValueFrom(this.orders.create({ restaurantId, items }));
     this.cart.clear();
     this.router.navigate(['/orders', order!.id]);
