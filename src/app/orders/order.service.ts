@@ -21,10 +21,21 @@ export class OrderService {
       order: {
         restaurant_id: payload.restaurantId,
         order_items: payload.items,
+        state: 'composing',
       },
     };
 
     return this.api.post<Order>('/orders', body);
+  }
+
+  updateState(orderId: number, state: 'composing' | 'sent'): Observable<Order> {
+    const body = {
+      order: {
+        state,
+      },
+    };
+
+    return this.api.put<Order>(`/orders/${orderId}`, body);
   }
 
   createPayment(
