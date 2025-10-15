@@ -2,13 +2,19 @@ import { CurrencyPipe, NgFor, NgIf } from '@angular/common';
 import { Component, EventEmitter, Input, Output, inject, OnChanges, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
-import { MenuItem } from '../core/models';
+import { MenuItem, MenuItemInput } from '../core/models';
 import { MenuService } from './menu.service';
+
+interface CategoryFormModel {
+  id?: number;
+  name: string;
+}
 
 interface MenuFormModel {
   name: string;
   description: string;
   price: string;
+  categories: CategoryFormModel[];
 }
 
 @Component({
@@ -142,6 +148,66 @@ interface MenuFormModel {
       font-weight: 600;
     }
 
+    .category-section {
+      display: grid;
+      gap: 0.4rem;
+    }
+
+    .category-inputs {
+      display: grid;
+      gap: 0.5rem;
+    }
+
+    .category-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .category-row input {
+      flex: 1;
+    }
+
+    button.link {
+      background: transparent;
+      color: var(--brand-green);
+      padding: 0;
+      box-shadow: none;
+      border-radius: 0;
+      font-size: 0.9rem;
+    }
+
+    button.link:hover {
+      text-decoration: underline;
+      transform: none;
+    }
+
+    button.link.remove {
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    button.link.add {
+      justify-self: flex-start;
+      font-weight: 600;
+    }
+
+    .category-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.15rem;
+    }
+
+    .category-tags .tag {
+      background: rgba(6, 193, 103, 0.12);
+      color: #036239;
+      border-radius: 999px;
+      padding: 0.25rem 0.6rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
     @media (max-width: 640px) {
       .manager-card {
         margin-top: 2rem;
@@ -169,6 +235,27 @@ interface MenuFormModel {
           <label for="new-price">Price (EUR)</label>
           <input id="new-price" [(ngModel)]="newItem.price" name="newPrice" inputmode="decimal" required placeholder="9.50" />
         </div>
+        <div class="category-section">
+          <label>Categories</label>
+          <div class="category-inputs">
+            <div class="category-row" *ngFor="let category of newItem.categories; let i = index">
+              <input
+                [(ngModel)]="newItem.categories[i].name"
+                name="newCategory-{{ i }}"
+                placeholder="e.g. Starters"
+              />
+              <button
+                type="button"
+                class="link remove"
+                (click)="removeCategory('new', i)"
+                *ngIf="newItem.categories.length > 1"
+              >
+                Remove
+              </button>
+            </div>
+            <button type="button" class="link add" (click)="addCategory('new')">+ Add category</button>
+          </div>
+        </div>
         <div class="actions">
           <span *ngIf="creationStatus" class="status">{{ creationStatus }}</span>
           <button type="submit" class="primary" [disabled]="saving">{{ saving ? 'Saving…' : 'Add item' }}</button>
@@ -195,6 +282,27 @@ interface MenuFormModel {
                 <label>Price (EUR)</label>
                 <input [(ngModel)]="editItem.price" name="editPrice-{{ item.id }}" inputmode="decimal" required />
               </div>
+              <div class="category-section">
+                <label>Categories</label>
+                <div class="category-inputs">
+                  <div class="category-row" *ngFor="let category of editItem.categories; let i = index">
+                    <input
+                      [(ngModel)]="editItem.categories[i].name"
+                      name="editCategory-{{ item.id }}-{{ i }}"
+                      placeholder="e.g. Starters"
+                    />
+                    <button
+                      type="button"
+                      class="link remove"
+                      (click)="removeCategory('edit', i)"
+                      *ngIf="editItem.categories.length > 1"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <button type="button" class="link add" (click)="addCategory('edit')">+ Add category</button>
+                </div>
+              </div>
               <div class="actions">
                 <button type="button" class="secondary" (click)="cancelEdit()">Cancel</button>
                 <button type="submit" class="primary" [disabled]="saving">{{ saving ? 'Saving…' : 'Save changes' }}</button>
@@ -206,6 +314,13 @@ interface MenuFormModel {
                 <span>{{ (item.price_cents / 100) | currency:'EUR' }}</span>
               </div>
               <p *ngIf="item.description">{{ item.description }}</p>
+              <div *ngIf="item.categories?.length" class="category-tags">
+                <ng-container *ngFor="let category of item.categories">
+                  <ng-container *ngIf="resolveCategoryName(category) as label">
+                    <span class="tag">{{ label }}</span>
+                  </ng-container>
+                </ng-container>
+              </div>
               <div class="actions">
                 <button type="button" class="secondary" (click)="startEdit(item)">Edit</button>
                 <button type="button" class="secondary" (click)="deleteItem(item.id)" [disabled]="saving">Delete</button>
@@ -235,8 +350,8 @@ export class MenuManagerComponent implements OnChanges {
   error = '';
   creationStatus = '';
   editingId: number | null = null;
-  newItem: MenuFormModel = { name: '', description: '', price: '' };
-  editItem: MenuFormModel = { name: '', description: '', price: '' };
+  newItem: MenuFormModel = this.createEmptyForm();
+  editItem: MenuFormModel = this.createEmptyForm();
 
   ngOnChanges(changes: SimpleChanges) {
     if ('restaurantId' in changes) {
@@ -281,12 +396,13 @@ export class MenuManagerComponent implements OnChanges {
       name: item.name,
       description: item.description ?? '',
       price: this.formatPrice(item.price_cents),
+      categories: this.mapCategoriesForForm(item.categories),
     };
   }
 
   cancelEdit() {
     this.editingId = null;
-    this.editItem = { name: '', description: '', price: '' };
+    this.editItem = this.createEmptyForm();
   }
 
   async createItem() {
@@ -301,12 +417,14 @@ export class MenuManagerComponent implements OnChanges {
     this.error = '';
     this.creationStatus = '';
     try {
+      const categories = this.prepareCategories(this.newItem.categories);
       await firstValueFrom(this.menu.create(this.restaurantId, {
         name: this.newItem.name,
         description: this.newItem.description || undefined,
         price_cents,
+        ...(categories ? { menu_item_categories: categories } : {}),
       }));
-      this.newItem = { name: '', description: '', price: '' };
+      this.newItem = this.createEmptyForm();
       this.creationStatus = 'Menu item added!';
       void this.loadMenu(true);
       this.menuChanged.emit();
@@ -329,10 +447,12 @@ export class MenuManagerComponent implements OnChanges {
     this.saving = true;
     this.error = '';
     try {
+      const categories = this.prepareCategories(this.editItem.categories);
       await firstValueFrom(this.menu.update(id, {
         name: this.editItem.name,
         description: this.editItem.description || undefined,
         price_cents,
+        ...(categories ? { menu_item_categories: categories } : {}),
       }));
       this.cancelEdit();
       void this.loadMenu(true);
@@ -379,8 +499,74 @@ export class MenuManagerComponent implements OnChanges {
     this.error = '';
     this.creationStatus = '';
     this.editingId = null;
-    this.newItem = { name: '', description: '', price: '' };
-    this.editItem = { name: '', description: '', price: '' };
+    this.newItem = this.createEmptyForm();
+    this.editItem = this.createEmptyForm();
     this.loadToken++;
+  }
+
+  addCategory(target: 'new' | 'edit') {
+    this.getCategoryList(target).push({ name: '' });
+  }
+
+  removeCategory(target: 'new' | 'edit', index: number) {
+    const list = this.getCategoryList(target);
+    list.splice(index, 1);
+    if (!list.length) {
+      list.push({ name: '' });
+    }
+  }
+
+  resolveCategoryName(category: NonNullable<MenuItem['categories']>[number]): string {
+    if (!category) { return ''; }
+
+    const direct = category.name?.trim();
+    if (direct) { return direct; }
+
+    const translations = category.name_translations;
+    if (translations) {
+      for (const value of Object.values(translations)) {
+        if (value?.trim()) {
+          return value.trim();
+        }
+      }
+    }
+
+    return '';
+  }
+
+  private createEmptyForm(): MenuFormModel {
+    return { name: '', description: '', price: '', categories: [{ name: '' }] };
+  }
+
+  private getCategoryList(target: 'new' | 'edit') {
+    return target === 'new' ? this.newItem.categories : this.editItem.categories;
+  }
+
+  private mapCategoriesForForm(categories: MenuItem['categories'] | undefined): CategoryFormModel[] {
+    if (!categories || !categories.length) {
+      return [{ name: '' }];
+    }
+
+    const mapped = categories
+      .map(category => ({
+        id: category?.id ?? undefined,
+        name: this.resolveCategoryName(category),
+      }))
+      .filter(category => category.name.trim().length > 0);
+
+    return mapped.length ? mapped : [{ name: '' }];
+  }
+
+  private prepareCategories(list: CategoryFormModel[]): MenuItemInput['menu_item_categories'] {
+    const sanitized = list
+      .map(category => ({ id: category.id, name: category.name.trim() }))
+      .filter(category => category.name.length > 0)
+      .map(category =>
+        category.id != null
+          ? { id: category.id, name: category.name }
+          : { name: category.name }
+      );
+
+    return sanitized.length ? sanitized : undefined;
   }
 }
