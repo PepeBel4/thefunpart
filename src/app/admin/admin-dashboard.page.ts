@@ -192,32 +192,17 @@ import { TranslationService } from '../core/translation.service';
       gap: 0.75rem;
     }
 
-    .chain-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
+    .chain-select {
+      gap: 0.35rem;
     }
 
-    .chain-inputs {
-      display: grid;
-      gap: 0.5rem;
+    .chain-label-heading {
+      font-size: 1.1rem;
     }
 
-    .chain-entry {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      align-items: center;
-    }
-
-    .chain-entry input {
-      flex: 1 1 220px;
-      min-width: 180px;
-      padding: 0.55rem 0.75rem;
-      border-radius: 0.75rem;
-      border: 1px solid rgba(10, 10, 10, 0.12);
-      background: rgba(255, 255, 255, 0.9);
-      font: inherit;
+    .chain-label-description {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
     }
 
     .details-actions {
@@ -372,74 +357,30 @@ import { TranslationService } from '../core/translation.service';
                 </label>
 
                 <div class="chain-manager">
-                  <div>
-                    <h4 style="margin: 0; font-size: 1.1rem;">
+                  <label class="chain-select">
+                    <span class="chain-label-heading">
                       {{ 'admin.chains.heading' | translate: 'Chain' }}
-                    </h4>
-                    <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">
+                    </span>
+                    <span class="chain-label-description">
                       {{
                         'admin.chains.description'
-                          | translate: 'Add or remove the chain this restaurant belongs to.'
+                          | translate: 'Choose the chain this restaurant belongs to.'
                       }}
-                    </p>
-                  </div>
-
-                  <ng-container *ngIf="restaurantChain; else noChains">
-                    <div class="chain-list">
-                      <span class="admin-chain-pill">
-                        {{ restaurantChain.name }}
-                        <button
-                          type="button"
-                          (click)="removeChain(restaurantChain)"
-                          [disabled]="removingChainId === restaurantChain.id"
-                        >
-                          {{
-                            removingChainId === restaurantChain.id
-                              ? ('admin.chains.removing' | translate: 'Removing…')
-                              : ('admin.chains.remove' | translate: 'Remove')
-                          }}
-                        </button>
-                      </span>
-                    </div>
-                  </ng-container>
-                  <ng-template #noChains>
-                    <p>{{ 'admin.chains.empty' | translate: 'Not part of a chain yet.' }}</p>
-                  </ng-template>
-
-                  <div class="chain-inputs">
-                    <label>
-                      {{ 'admin.chains.addExisting' | translate: 'Add existing chain' }}
-                      <div class="chain-entry">
-                        <input
-                          type="text"
-                          name="chain-entry"
-                          [(ngModel)]="chainInput"
-                          [attr.placeholder]="
-                            'admin.chains.namePlaceholder'
-                              | translate: 'Start typing to find or create a chain'
-                          "
-                          [attr.list]="chains.length ? 'chain-options' : null"
-                          (keydown.enter)="addChainFromInput(); $event.preventDefault()"
-                        />
-                        <button
-                          type="button"
-                          (click)="addChainFromInput()"
-                          [disabled]="addingChain || !chainInput.trim()"
-                        >
-                          {{
-                            addingChain
-                              ? ('admin.chains.creating' | translate: 'Saving…')
-                              : chainInputMatchesExisting
-                                ? ('admin.chains.addButton' | translate: 'Add chain')
-                                : ('admin.chains.create' | translate: 'Create & add')
-                          }}
-                        </button>
-                      </div>
-                    </label>
-                    <datalist id="chain-options" *ngIf="chains.length">
-                      <option *ngFor="let chain of chains" [value]="chain.name"></option>
-                    </datalist>
-                  </div>
+                    </span>
+                    <select
+                      [(ngModel)]="chainSelection"
+                      (ngModelChange)="onChainSelectionChange($event)"
+                      [disabled]="chainSaving"
+                    >
+                      <option value="">
+                        {{ 'admin.chains.noneOption' | translate: 'Not part of a chain' }}
+                      </option>
+                      <option *ngFor="let chain of chains" [value]="chain.id">{{ chain.name }}</option>
+                      <option [value]="createChainOptionValue">
+                        {{ 'admin.chains.createOption' | translate: 'Create new chain…' }}
+                      </option>
+                    </select>
+                  </label>
 
                   <span
                     *ngIf="chainMessage"
@@ -639,14 +580,14 @@ export class AdminDashboardPage {
   statusMessage = '';
   statusType: 'success' | 'error' | '' = '';
   removingPhotoId: number | null = null;
-  removingChainId: number | null = null;
 
   chains: Chain[] = [];
   restaurantChain: Chain | null = null;
-  chainInput = '';
-  addingChain = false;
+  chainSelection = '';
+  chainSaving = false;
   chainMessage = '';
   chainMessageType: 'success' | 'error' | '' = '';
+  readonly createChainOptionValue = '__create__';
 
   languages = this.i18n.languages;
   primaryLanguageCode = this.languages[0]?.code ?? 'en';
@@ -757,7 +698,6 @@ export class AdminDashboardPage {
 
     this.detailsForm = { name, descriptions };
     this.setRestaurantChain(restaurant);
-    this.chainInput = '';
     this.resetDetailsStatus();
     this.resetChainStatus();
   }
@@ -857,13 +797,13 @@ export class AdminDashboardPage {
 
   private setRestaurantChain(restaurant: Restaurant) {
     this.restaurantChain = restaurant.chain ?? null;
+    this.chainSelection = this.restaurantChain ? String(this.restaurantChain.id) : '';
   }
 
   private resetChainStatus() {
     this.chainMessage = '';
     this.chainMessageType = '';
-    this.removingChainId = null;
-    this.addingChain = false;
+    this.chainSaving = false;
   }
 
   private clearChainMessage() {
@@ -881,98 +821,118 @@ export class AdminDashboardPage {
     }
   }
 
-  isChainAttached(chainId: number): boolean {
-    return this.restaurantChain?.id === chainId;
-  }
-
-  get chainInputMatchesExisting(): boolean {
-    const trimmed = this.chainInput.trim().toLowerCase();
-    if (!trimmed) {
-      return false;
-    }
-
-    return this.chains.some(chain => chain.name.trim().toLowerCase() === trimmed);
-  }
-
-  async removeChain(chain: Chain) {
-    if (this.selectedRestaurantId === null || this.removingChainId === chain.id) {
+  onChainSelectionChange(value: string) {
+    if (this.selectedRestaurantId === null) {
+      this.chainSelection = '';
       return;
     }
 
-    this.clearChainMessage();
-    this.removingChainId = chain.id;
-
-    try {
-      await firstValueFrom(this.chainService.removeChainFromRestaurant(this.selectedRestaurantId, chain.id));
-      this.restaurantChain = null;
-      this.setChainMessage('success', 'admin.chains.removed', 'Chain removed from restaurant.');
-      this.selectedRestaurantIdSubject.next(this.selectedRestaurantId);
-    } catch (err) {
-      console.error(err);
-      this.setChainMessage('error', 'admin.chains.error', 'Unable to update chain. Please try again.');
-    } finally {
-      this.removingChainId = null;
-    }
-  }
-
-  async addChainFromInput() {
-    if (this.selectedRestaurantId === null || this.addingChain) {
+    if (value === this.createChainOptionValue) {
+      this.chainSelection = this.restaurantChain ? String(this.restaurantChain.id) : '';
+      void this.promptCreateChain();
       return;
     }
 
-    const trimmedName = this.chainInput.trim();
+    if (!value) {
+      if (!this.restaurantChain) {
+        this.chainSelection = '';
+        return;
+      }
+
+      void this.updateChain(null);
+      return;
+    }
+
+    const chainId = Number(value);
+
+    if (Number.isNaN(chainId)) {
+      this.chainSelection = this.restaurantChain ? String(this.restaurantChain.id) : '';
+      return;
+    }
+
+    const chain = this.chains.find(item => item.id === chainId);
+
+    if (!chain) {
+      this.chainSelection = this.restaurantChain ? String(this.restaurantChain.id) : '';
+      return;
+    }
+
+    void this.updateChain(chain);
+  }
+
+  private async promptCreateChain() {
+    const promptMessage = this.i18n.translate('admin.chains.newPrompt', 'Enter a name for the new chain.');
+    const name = typeof window !== 'undefined' ? window.prompt(promptMessage, '') : null;
+
+    const trimmedName = name?.trim();
 
     if (!trimmedName) {
-      this.chainInput = trimmedName;
+      this.chainSelection = this.restaurantChain ? String(this.restaurantChain.id) : '';
       return;
     }
 
-    const existingChain = this.findChainByName(trimmedName);
-
-    if (existingChain && this.isChainAttached(existingChain.id)) {
-      this.setChainMessage('error', 'admin.chains.alreadyAdded', 'This chain is already linked to the restaurant.');
-      this.chainInput = '';
-      return;
-    }
-
-    this.addingChain = true;
+    this.chainSaving = true;
     this.clearChainMessage();
 
     try {
-      let chain: Chain | undefined = existingChain;
-
-      if (!chain) {
-        chain = await firstValueFrom(this.chainService.create({ name: trimmedName }));
-        this.chains = this.sortChains([...this.chains, chain]);
-      }
-
-      if (this.restaurantChain && this.restaurantChain.id !== chain.id) {
-        await firstValueFrom(
-          this.chainService.removeChainFromRestaurant(this.selectedRestaurantId, this.restaurantChain.id)
-        );
-        this.restaurantChain = null;
-      }
-
-      await firstValueFrom(this.chainService.addChainToRestaurant(this.selectedRestaurantId, chain.id));
-      this.restaurantChain = chain;
-      this.setChainMessage(
-        'success',
-        chain === existingChain ? 'admin.chains.added' : 'admin.chains.created',
-        chain === existingChain ? 'Chain assigned to restaurant.' : 'New chain created and assigned!'
-      );
-      this.chainInput = '';
-      this.selectedRestaurantIdSubject.next(this.selectedRestaurantId);
+      const chain = await firstValueFrom(this.chainService.create({ name: trimmedName }));
+      this.chains = this.sortChains([...this.chains, chain]);
+      await this.updateChain(chain, { preserveSavingState: true });
     } catch (err) {
       console.error(err);
       this.setChainMessage('error', 'admin.chains.error', 'Unable to update chain. Please try again.');
     } finally {
-      this.addingChain = false;
+      this.chainSaving = false;
     }
   }
 
-  private findChainByName(name: string): Chain | undefined {
-    const normalized = name.trim().toLowerCase();
-    return this.chains.find(chain => chain.name.trim().toLowerCase() === normalized);
+  private async updateChain(chain: Chain | null, options: { preserveSavingState?: boolean } = {}) {
+    if (this.selectedRestaurantId === null) {
+      return;
+    }
+
+    if (this.restaurantChain?.id === chain?.id) {
+      this.chainSelection = chain ? String(chain.id) : '';
+      return;
+    }
+
+    const previousChain = this.restaurantChain;
+    const { preserveSavingState = false } = options;
+
+    if (!preserveSavingState) {
+      this.chainSaving = true;
+      this.clearChainMessage();
+    }
+
+    try {
+      if (previousChain && previousChain.id !== chain?.id) {
+        await firstValueFrom(
+          this.chainService.removeChainFromRestaurant(this.selectedRestaurantId, previousChain.id)
+        );
+      }
+
+      if (chain) {
+        await firstValueFrom(this.chainService.addChainToRestaurant(this.selectedRestaurantId, chain.id));
+      }
+
+      this.restaurantChain = chain;
+      this.chainSelection = chain ? String(chain.id) : '';
+      this.setChainMessage(
+        'success',
+        chain ? 'admin.chains.added' : 'admin.chains.removed',
+        chain ? 'Chain assigned to restaurant.' : 'Chain removed from restaurant.'
+      );
+      this.selectedRestaurantIdSubject.next(this.selectedRestaurantId);
+    } catch (err) {
+      console.error(err);
+      this.restaurantChain = previousChain;
+      this.chainSelection = previousChain ? String(previousChain.id) : '';
+      this.setChainMessage('error', 'admin.chains.error', 'Unable to update chain. Please try again.');
+    } finally {
+      if (!preserveSavingState) {
+        this.chainSaving = false;
+      }
+    }
   }
 
   private setChainMessage(type: 'success' | 'error', key: string, fallback: string) {
