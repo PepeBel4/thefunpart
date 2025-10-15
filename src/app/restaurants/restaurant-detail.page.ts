@@ -3,12 +3,13 @@ import { ActivatedRoute } from '@angular/router';
 import { MenuService } from '../menu/menu.service';
 import { RestaurantService } from './restaurant.service';
 import { AsyncPipe, CurrencyPipe, NgIf, NgFor, NgStyle, DOCUMENT } from '@angular/common';
-import { MenuItem, Restaurant } from '../core/models';
+import { Allergen, MenuItem, Restaurant } from '../core/models';
 import { Observable, firstValueFrom, map, of, shareReplay, startWith, switchMap, timer } from 'rxjs';
 import { CartCategorySelection, CartRestaurant, CartService } from '../cart/cart.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
 import { MenuItemPhotoSliderComponent } from './menu-item-photo-slider.component';
+import { AllergenIconComponent } from '../shared/allergen-icon.component';
 
 type MenuCategoryGroup = {
   name: string;
@@ -28,7 +29,7 @@ type PendingCartAddition = {
 @Component({
   standalone: true,
   selector: 'app-restaurant-detail',
-  imports: [AsyncPipe, CurrencyPipe, NgFor, NgIf, TranslatePipe, NgStyle, MenuItemPhotoSliderComponent],
+  imports: [AsyncPipe, CurrencyPipe, NgFor, NgIf, TranslatePipe, NgStyle, MenuItemPhotoSliderComponent, AllergenIconComponent],
   styles: [`
     :host {
       display: block;
@@ -200,6 +201,30 @@ type PendingCartAddition = {
       flex-wrap: wrap;
       align-items: center;
       gap: 0.5rem;
+    }
+
+    .allergen-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+
+    .allergen-badges .badge {
+      background: rgba(229, 62, 62, 0.12);
+      color: #8f1e1e;
+      border-radius: 999px;
+      padding: 0.3rem 0.65rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      line-height: 1;
+    }
+
+    .allergen-badges .badge app-allergen-icon {
+      --allergen-icon-bg: rgba(229, 62, 62, 0.2);
+      --allergen-icon-border: rgba(143, 30, 30, 0.24);
     }
 
     .price-group .price.discounted {
@@ -386,6 +411,16 @@ type PendingCartAddition = {
               <ng-template #regularPrice>
                 <span class="price">{{ (m.price_cents / 100) | currency:'EUR' }}</span>
               </ng-template>
+              <div class="allergen-badges" *ngIf="m.allergens?.length">
+                <ng-container *ngFor="let allergen of m.allergens">
+                  <ng-container *ngIf="resolveAllergenLabel(allergen) as allergenLabel">
+                    <span class="badge">
+                      <app-allergen-icon [allergen]="allergen"></app-allergen-icon>
+                      <span>{{ allergenLabel }}</span>
+                    </span>
+                  </ng-container>
+                </ng-container>
+              </div>
               <button (click)="addToCart(m, category.cartCategory, r)">
                 {{ 'restaurantDetail.addToCart' | translate: 'Add to cart' }}
               </button>
@@ -754,6 +789,37 @@ export class RestaurantDetailPage implements OnDestroy {
     }
 
     return null;
+  }
+
+  resolveAllergenLabel(allergen: Allergen | undefined): string {
+    if (!allergen) {
+      return '';
+    }
+
+    const direct = allergen.name?.trim();
+    if (direct) {
+      return direct;
+    }
+
+    const translations = allergen.name_translations;
+    if (translations) {
+      const localeCandidates = this.buildLocaleCandidates();
+
+      for (const locale of localeCandidates) {
+        const localized = this.tryResolveTranslation(translations, locale);
+        if (localized) {
+          return localized;
+        }
+      }
+
+      for (const value of Object.values(translations)) {
+        if (value?.trim()) {
+          return value.trim();
+        }
+      }
+    }
+
+    return '';
   }
 
   private buildLocaleCandidates(): string[] {

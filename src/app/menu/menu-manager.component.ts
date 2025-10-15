@@ -2,11 +2,13 @@ import { CurrencyPipe, NgFor, NgIf } from '@angular/common';
 import { Component, EventEmitter, Input, Output, inject, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
-import { MenuItem, MenuItemCategory, MenuItemInput } from '../core/models';
+import { Allergen, MenuItem, MenuItemCategory, MenuItemInput } from '../core/models';
 import { MenuService } from './menu.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
 import { CategoriesService } from './categories.service';
+import { AllergensService } from './allergens.service';
+import { AllergenIconComponent } from '../shared/allergen-icon.component';
 
 interface CategoryFormModel {
   id?: number;
@@ -18,6 +20,7 @@ interface MenuFormModel {
   description: string;
   price: string;
   categories: CategoryFormModel[];
+  allergens: Allergen[];
 }
 
 interface QueuedPhoto {
@@ -28,7 +31,7 @@ interface QueuedPhoto {
 @Component({
   standalone: true,
   selector: 'app-menu-manager',
-  imports: [FormsModule, NgFor, NgIf, CurrencyPipe, TranslatePipe],
+  imports: [FormsModule, NgFor, NgIf, CurrencyPipe, TranslatePipe, AllergenIconComponent],
   styles: [`
     :host {
       display: block;
@@ -224,6 +227,84 @@ interface QueuedPhoto {
       font-weight: 600;
     }
 
+    .allergen-section {
+      display: grid;
+      gap: 0.45rem;
+    }
+
+    .allergen-selector {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .allergen-selector button.pill {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border-soft);
+      border-radius: 999px;
+      padding: 0.4rem 0.9rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: none;
+      color: inherit;
+      cursor: pointer;
+      transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      line-height: 1;
+    }
+
+    .allergen-selector button.pill:hover {
+      transform: translateY(-1px);
+    }
+
+    .allergen-selector button.pill.selected {
+      background: rgba(229, 62, 62, 0.12);
+      border-color: rgba(229, 62, 62, 0.4);
+      color: #8f1e1e;
+    }
+
+    .allergen-selector button.pill app-allergen-icon {
+      --allergen-icon-bg: rgba(229, 62, 62, 0.14);
+      --allergen-icon-border: rgba(143, 30, 30, 0.14);
+    }
+
+    .allergen-selector button.pill:not(.selected) app-allergen-icon {
+      --allergen-icon-bg: rgba(10, 10, 10, 0.04);
+      --allergen-icon-color: var(--text-secondary);
+      --allergen-icon-border: rgba(10, 10, 10, 0.08);
+    }
+
+    .allergen-help {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .allergen-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+
+    .allergen-tags .tag {
+      background: rgba(229, 62, 62, 0.12);
+      color: #8f1e1e;
+      border-radius: 999px;
+      padding: 0.3rem 0.65rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      line-height: 1;
+    }
+
+    .allergen-tags .tag app-allergen-icon {
+      --allergen-icon-bg: rgba(229, 62, 62, 0.18);
+      --allergen-icon-border: rgba(143, 30, 30, 0.2);
+    }
+
     .photo-section {
       display: grid;
       gap: 0.5rem;
@@ -356,6 +437,31 @@ interface QueuedPhoto {
             </datalist>
           </div>
         </div>
+        <div class="allergen-section">
+          <label>{{ 'menu.form.allergensLabel' | translate: 'Allergens' }}</label>
+          <ng-container *ngIf="availableAllergens.length; else noNewAllergens">
+            <div class="allergen-selector">
+              <button
+                type="button"
+                class="pill"
+                *ngFor="let allergen of availableAllergens"
+                [class.selected]="isAllergenSelected('new', allergen.id)"
+                (click)="toggleAllergen('new', allergen)"
+              >
+                <app-allergen-icon [allergen]="allergen"></app-allergen-icon>
+                <span>{{ resolveAllergenName(allergen) }}</span>
+              </button>
+            </div>
+            <span class="allergen-help">
+              {{ 'menu.form.allergensHint' | translate: 'Select all allergens contained in this dish.' }}
+            </span>
+          </ng-container>
+          <ng-template #noNewAllergens>
+            <span class="allergen-help">
+              {{ 'menu.form.allergensEmpty' | translate: 'No allergens available yet.' }}
+            </span>
+          </ng-template>
+        </div>
         <div class="photo-section">
           <label>{{ 'menu.photos.label' | translate: 'Item photos' }}</label>
           <div class="photo-controls">
@@ -459,6 +565,31 @@ interface QueuedPhoto {
                   </datalist>
                 </div>
               </div>
+              <div class="allergen-section">
+                <label>{{ 'menu.form.allergensLabel' | translate: 'Allergens' }}</label>
+                <ng-container *ngIf="availableAllergens.length; else noEditAllergens">
+                  <div class="allergen-selector">
+                    <button
+                      type="button"
+                      class="pill"
+                      *ngFor="let allergen of availableAllergens"
+                      [class.selected]="isAllergenSelected('edit', allergen.id)"
+                      (click)="toggleAllergen('edit', allergen)"
+                    >
+                      <app-allergen-icon [allergen]="allergen"></app-allergen-icon>
+                      <span>{{ resolveAllergenName(allergen) }}</span>
+                    </button>
+                  </div>
+                  <span class="allergen-help">
+                    {{ 'menu.form.allergensHint' | translate: 'Select all allergens contained in this dish.' }}
+                  </span>
+                </ng-container>
+                <ng-template #noEditAllergens>
+                  <span class="allergen-help">
+                    {{ 'menu.form.allergensEmpty' | translate: 'No allergens available yet.' }}
+                  </span>
+                </ng-template>
+              </div>
               <div class="photo-section">
                 <label>{{ 'menu.photos.label' | translate: 'Item photos' }}</label>
                 <div class="photo-grid" *ngIf="item.photos?.length; else noMenuItemPhotos">
@@ -544,6 +675,16 @@ interface QueuedPhoto {
                   </ng-container>
                 </ng-container>
               </div>
+              <div *ngIf="item.allergens?.length" class="allergen-tags">
+                <ng-container *ngFor="let allergen of item.allergens">
+                  <ng-container *ngIf="resolveAllergenName(allergen) as allergenLabel">
+                    <span class="tag">
+                      <app-allergen-icon [allergen]="allergen"></app-allergen-icon>
+                      <span>{{ allergenLabel }}</span>
+                    </span>
+                  </ng-container>
+                </ng-container>
+              </div>
               <div class="actions">
                 <button type="button" class="secondary" (click)="startEdit(item)">
                   {{ 'menu.items.edit' | translate: 'Edit' }}
@@ -570,11 +711,13 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
   private menu = inject(MenuService);
   private i18n = inject(TranslationService);
   private categories = inject(CategoriesService);
+  private allergens = inject(AllergensService);
 
   private loadToken = 0;
 
   menuItems: MenuItem[] = [];
   availableCategories: MenuItemCategory[] = [];
+  availableAllergens: Allergen[] = [];
   loading = false;
   saving = false;
   error = '';
@@ -588,6 +731,7 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
 
   ngOnInit() {
     void this.fetchCategories();
+    void this.fetchAllergens();
   }
 
   ngOnDestroy() {
@@ -601,6 +745,7 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
       if (typeof id === 'number' && !Number.isNaN(id)) {
         this.resetState();
         void this.fetchCategories(id);
+        void this.fetchAllergens();
         void this.loadMenu();
       }
     }
@@ -617,6 +762,18 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
     } catch (err) {
       console.error('Could not load categories', err);
       this.availableCategories = [];
+    }
+  }
+
+  private async fetchAllergens() {
+    try {
+      const allergens = await firstValueFrom(this.allergens.list());
+      this.availableAllergens = allergens ?? [];
+      this.syncAllergenList('new');
+      this.syncAllergenList('edit');
+    } catch (err) {
+      console.error('Could not load allergens', err);
+      this.availableAllergens = [];
     }
   }
 
@@ -657,6 +814,7 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
       description: item.description ?? '',
       price: this.formatPrice(item.price_cents),
       categories: this.mapCategoriesForForm(item.categories),
+      allergens: this.mapAllergensForForm(item.allergens),
     };
   }
 
@@ -681,12 +839,17 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
     this.creationStatus = '';
     try {
       const categories = this.prepareCategories(this.newItem.categories);
-      const created = await firstValueFrom(this.menu.create(this.restaurantId, {
+      const allergenIds = this.prepareAllergenIds(this.newItem.allergens);
+      const payload: MenuItemInput = {
         name: this.newItem.name,
         description: this.newItem.description || undefined,
         price_cents,
-        ...(categories ? { menu_item_categories: categories } : {}),
-      }));
+        allergen_ids: allergenIds,
+      };
+      if (categories) {
+        payload.menu_item_categories = categories;
+      }
+      const created = await firstValueFrom(this.menu.create(this.restaurantId, payload));
       if (created?.id && this.newPhotos.length) {
         try {
           await this.uploadMenuItemPhotos(created.id, this.newPhotos.map(photo => photo.file));
@@ -725,12 +888,17 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
     this.error = '';
     try {
       const categories = this.prepareCategories(this.editItem.categories);
-      const updated = await firstValueFrom(this.menu.update(id, {
+      const allergenIds = this.prepareAllergenIds(this.editItem.allergens);
+      const payload: MenuItemInput = {
         name: this.editItem.name,
         description: this.editItem.description || undefined,
         price_cents,
-        ...(categories ? { menu_item_categories: categories } : {}),
-      }));
+        allergen_ids: allergenIds,
+      };
+      if (categories) {
+        payload.menu_item_categories = categories;
+      }
+      const updated = await firstValueFrom(this.menu.update(id, payload));
       if (updated) {
         this.mergeMenuItemUpdate(updated);
       }
@@ -862,6 +1030,7 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
       ...current,
       ...updated,
       photos: updated.photos ?? current.photos,
+      allergens: updated.allergens ?? current.allergens,
     };
   }
 
@@ -897,6 +1066,7 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
     this.newItem = this.createEmptyForm();
     this.editItem = this.createEmptyForm();
     this.availableCategories = [];
+    this.availableAllergens = [];
     this.releaseQueuedPhotos(this.newPhotos);
     this.releaseQueuedPhotos(this.editPhotos);
     this.newPhotos = [];
@@ -936,11 +1106,31 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
   }
 
   private createEmptyForm(): MenuFormModel {
-    return { name: '', description: '', price: '', categories: [this.createEmptyCategory()] };
+    return { name: '', description: '', price: '', categories: [this.createEmptyCategory()], allergens: [] };
   }
 
   private getCategoryList(target: 'new' | 'edit') {
     return target === 'new' ? this.newItem.categories : this.editItem.categories;
+  }
+
+  private getAllergenList(target: 'new' | 'edit') {
+    return target === 'new' ? this.newItem.allergens : this.editItem.allergens;
+  }
+
+  toggleAllergen(target: 'new' | 'edit', allergen: Allergen) {
+    const list = this.getAllergenList(target);
+    const index = list.findIndex(entry => entry.id === allergen.id);
+    if (index === -1) {
+      const resolved = this.findAllergenById(allergen.id) ?? allergen;
+      list.push(resolved);
+    } else {
+      list.splice(index, 1);
+    }
+  }
+
+  isAllergenSelected(target: 'new' | 'edit', allergenId: number | undefined): boolean {
+    if (allergenId == null) { return false; }
+    return this.getAllergenList(target).some(entry => entry.id === allergenId);
   }
 
   private mapCategoriesForForm(categories: MenuItem['categories'] | undefined): CategoryFormModel[] {
@@ -969,6 +1159,14 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
       );
 
     return sanitized.length ? sanitized : undefined;
+  }
+
+  private prepareAllergenIds(list: Allergen[]): number[] {
+    const ids = list
+      .map(allergen => allergen.id)
+      .filter((id): id is number => typeof id === 'number' && !Number.isNaN(id));
+
+    return Array.from(new Set(ids));
   }
 
   onCategoryNameChange(target: 'new' | 'edit', index: number, value: string) {
@@ -1014,6 +1212,72 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
         this.applyCategoryMatch(entry, true);
       }
     });
+  }
+
+  private mapAllergensForForm(allergens: MenuItem['allergens'] | undefined): Allergen[] {
+    if (!allergens || !allergens.length) {
+      return [];
+    }
+
+    const mapped = allergens
+      .map(allergen =>
+        allergen?.id != null
+          ? this.findAllergenById(allergen.id) ?? { id: allergen.id, name: this.resolveAllergenName(allergen as Allergen) }
+          : undefined
+      )
+      .filter((entry): entry is Allergen => !!entry && entry.id != null);
+
+    return this.dedupeAllergens(mapped);
+  }
+
+  private syncAllergenList(target: 'new' | 'edit') {
+    const list = this.getAllergenList(target);
+    if (!list.length) { return; }
+
+    const synced = this.dedupeAllergens(
+      list
+        .map(entry => (entry?.id != null ? this.findAllergenById(entry.id) ?? entry : entry))
+        .filter((entry): entry is Allergen => !!entry && entry.id != null)
+    );
+
+    list.length = 0;
+    list.push(...synced);
+  }
+
+  resolveAllergenName(allergen: Allergen | undefined): string {
+    if (!allergen) { return ''; }
+
+    const direct = allergen.name?.trim();
+    if (direct) { return direct; }
+
+    const translations = allergen.name_translations;
+    if (translations) {
+      for (const value of Object.values(translations)) {
+        if (value?.trim()) {
+          return value.trim();
+        }
+      }
+    }
+
+    return '';
+  }
+
+  private findAllergenById(id: number | undefined): Allergen | undefined {
+    if (id == null) { return undefined; }
+    return this.availableAllergens.find(allergen => allergen.id === id);
+  }
+
+  private dedupeAllergens(list: Allergen[]): Allergen[] {
+    const seen = new Set<number>();
+    const deduped: Allergen[] = [];
+
+    for (const allergen of list) {
+      if (allergen?.id == null || seen.has(allergen.id)) { continue; }
+      seen.add(allergen.id);
+      deduped.push(this.findAllergenById(allergen.id) ?? allergen);
+    }
+
+    return deduped;
   }
 
   private createEmptyCategory(): CategoryFormModel {
