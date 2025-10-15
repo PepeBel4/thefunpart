@@ -2,9 +2,9 @@ import { Component, LOCALE_ID, effect, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { MenuService } from '../menu/menu.service';
 import { RestaurantService } from './restaurant.service';
-import { AsyncPipe, CurrencyPipe, NgIf, NgFor, DOCUMENT } from '@angular/common';
+import { AsyncPipe, CurrencyPipe, NgIf, NgFor, NgStyle, DOCUMENT } from '@angular/common';
 import { MenuItem, Restaurant } from '../core/models';
-import { Observable, firstValueFrom, map } from 'rxjs';
+import { Observable, firstValueFrom, map, of, shareReplay, startWith, switchMap, timer } from 'rxjs';
 import { CartCategorySelection, CartService } from '../cart/cart.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
@@ -19,29 +19,60 @@ type MenuCategoryGroup = {
 @Component({
   standalone: true,
   selector: 'app-restaurant-detail',
-  imports: [AsyncPipe, CurrencyPipe, NgFor, NgIf, TranslatePipe],
+  imports: [AsyncPipe, CurrencyPipe, NgFor, NgIf, TranslatePipe, NgStyle],
   styles: [`
     :host {
       display: block;
     }
 
     .hero {
-      background: var(--surface);
+      position: relative;
       border-radius: var(--radius-card);
-      padding: 2.5rem clamp(1.5rem, 4vw, 3rem);
+      padding: clamp(2rem, 5vw, 3.5rem);
       box-shadow: var(--shadow-soft);
-      border: 1px solid rgba(10, 10, 10, 0.05);
+      border: 1px solid rgba(10, 10, 10, 0.06);
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
+      justify-content: flex-end;
+      gap: 1rem;
       margin-bottom: 2.5rem;
+      min-height: clamp(280px, 45vw, 420px);
+      overflow: hidden;
+      background-color: var(--surface);
+      background-size: cover;
+      background-position: center;
+      transition: background-image 0.8s ease-in-out;
+      color: #f6f6f6;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(140deg, rgba(4, 24, 16, 0.75) 0%, rgba(4, 24, 16, 0.35) 55%, rgba(4, 24, 16, 0.6) 100%);
+      pointer-events: none;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      max-width: 540px;
     }
 
     .hero-title {
-      font-size: clamp(2.25rem, 4vw, 3rem);
+      font-size: clamp(2.5rem, 5vw, 3.75rem);
       font-weight: 700;
       letter-spacing: -0.045em;
       margin: 0;
+    }
+
+    .hero-content p {
+      margin: 0;
+      line-height: 1.6;
+      color: rgba(255, 255, 255, 0.88);
     }
 
     .hero-meta {
@@ -49,7 +80,7 @@ type MenuCategoryGroup = {
       align-items: center;
       gap: 1rem;
       flex-wrap: wrap;
-      color: var(--text-secondary);
+      color: rgba(255, 255, 255, 0.78);
     }
 
     .hero-meta span {
@@ -59,40 +90,17 @@ type MenuCategoryGroup = {
     }
 
     .tag {
-      background: rgba(6, 193, 103, 0.12);
-      color: var(--brand-green);
+      background: rgba(255, 255, 255, 0.16);
+      color: #fff;
       font-weight: 600;
       padding: 0.35rem 0.85rem;
       border-radius: 999px;
+      backdrop-filter: blur(6px);
     }
 
     h3 {
       margin-top: 0;
       font-size: 1.5rem;
-    }
-
-    .photos {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 1rem;
-      margin-bottom: 2.5rem;
-    }
-
-    .photo-card {
-      position: relative;
-      border-radius: var(--radius-card);
-      overflow: hidden;
-      background: var(--surface);
-      box-shadow: var(--shadow-soft);
-      border: 1px solid rgba(10, 10, 10, 0.05);
-      aspect-ratio: 4 / 3;
-    }
-
-    .photo-card img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
     }
 
     .category-nav {
@@ -189,6 +197,7 @@ type MenuCategoryGroup = {
     @media (max-width: 720px) {
       .hero {
         padding: 2rem 1.5rem;
+        min-height: 240px;
       }
 
       .menu-grid {
@@ -198,26 +207,23 @@ type MenuCategoryGroup = {
   `],
   template: `
     <ng-container *ngIf="(restaurant$ | async) as r">
-      <section class="hero">
-        <h2 class="hero-title">{{ r.name }}</h2>
-        <p>
-          {{
+      <section
+        class="hero"
+        [ngStyle]="{ 'background-image': (heroBackground$ | async) || defaultHeroBackground }"
+      >
+        <div class="hero-content">
+          <h2 class="hero-title">{{ r.name }}</h2>
+          <p> {{
             r.description ||
               ('restaurantDetail.descriptionFallback' | translate: 'Fresh meals, crafted for delivery.')
-          }}
-        </p>
-        <div class="hero-meta">
-          <span class="tag">{{ 'restaurantDetail.tagPopular' | translate: 'Popular' }}</span>
-          <span>⭐ 4.8</span>
-          <span>{{ 'restaurants.duration' | translate: '20-30 min' }}</span>
-          <span>{{ 'restaurants.freeDelivery' | translate: 'Free delivery over €15' }}</span>
+          }}</p>
+          <div class="hero-meta">
+            <span class="tag">{{ 'restaurantDetail.tagPopular' | translate: 'Popular' }}</span>
+            <span>⭐ 4.8</span>
+            <span>{{ 'restaurants.duration' | translate: '20-30 min' }}</span>
+            <span>{{ 'restaurants.freeDelivery' | translate: 'Free delivery over €15' }}</span>
+          </div>
         </div>
-      </section>
-
-      <section *ngIf="r.photos?.length" class="photos">
-        <figure class="photo-card" *ngFor="let photo of r.photos">
-          <img [src]="photo.url" [alt]="r.name + ' photo'" loading="lazy" />
-        </figure>
       </section>
       <ng-container *ngIf="(menuCategories$ | async) as menuCategories">
         <h3 *ngIf="menuCategories.length">{{ 'restaurants.menuHeading' | translate: 'Menu' }}</h3>
@@ -259,10 +265,26 @@ export class RestaurantDetailPage {
   private i18n = inject(TranslationService);
 
   id = Number(this.route.snapshot.paramMap.get('id'));
-  restaurant$: Observable<Restaurant> = this.rSvc.get(this.id);
+  restaurant$: Observable<Restaurant> = this.rSvc.get(this.id).pipe(shareReplay({ bufferSize: 1, refCount: true }));
   menuCategories$: Observable<MenuCategoryGroup[]> = this.menuSvc
     .listByRestaurant(this.id)
     .pipe(map(items => this.organizeMenu(items)));
+
+  defaultHeroBackground = 'linear-gradient(135deg, rgba(6, 193, 103, 0.32), rgba(4, 47, 26, 0.68))';
+  heroBackground$: Observable<string> = this.restaurant$.pipe(
+    switchMap(restaurant => {
+      const photos = restaurant.photos?.map(photo => photo.url).filter(Boolean) ?? [];
+
+      if (!photos.length) {
+        return of(this.defaultHeroBackground);
+      }
+
+      return timer(0, 6000).pipe(
+        map(index => `linear-gradient(140deg, rgba(4, 24, 16, 0.78), rgba(4, 47, 26, 0.45)), url('${photos[index % photos.length]}')`)
+      );
+    }),
+    startWith(this.defaultHeroBackground)
+  );
 
   selectedPhotos: File[] = [];
   uploading = false;
