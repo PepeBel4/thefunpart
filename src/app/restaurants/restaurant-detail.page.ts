@@ -6,11 +6,12 @@ import { AsyncPipe, CurrencyPipe, NgIf, NgFor } from '@angular/common';
 import { Restaurant } from '../core/models';
 import { Observable } from 'rxjs';
 import { CartService } from '../cart/cart.service';
+import { MenuManagerComponent } from '../menu/menu-manager.component';
 
 @Component({
   standalone: true,
   selector: 'app-restaurant-detail',
-  imports: [AsyncPipe, CurrencyPipe, NgFor, NgIf],
+  imports: [AsyncPipe, CurrencyPipe, NgFor, NgIf, MenuManagerComponent],
   styles: [`
     :host {
       display: block;
@@ -179,6 +180,12 @@ import { CartService } from '../cart/cart.service';
           <button (click)="add(m)">Add to cart</button>
         </div>
       </div>
+
+      <app-menu-manager
+        *ngIf="auth.isLoggedIn()"
+        [restaurantId]="r.id"
+        (menuChanged)="refreshMenu()"
+      />
     </ng-container>
   `
 })
@@ -192,4 +199,42 @@ export class RestaurantDetailPage {
   restaurant$: Observable<Restaurant> = this.rSvc.get(this.id);
   menu$ = this.menuSvc.listByRestaurant(this.id);
   add = this.cart.add.bind(this.cart);
+
+  selectedPhotos: File[] = [];
+  uploading = false;
+  statusMessage = '';
+  statusType: 'success' | 'error' | '' = '';
+
+  onPhotoSelection(files: FileList | null) {
+    this.selectedPhotos = files ? Array.from(files) : [];
+    this.statusMessage = '';
+    this.statusType = '';
+  }
+
+  async uploadPhotos() {
+    if (!this.selectedPhotos.length || this.uploading) { return; }
+
+    this.uploading = true;
+    this.statusMessage = '';
+    this.statusType = '';
+
+    try {
+      await firstValueFrom(this.rSvc.uploadPhotos(this.id, this.selectedPhotos));
+      this.selectedPhotos = [];
+      this.statusMessage = 'Photos uploaded successfully!';
+      this.statusType = 'success';
+      this.restaurant$ = this.rSvc.get(this.id);
+      this.refreshMenu();
+    } catch (err) {
+      console.error(err);
+      this.statusMessage = 'Something went wrong while uploading photos. Please try again.';
+      this.statusType = 'error';
+    } finally {
+      this.uploading = false;
+    }
+  }
+
+  refreshMenu() {
+    this.menu$ = this.menuSvc.listByRestaurant(this.id);
+  }
 }

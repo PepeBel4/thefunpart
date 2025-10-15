@@ -13,6 +13,12 @@ export interface MenuItem {
   description?: string;
 }
 
+export interface MenuItemInput {
+  name: string;
+  description?: string;
+  price_cents: number;
+}
+
 export interface OrderItemInput { menu_item_id: number; quantity: number; }
 
 export interface Order {
