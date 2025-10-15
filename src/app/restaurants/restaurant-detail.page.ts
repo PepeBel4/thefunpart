@@ -195,6 +195,39 @@ type PendingCartAddition = {
       font-size: 1.1rem;
     }
 
+    .price-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .price-group .price.discounted {
+      color: var(--brand-green);
+      font-size: 1.25rem;
+    }
+
+    .price-group .price.original {
+      text-decoration: line-through;
+      font-weight: 500;
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+    }
+
+    .discount-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #056333;
+      background: #06c16724;
+      padding: 0.3rem 0.6rem;
+      border-radius: 999px;
+    }
+
     .card button {
       align-self: flex-start;
       background: var(--brand-green);
@@ -339,7 +372,20 @@ type PendingCartAddition = {
                     ('restaurantDetail.customerFavourite' | translate: 'Customer favourite')
                 }}
               </p>
-              <span class="price">{{ (m.price_cents / 100) | currency:'EUR' }}</span>
+              <div class="price-group" *ngIf="hasDiscount(m); else regularPrice">
+                <span class="price discounted">
+                  {{ (getCurrentPriceCents(m) / 100) | currency:'EUR' }}
+                </span>
+                <span class="price original">
+                  {{ (m.price_cents / 100) | currency:'EUR' }}
+                </span>
+                <span class="discount-pill">
+                  {{ 'restaurantDetail.discountBadge' | translate: 'Special offer' }}
+                </span>
+              </div>
+              <ng-template #regularPrice>
+                <span class="price">{{ (m.price_cents / 100) | currency:'EUR' }}</span>
+              </ng-template>
               <button (click)="addToCart(m, category.cartCategory, r)">
                 {{ 'restaurantDetail.addToCart' | translate: 'Add to cart' }}
               </button>
@@ -476,6 +522,20 @@ export class RestaurantDetailPage implements OnDestroy {
 
   refreshMenu() {
     this.menuCategories$ = this.menuSvc.listByRestaurant(this.id).pipe(map(items => this.organizeMenu(items)));
+  }
+
+  hasDiscount(item: MenuItem): boolean {
+    const discounted = item.discounted_price_cents;
+    return typeof discounted === 'number' && discounted >= 0 && discounted < item.price_cents;
+  }
+
+  getCurrentPriceCents(item: MenuItem): number {
+    const discounted = item.discounted_price_cents;
+    if (typeof discounted === 'number' && discounted >= 0) {
+      return discounted;
+    }
+
+    return item.price_cents;
   }
 
   addToCart(item: MenuItem, category: CartCategorySelection | null, restaurant: Restaurant) {

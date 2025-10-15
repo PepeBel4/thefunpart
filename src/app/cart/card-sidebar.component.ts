@@ -3,7 +3,7 @@ import { NgFor, CurrencyPipe, NgIf, NgClass } from '@angular/common';
 import { CartService } from './cart.service';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '../shared/translate.pipe';
-import { OrderScenario, OrderTargetTimeType } from '../core/models';
+import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
 
 @Component({
   selector: 'app-cart-sidebar',
@@ -187,8 +187,34 @@ import { OrderScenario, OrderTargetTimeType } from '../core/models';
     }
 
     .line-price {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.1rem;
       font-size: 0.85rem;
       color: var(--text-secondary);
+    }
+
+    .line-price .current {
+      font-weight: 700;
+      color: var(--text-primary);
+      font-size: 0.95rem;
+    }
+
+    .line-price .original {
+      text-decoration: line-through;
+      font-size: 0.75rem;
+    }
+
+    .line-price .discount-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #056333;
+      background: #06c16729;
+      border-radius: 999px;
+      padding: 0.1rem 0.4rem;
     }
 
     .qty-controls {
@@ -455,7 +481,22 @@ import { OrderScenario, OrderTargetTimeType } from '../core/models';
         <div class="line" *ngFor="let l of cart.lines()">
           <div>
             <div class="line-name">{{ l.item.name }}</div>
-            <div class="line-price">{{ (l.item.price_cents / 100) | currency:'EUR' }}</div>
+            <div class="line-price">
+              <ng-container *ngIf="hasDiscount(l.item); else regularLinePrice">
+                <span class="current">
+                  {{ (getCurrentPriceCents(l.item) / 100) | currency:'EUR' }}
+                </span>
+                <span class="original">
+                  {{ (l.item.price_cents / 100) | currency:'EUR' }}
+                </span>
+                <span class="discount-badge">
+                  {{ 'cart.discountApplied' | translate: 'Discount applied' }}
+                </span>
+              </ng-container>
+              <ng-template #regularLinePrice>
+                <span class="current">{{ (l.item.price_cents / 100) | currency:'EUR' }}</span>
+              </ng-template>
+            </div>
             <div class="line-category" *ngIf="l.category?.label as label">{{ label }}</div>
           </div>
           <div class="qty-controls">
@@ -526,5 +567,19 @@ export class CartSidebarComponent {
   onTargetTimeChange(event: Event) {
     const input = event.target as HTMLInputElement | null;
     this.cart.setTargetTimeInput(input?.value ?? null);
+  }
+
+  hasDiscount(item: MenuItem): boolean {
+    const discounted = item.discounted_price_cents;
+    return typeof discounted === 'number' && discounted >= 0 && discounted < item.price_cents;
+  }
+
+  getCurrentPriceCents(item: MenuItem): number {
+    const discounted = item.discounted_price_cents;
+    if (typeof discounted === 'number' && discounted >= 0) {
+      return discounted;
+    }
+
+    return item.price_cents;
   }
 }
