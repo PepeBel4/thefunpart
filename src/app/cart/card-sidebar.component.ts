@@ -1,13 +1,14 @@
 import { Component, inject } from '@angular/core';
-import { NgFor, CurrencyPipe, NgIf } from '@angular/common';
+import { NgFor, CurrencyPipe, NgIf, NgClass } from '@angular/common';
 import { CartService } from './cart.service';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '../shared/translate.pipe';
+import { OrderScenario, OrderTargetTimeType } from '../core/models';
 
 @Component({
   selector: 'app-cart-sidebar',
   standalone: true,
-  imports: [NgFor, CurrencyPipe, NgIf, RouterLink, TranslatePipe],
+  imports: [NgFor, CurrencyPipe, NgIf, RouterLink, TranslatePipe, NgClass],
   styles: [`
     aside {
       position: sticky;
@@ -22,6 +23,98 @@ import { TranslatePipe } from '../shared/translate.pipe';
       flex-direction: column;
       gap: 1.5rem;
       min-width: 300px;
+    }
+
+    .order-settings {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .field-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .option-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .option {
+      border: 1px solid var(--border-soft);
+      background: transparent;
+      border-radius: 999px;
+      padding: 0.35rem 0.9rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      line-height: 1.1;
+    }
+
+    .option-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .option svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
+    .option-label {
+      white-space: nowrap;
+    }
+
+    .option:hover {
+      border-color: var(--brand-green);
+      color: var(--brand-green);
+    }
+
+    .option.active {
+      background: rgba(6, 193, 103, 0.14);
+      border-color: rgba(6, 193, 103, 0.4);
+      color: #056333;
+    }
+
+    .target-time-input {
+      padding: 0.6rem 0.75rem;
+      border-radius: 12px;
+      border: 1px solid var(--border-soft);
+      font-size: 0.9rem;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .target-time-input:focus {
+      border-color: var(--brand-green);
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(6, 193, 103, 0.16);
+    }
+
+    .help-text {
+      font-size: 0.8rem;
+      color: #b85c00;
+      background: rgba(255, 170, 43, 0.16);
+      padding: 0.4rem 0.6rem;
+      border-radius: 10px;
+      width: fit-content;
     }
 
     header {
@@ -193,6 +286,131 @@ import { TranslatePipe } from '../shared/translate.pipe';
   `],
   template: `
     <aside>
+      <section class="order-settings">
+        <div class="field">
+          <span class="field-label">{{ 'cart.scenario.label' | translate: 'Order type' }}</span>
+          <div class="option-group">
+            <button
+              type="button"
+              class="option"
+              *ngFor="let scenario of scenarios"
+              (click)="setScenario(scenario)"
+              [ngClass]="{ active: cart.scenario() === scenario }"
+            >
+              <span class="option-icon" aria-hidden="true">
+                <svg
+                  *ngIf="scenario === 'takeaway'"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.6"
+                  aria-hidden="true"
+                >
+                  <path d="M8 7V6a4 4 0 0 1 8 0v1" />
+                  <path d="M5.25 7h13.5l.98 11.745A2 2 0 0 1 17.74 21H6.26a2 2 0 0 1-1.99-2.255z" />
+                </svg>
+                <svg
+                  *ngIf="scenario === 'delivery'"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M3 6.5a1 1 0 0 1 1-1h11.2a1 1 0 0 1 .8.4l2.8 3.6H21a1 1 0 0 1 1 1V17a1 1 0 0 1-1 1h-.3a2.7 2.7 0 1 1-5.4 0H9.7a2.7 2.7 0 1 1-5.4 0H4a1 1 0 0 1-1-1z"
+                  />
+                  <path d="M18 11.5h2V15h-2z" />
+                  <circle cx="17" cy="17" r="1.7" />
+                  <circle cx="7" cy="17" r="1.7" />
+                </svg>
+                <svg
+                  *ngIf="scenario === 'eatin'"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.6"
+                  aria-hidden="true"
+                >
+                  <path d="M4 10.5h16" />
+                  <path d="M6 10.5v8.25" />
+                  <path d="M18 10.5v8.25" />
+                  <path d="M12 10.5v8.25" />
+                  <path d="M7.5 4v6.5" />
+                  <path d="M16.5 4v6.5" />
+                </svg>
+              </span>
+              <span class="option-label">
+                {{ 'cart.scenario.' + scenario | translate: scenario }}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">
+            {{ 'cart.targetTimeType.label' | translate: 'When do you want it?' }}
+          </span>
+          <div class="option-group">
+            <button
+              type="button"
+              class="option"
+              *ngFor="let type of targetTimeTypes"
+              (click)="setTargetTimeType(type)"
+              [ngClass]="{ active: cart.targetTimeType() === type }"
+            >
+              <span class="option-icon" aria-hidden="true">
+                <svg
+                  *ngIf="type === 'asap'"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M13 2.25 5.25 12h5.5L10.5 21.75 18.75 12h-5.5z" />
+                </svg>
+                <svg
+                  *ngIf="type === 'scheduled'"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.6"
+                  aria-hidden="true"
+                >
+                  <rect x="4" y="6" width="16" height="14" rx="2" />
+                  <path d="M8 4v4" />
+                  <path d="M16 4v4" />
+                  <path d="M4 10h16" />
+                  <path d="M12 14l2 2 3-3" />
+                </svg>
+              </span>
+              <span class="option-label">
+                {{ 'cart.targetTimeType.' + type | translate: type }}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div class="field" *ngIf="cart.targetTimeType() === 'scheduled'">
+          <label class="field-label" for="cart-target-time">
+            {{ 'cart.targetTime.label' | translate: 'Schedule for' }}
+          </label>
+          <input
+            id="cart-target-time"
+            class="target-time-input"
+            type="datetime-local"
+            [value]="cart.targetTimeInput() ?? ''"
+            (input)="onTargetTimeChange($event)"
+          />
+          <span class="help-text" *ngIf="!cart.hasValidTargetTime()">
+            {{ 'cart.targetTime.required' | translate: 'Select a time to continue.' }}
+          </span>
+        </div>
+      </section>
+
       <header>
         <h3>{{ 'cart.title' | translate: 'Your cart' }}</h3>
         <ng-container *ngIf="cart.count() as count">
@@ -255,7 +473,11 @@ import { TranslatePipe } from '../shared/translate.pipe';
         <span>{{ (cart.subtotalCents()/100) | currency:'EUR' }}</span>
       </div>
 
-      <a class="checkout" routerLink="/checkout" [class.disabled]="cart.lines().length === 0">
+      <a
+        class="checkout"
+        routerLink="/checkout"
+        [class.disabled]="cart.lines().length === 0 || !cart.hasValidTargetTime()"
+      >
         {{ 'cart.checkout' | translate: 'Go to checkout' }}
       </a>
     </aside>
@@ -263,4 +485,19 @@ import { TranslatePipe } from '../shared/translate.pipe';
 })
 export class CartSidebarComponent {
   cart = inject(CartService);
+  scenarios = this.cart.scenarioOptions;
+  targetTimeTypes = this.cart.targetTimeTypeOptions;
+
+  setScenario(scenario: OrderScenario) {
+    this.cart.setScenario(scenario);
+  }
+
+  setTargetTimeType(type: OrderTargetTimeType) {
+    this.cart.setTargetTimeType(type);
+  }
+
+  onTargetTimeChange(event: Event) {
+    const input = event.target as HTMLInputElement | null;
+    this.cart.setTargetTimeInput(input?.value ?? null);
+  }
 }

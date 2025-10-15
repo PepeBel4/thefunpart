@@ -2,7 +2,13 @@ import { Injectable, inject } from '@angular/core';
 import { ApiService } from '../core/api.service';
 import { Observable } from 'rxjs';
 
-import { Order, OrderItemInput, OrderPaymentResponse } from '../core/models';
+import {
+  Order,
+  OrderItemInput,
+  OrderPaymentResponse,
+  OrderScenario,
+  OrderTargetTimeType,
+} from '../core/models';
 
 @Injectable({ providedIn: 'root' })
 export class OrderService {
@@ -16,12 +22,21 @@ export class OrderService {
     return this.api.get<Order>(`/orders/${id}`);
   }
 
-  create(payload: { restaurantId: number; items: OrderItemInput[] }): Observable<Order> {
+  create(payload: {
+    restaurantId: number;
+    items: OrderItemInput[];
+    scenario: OrderScenario;
+    targetTimeType: OrderTargetTimeType;
+    targetTimeAt: string | null;
+  }): Observable<Order> {
     const body = {
       order: {
         restaurant_id: payload.restaurantId,
         order_items: payload.items,
         state: 'composing',
+        scenario: payload.scenario,
+        target_time_type: payload.targetTimeType,
+        target_time_at: payload.targetTimeAt
       },
     };
 

@@ -1,5 +1,5 @@
 import { Injectable, signal, computed } from '@angular/core';
-import { MenuItem } from '../core/models';
+import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
 
 export interface CartCategorySelection {
   id: number | null;
@@ -14,6 +14,34 @@ export class CartService {
   lines = computed(() => this._lines());
   count = computed(() => this._lines().reduce((a, l) => a + l.quantity, 0));
   subtotalCents = computed(() => this._lines().reduce((a, l) => a + l.item.price_cents * l.quantity, 0));
+
+  readonly scenarioOptions: OrderScenario[] = ['takeaway', 'delivery', 'eatin'];
+  readonly targetTimeTypeOptions: OrderTargetTimeType[] = ['asap', 'scheduled'];
+
+  private _scenario = signal<OrderScenario>('takeaway');
+  scenario = computed(() => this._scenario());
+
+  private _targetTimeType = signal<OrderTargetTimeType>('asap');
+  targetTimeType = computed(() => this._targetTimeType());
+
+  private _targetTimeInput = signal<string | null>(null);
+  targetTimeInput = computed(() => this._targetTimeInput());
+  targetTime = computed(() => {
+    const value = this._targetTimeInput();
+    if (!value) {
+      return null;
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+
+    return parsed.toISOString();
+  });
+
+  requiresTargetTime = computed(() => this._targetTimeType() === 'scheduled');
+  hasValidTargetTime = computed(() => !this.requiresTargetTime() || this.targetTime() !== null);
 
   add(item: MenuItem, category?: CartCategorySelection | null) {
     const lines = [...this._lines()];
@@ -55,7 +83,33 @@ export class CartService {
       )
     );
   }
-  clear() { this._lines.set([]); }
+
+  setScenario(value: OrderScenario) {
+    if (this.scenarioOptions.includes(value)) {
+      this._scenario.set(value);
+    }
+  }
+
+  setTargetTimeType(value: OrderTargetTimeType) {
+    if (this.targetTimeTypeOptions.includes(value)) {
+      this._targetTimeType.set(value);
+      if (value === 'asap') {
+        this._targetTimeInput.set(null);
+      }
+    }
+  }
+
+  setTargetTimeInput(value: string | null) {
+    const trimmed = value?.trim();
+    this._targetTimeInput.set(trimmed ? trimmed : null);
+  }
+
+  clear() {
+    this._lines.set([]);
+    this._scenario.set('takeaway');
+    this._targetTimeType.set('asap');
+    this._targetTimeInput.set(null);
+  }
 
   private normalizeCategory(category?: CartCategorySelection | null): CartCategorySelection | null {
     if (!category) {
