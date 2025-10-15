@@ -256,6 +256,7 @@ export class TranslationService {
       'menu.discounts.assignments.error.select': 'Select both a menu item and a discount.',
       'menu.discounts.assignments.error.save': 'Unable to save the assignment. Please try again.',
       'menu.discounts.assignments.error.delete': 'Unable to delete the assignment. Please try again.',
+      'menu.discounts.assignments.error.refresh': 'Unable to refresh assignments. Please reload the page.',
 
       'status.uploading': 'Uploading…',
       'status.removing': 'Removing…',
@@ -495,6 +496,7 @@ export class TranslationService {
       'menu.discounts.assignments.error.select': 'Selecteer een menu-item en een korting.',
       'menu.discounts.assignments.error.save': 'De toewijzing kon niet worden opgeslagen. Probeer het opnieuw.',
       'menu.discounts.assignments.error.delete': 'De toewijzing kon niet worden verwijderd. Probeer het opnieuw.',
+      'menu.discounts.assignments.error.refresh': 'Kan de toewijzingen niet verversen. Vernieuw de pagina.',
 
       'status.uploading': 'Uploaden…',
       'status.removing': 'Verwijderen…',
@@ -734,6 +736,7 @@ export class TranslationService {
       'menu.discounts.assignments.error.select': 'Sélectionnez un plat et une remise.',
       'menu.discounts.assignments.error.save': 'Impossible d’enregistrer l’attribution. Veuillez réessayer.',
       'menu.discounts.assignments.error.delete': 'Impossible de supprimer l’attribution. Veuillez réessayer.',
+      'menu.discounts.assignments.error.refresh': 'Impossible d’actualiser les attributions. Veuillez recharger la page.',
 
       'status.uploading': 'Téléchargement…',
       'status.removing': 'Suppression…',
@@ -973,6 +976,7 @@ export class TranslationService {
       'menu.discounts.assignments.error.select': 'Wähle einen Menüeintrag und einen Rabatt aus.',
       'menu.discounts.assignments.error.save': 'Die Zuweisung konnte nicht gespeichert werden. Bitte versuche es erneut.',
       'menu.discounts.assignments.error.delete': 'Die Zuweisung konnte nicht gelöscht werden. Bitte versuche es erneut.',
+      'menu.discounts.assignments.error.refresh': 'Die Zuweisungen konnten nicht aktualisiert werden. Bitte lade die Seite neu.',
 
       'status.uploading': 'Wird hochgeladen…',
       'status.removing': 'Wird entfernt…',

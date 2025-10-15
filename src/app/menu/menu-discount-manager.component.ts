@@ -2,7 +2,7 @@ import { DecimalPipe, NgFor, NgIf } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, Input, OnDestroy, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Subscription, firstValueFrom, forkJoin } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import {
   MenuItem,
   MenuItemDiscount,
@@ -612,8 +612,8 @@ export class MenuDiscountManagerComponent implements OnDestroy {
   menuItems: MenuItem[] = [];
   discounts: MenuItemDiscount[] = [];
   assignments: MenuItemDiscountAssignment[] = [];
-  private activeLoadToken = 0;
-  private loadSubscription: Subscription | null = null;
+  private initialRequestToken = 0;
+  private refreshRequestToken = 0;
 
   newDiscount: DiscountFormModel = this.createEmptyDiscountForm();
   editingDiscountId: number | null = null;
@@ -640,13 +640,13 @@ export class MenuDiscountManagerComponent implements OnDestroy {
     this.restaurantIdValue = value ?? null;
 
     if (this.restaurantIdValue === null) {
-      this.activeLoadToken++;
-      this.teardownOngoingLoad();
+      this.cancelPendingRequests();
       this.resetState();
       return;
     }
 
-    this.initialize(this.restaurantIdValue);
+    this.cancelPendingRequests();
+    void this.initialize(this.restaurantIdValue);
   }
 
   get restaurantId(): number | null {
@@ -654,7 +654,7 @@ export class MenuDiscountManagerComponent implements OnDestroy {
   }
 
   ngOnDestroy() {
-    this.teardownOngoingLoad();
+    this.cancelPendingRequests();
   }
 
   get restaurantDiscounts(): MenuItemDiscount[] {
@@ -693,9 +693,7 @@ export class MenuDiscountManagerComponent implements OnDestroy {
         'menu.discounts.form.statusCreated',
         'Discount created.'
       );
-      this.pruneAssignmentsForDiscount(created);
-      await this.syncAssignmentsForDiscount(created.id);
-      void this.refreshDiscountsAndAssignments();
+      await this.reloadDiscountsAndAssignments('discount');
     } catch (error) {
       console.error(error);
       this.discountError =
@@ -744,14 +742,12 @@ export class MenuDiscountManagerComponent implements OnDestroy {
     try {
       const updated = await firstValueFrom(this.discountsApi.update(id, payload));
       this.upsertDiscount(updated);
-      this.pruneAssignmentsForDiscount(updated);
-      await this.syncAssignmentsForDiscount(updated.id);
       this.discountStatus = this.i18n.translate(
         'menu.discounts.form.statusUpdated',
         'Discount updated.'
       );
       this.cancelDiscountEdit();
-      void this.refreshDiscountsAndAssignments();
+      await this.reloadDiscountsAndAssignments('discount');
     } catch (error) {
       console.error(error);
       this.discountError =
@@ -780,7 +776,8 @@ export class MenuDiscountManagerComponent implements OnDestroy {
         'menu.discounts.form.statusDeleted',
         'Discount removed.'
       );
-      await this.refreshDiscountsAndAssignments();
+      this.removeDiscountLocally(discount.id);
+      await this.reloadDiscountsAndAssignments('discount');
     } catch (error) {
       console.error(error);
       this.discountError =
@@ -831,8 +828,8 @@ export class MenuDiscountManagerComponent implements OnDestroy {
         'Assignment created.'
       );
       this.newAssignment = this.createEmptyAssignmentForm();
-      this.addAssignmentToCollections(created);
-      void this.refreshDiscountsAndAssignments();
+      this.addOrUpdateAssignment(created);
+      await this.reloadDiscountsAndAssignments('assignment');
     } catch (error) {
       console.error(error);
       this.assignmentError =
@@ -891,12 +888,12 @@ export class MenuDiscountManagerComponent implements OnDestroy {
         'menu.discounts.assignments.updated',
         'Assignment updated.'
       );
-      this.cancelAssignmentEdit();
       if (previous) {
-        this.removeAssignmentFromCollections(previous);
+        this.removeAssignmentLocally(previous);
       }
-      this.addAssignmentToCollections(updated);
-      void this.refreshDiscountsAndAssignments();
+      this.cancelAssignmentEdit();
+      this.addOrUpdateAssignment(updated);
+      await this.reloadDiscountsAndAssignments('assignment');
     } catch (error) {
       console.error(error);
       this.assignmentError =
@@ -932,8 +929,8 @@ export class MenuDiscountManagerComponent implements OnDestroy {
         'menu.discounts.assignments.deleted',
         'Assignment removed.'
       );
-      this.removeAssignmentFromCollections(assignment);
-      void this.refreshDiscountsAndAssignments();
+      this.removeAssignmentLocally(assignment);
+      await this.reloadDiscountsAndAssignments('assignment');
     } catch (error) {
       console.error(error);
       this.assignmentError =
@@ -947,8 +944,8 @@ export class MenuDiscountManagerComponent implements OnDestroy {
     }
   }
 
-  private initialize(restaurantId: number) {
-    const loadToken = ++this.activeLoadToken;
+  private async initialize(restaurantId: number) {
+    const loadToken = ++this.initialRequestToken;
     this.loading = true;
     this.loadError = '';
     this.discountStatus = '';
@@ -959,69 +956,168 @@ export class MenuDiscountManagerComponent implements OnDestroy {
     this.discounts = [];
     this.assignments = [];
 
-    this.teardownOngoingLoad();
+    try {
+      const [items, discounts, assignments] = await Promise.all([
+        firstValueFrom(this.menu.listByRestaurant(restaurantId)),
+        firstValueFrom(this.discountsApi.list()),
+        firstValueFrom(this.assignmentsApi.list()),
+      ]);
 
-    this.loadSubscription = forkJoin({
-      items: this.menu.listByRestaurant(restaurantId),
-      discounts: this.discountsApi.list(),
-      assignments: this.assignmentsApi.list(),
-    }).subscribe({
-      next: ({ items, discounts, assignments }) => {
-        if (this.activeLoadToken !== loadToken) {
-          return;
-        }
+      if (this.initialRequestToken !== loadToken) {
+        return;
+      }
 
-        this.menuItems = items;
-        this.discounts = discounts;
-        this.assignments = assignments.filter(
-          assignment => assignment.menu_item.restaurant_id === restaurantId
-        );
-        this.loading = false;
-      },
-      error: error => {
-        if (this.activeLoadToken !== loadToken) {
-          return;
-        }
+      this.menuItems = items;
+      this.replaceDiscounts(discounts);
+      this.replaceAssignments(assignments);
+      this.loading = false;
+    } catch (error) {
+      if (this.initialRequestToken !== loadToken) {
+        return;
+      }
 
-        console.error(error);
-        this.loadError = this.i18n.translate(
+      console.error(error);
+      this.loadError = this.i18n.translate(
+        'menu.discounts.error.load',
+        'Unable to load discount data. Please refresh and try again.'
+      );
+      this.loading = false;
+    }
+  }
+
+  private cancelPendingRequests() {
+    this.initialRequestToken++;
+    this.refreshRequestToken++;
+  }
+
+  private async reloadDiscountsAndAssignments(kind: 'discount' | 'assignment') {
+    const restaurantId = this.restaurantIdValue;
+    if (restaurantId === null) {
+      return;
+    }
+
+    const refreshToken = ++this.refreshRequestToken;
+
+    try {
+      const [discounts, assignments] = await Promise.all([
+        firstValueFrom(this.discountsApi.list()),
+        firstValueFrom(this.assignmentsApi.list()),
+      ]);
+
+      if (this.refreshRequestToken !== refreshToken) {
+        return;
+      }
+
+      this.replaceDiscounts(discounts);
+      this.replaceAssignments(assignments);
+    } catch (error) {
+      if (this.refreshRequestToken !== refreshToken) {
+        return;
+      }
+
+      console.error(error);
+
+      if (kind === 'discount') {
+        this.discountError = this.i18n.translate(
           'menu.discounts.error.load',
           'Unable to load discount data. Please refresh and try again.'
         );
-        this.loading = false;
+      } else {
+        this.assignmentError = this.i18n.translate(
+          'menu.discounts.assignments.error.refresh',
+          'Unable to refresh assignments. Please reload the page.'
+        );
+      }
+    }
+  }
+
+  private replaceDiscounts(discounts: MenuItemDiscount[]) {
+    this.discounts = (discounts ?? []).map(discount => this.normalizeDiscount(discount));
+  }
+
+  private replaceAssignments(assignments: MenuItemDiscountAssignment[]) {
+    const normalized: MenuItemDiscountAssignment[] = [];
+    for (const assignment of assignments ?? []) {
+      const mapped = this.normalizeAssignment(assignment);
+      if (mapped) {
+        normalized.push(mapped);
+      }
+    }
+    this.assignments = normalized;
+  }
+
+  private normalizeDiscount(discount: MenuItemDiscount): MenuItemDiscount {
+    const menuItemIds = Array.isArray(discount.menu_item_ids)
+      ? discount.menu_item_ids
+          .map(id => this.parseNumber(id))
+          .filter((id): id is number => id !== null)
+      : [];
+
+    const menuItems = Array.isArray(discount.menu_items)
+      ? discount.menu_items
+          .map(item => {
+            const restaurantId = this.parseNumber(item.restaurant_id);
+            if (restaurantId === null) {
+              return null;
+            }
+            return { ...item, restaurant_id: restaurantId };
+          })
+          .filter((item): item is typeof item & { restaurant_id: number } => item !== null)
+      : [];
+
+    return {
+      ...discount,
+      menu_item_ids: menuItemIds,
+      menu_items: menuItems.map(item => ({ ...item })),
+    };
+  }
+
+  private normalizeAssignment(
+    assignment: MenuItemDiscountAssignment
+  ): MenuItemDiscountAssignment | null {
+    if (!assignment || !assignment.menu_item) {
+      return null;
+    }
+
+    const restaurantId = this.parseNumber(assignment.menu_item.restaurant_id);
+    if (restaurantId === null) {
+      return null;
+    }
+
+    const currentRestaurant = this.restaurantIdValue;
+    if (currentRestaurant !== null && restaurantId !== currentRestaurant) {
+      return null;
+    }
+
+    return {
+      ...assignment,
+      menu_item: {
+        ...assignment.menu_item,
+        restaurant_id: restaurantId,
       },
-    });
+      menu_item_discount: { ...assignment.menu_item_discount },
+    };
   }
 
-  private teardownOngoingLoad() {
-    this.loadSubscription?.unsubscribe();
-    this.loadSubscription = null;
-  }
-
-  private addAssignmentToCollections(assignment: MenuItemDiscountAssignment) {
-    const restaurantId = this.restaurantIdValue;
-    if (restaurantId !== null && assignment.menu_item.restaurant_id !== restaurantId) {
+  private addOrUpdateAssignment(assignment: MenuItemDiscountAssignment) {
+    const normalized = this.normalizeAssignment(assignment);
+    if (!normalized) {
       return;
     }
 
-    const index = this.assignments.findIndex(existing => existing.id === assignment.id);
+    const index = this.assignments.findIndex(existing => existing.id === normalized.id);
     if (index === -1) {
-      this.assignments = [...this.assignments, assignment];
+      this.assignments = [...this.assignments, normalized];
     } else {
-      const updated = [...this.assignments];
-      updated[index] = assignment;
-      this.assignments = updated;
+      const next = [...this.assignments];
+      next[index] = normalized;
+      this.assignments = next;
     }
 
-    this.applyAssignmentToDiscount(assignment);
+    this.mergeAssignmentIntoDiscount(normalized);
   }
 
-  private removeAssignmentFromCollections(assignment: MenuItemDiscountAssignment) {
-    this.assignments = this.assignments.filter(existing => existing.id !== assignment.id);
-    this.removeAssignmentFromDiscount(assignment);
-  }
-
-  private applyAssignmentToDiscount(assignment: MenuItemDiscountAssignment) {
+  private mergeAssignmentIntoDiscount(assignment: MenuItemDiscountAssignment) {
     const discountIndex = this.discounts.findIndex(
       discount => discount.id === assignment.menu_item_discount_id
     );
@@ -1030,32 +1126,31 @@ export class MenuDiscountManagerComponent implements OnDestroy {
     }
 
     const discount = this.discounts[discountIndex];
-    const hasMenuItem = discount.menu_item_ids.includes(assignment.menu_item_id);
-    const menu_item_ids = hasMenuItem
+    const menuItemIds = discount.menu_item_ids.includes(assignment.menu_item_id)
       ? [...discount.menu_item_ids]
       : [...discount.menu_item_ids, assignment.menu_item_id];
-    const menu_items = hasMenuItem
-      ? discount.menu_items.map(item =>
-          item.id === assignment.menu_item.id ? assignment.menu_item : item
-        )
-      : [...discount.menu_items, assignment.menu_item];
 
-    const updated: MenuItemDiscount = {
+    const menuItems = discount.menu_items.map(item => ({ ...item }));
+    const existingIndex = menuItems.findIndex(item => item.id === assignment.menu_item_id);
+    if (existingIndex === -1) {
+      menuItems.push({ ...assignment.menu_item });
+    } else {
+      menuItems[existingIndex] = { ...assignment.menu_item };
+    }
+
+    const next = [...this.discounts];
+    next[discountIndex] = {
       ...discount,
-      menu_item_ids,
-      menu_items,
+      menu_item_ids: menuItemIds,
+      menu_items: menuItems,
     };
-
-    const nextDiscounts = [...this.discounts];
-    nextDiscounts[discountIndex] = {
-      ...updated,
-      menu_item_ids: [...updated.menu_item_ids],
-      menu_items: [...updated.menu_items],
-    };
-    this.discounts = nextDiscounts;
+    this.discounts = next;
   }
 
-  private removeAssignmentFromDiscount(assignment: MenuItemDiscountAssignment) {
+  private removeAssignmentLocally(assignment: MenuItemDiscountAssignment) {
+    const remaining = this.assignments.filter(existing => existing.id !== assignment.id);
+    this.assignments = remaining;
+
     const discountIndex = this.discounts.findIndex(
       discount => discount.id === assignment.menu_item_discount_id
     );
@@ -1063,33 +1158,41 @@ export class MenuDiscountManagerComponent implements OnDestroy {
       return;
     }
 
+    const stillAssigned = remaining.some(
+      existing =>
+        existing.menu_item_discount_id === assignment.menu_item_discount_id &&
+        existing.menu_item_id === assignment.menu_item_id
+    );
+
+    if (stillAssigned) {
+      return;
+    }
+
     const discount = this.discounts[discountIndex];
-    const menu_item_ids = discount.menu_item_ids.filter(id => id !== assignment.menu_item_id);
-    const menu_items = discount.menu_items.filter(item => item.id !== assignment.menu_item_id);
+    const menuItemIds = discount.menu_item_ids.filter(id => id !== assignment.menu_item_id);
+    const menuItems = discount.menu_items
+      .filter(item => item.id !== assignment.menu_item_id)
+      .map(item => ({ ...item }));
 
-    const updated: MenuItemDiscount = {
+    const next = [...this.discounts];
+    next[discountIndex] = {
       ...discount,
-      menu_item_ids,
-      menu_items,
+      menu_item_ids: menuItemIds,
+      menu_items: menuItems,
     };
+    this.discounts = next;
+  }
 
-    const nextDiscounts = [...this.discounts];
-    nextDiscounts[discountIndex] = {
-      ...updated,
-      menu_item_ids: [...updated.menu_item_ids],
-      menu_items: [...updated.menu_items],
-    };
-    this.discounts = nextDiscounts;
+  private removeDiscountLocally(discountId: number) {
+    this.discounts = this.discounts.filter(discount => discount.id !== discountId);
+    this.assignments = this.assignments.filter(
+      assignment => assignment.menu_item_discount_id !== discountId
+    );
   }
 
   private upsertDiscount(discount: MenuItemDiscount) {
-    const normalized: MenuItemDiscount = {
-      ...discount,
-      menu_item_ids: [...discount.menu_item_ids],
-      menu_items: discount.menu_items.map(item => ({ ...item })),
-    };
-
-    const index = this.discounts.findIndex(existing => existing.id === discount.id);
+    const normalized = this.normalizeDiscount(discount);
+    const index = this.discounts.findIndex(existing => existing.id === normalized.id);
     if (index === -1) {
       this.discounts = [...this.discounts, normalized];
     } else {
@@ -1099,98 +1202,15 @@ export class MenuDiscountManagerComponent implements OnDestroy {
     }
   }
 
-  private pruneAssignmentsForDiscount(discount: MenuItemDiscount) {
-    if (!this.assignments.length) {
-      return;
+  private parseNumber(value: unknown): number | null {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
     }
-
-    const allowedIds = new Set(discount.menu_item_ids);
-    const replacementMenuItems = new Map(discount.menu_items.map(item => [item.id, { ...item }]));
-
-    let changed = false;
-    const retained: MenuItemDiscountAssignment[] = [];
-
-    for (const assignment of this.assignments) {
-      if (assignment.menu_item_discount_id !== discount.id) {
-        retained.push(assignment);
-        continue;
-      }
-
-      if (!allowedIds.has(assignment.menu_item_id)) {
-        changed = true;
-        continue;
-      }
-
-      const replacement = replacementMenuItems.get(assignment.menu_item_id);
-      if (replacement) {
-        const needsUpdate =
-          assignment.menu_item.name !== replacement.name ||
-          assignment.menu_item.restaurant_id !== replacement.restaurant_id;
-        if (needsUpdate) {
-          retained.push({
-            ...assignment,
-            menu_item: replacement,
-          });
-          changed = true;
-          continue;
-        }
-      }
-
-      retained.push(assignment);
+    if (typeof value === 'string' && value.trim().length > 0) {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
     }
-
-    if (changed) {
-      this.assignments = retained;
-    }
-  }
-
-  private async syncAssignmentsForDiscount(discountId: number) {
-    const restaurantId = this.restaurantIdValue;
-    if (restaurantId === null) {
-      return;
-    }
-
-    try {
-      const assignments = await firstValueFrom(
-        this.assignmentsApi.list({ menu_item_discount_id: discountId })
-      );
-
-      const relevant = assignments.filter(
-        assignment => assignment.menu_item.restaurant_id === restaurantId
-      );
-
-      const remaining = this.assignments.filter(
-        assignment => assignment.menu_item_discount_id !== discountId
-      );
-      this.assignments = remaining;
-
-      for (const assignment of relevant) {
-        this.addAssignmentToCollections(assignment);
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  }
-
-  private async refreshDiscountsAndAssignments() {
-    const restaurantId = this.restaurantIdValue;
-    if (restaurantId === null) {
-      return;
-    }
-
-    try {
-      const [discounts, assignments] = await Promise.all([
-        firstValueFrom(this.discountsApi.list()),
-        firstValueFrom(this.assignmentsApi.list()),
-      ]);
-      this.discounts = discounts;
-      this.assignments = assignments.filter(
-        assignment => assignment.menu_item.restaurant_id === restaurantId
-      );
-      this.loadError = '';
-    } catch (error) {
-      console.error(error);
-    }
+    return null;
   }
 
   private resetState() {
