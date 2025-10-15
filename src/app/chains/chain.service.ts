@@ -18,12 +18,4 @@ export class ChainService {
   create(payload: ChainInput): Observable<Chain> {
     return this.api.post<Chain>('/chains', payload);
   }
-
-  addChainToRestaurant(restaurantId: number, chainId: number): Observable<void> {
-    return this.api.post<void>(`/restaurants/${restaurantId}/chains`, { chain_id: chainId });
-  }
-
-  removeChainFromRestaurant(restaurantId: number, chainId: number): Observable<void> {
-    return this.api.delete<void>(`/restaurants/${restaurantId}/chains/${chainId}`);
-  }
 }
