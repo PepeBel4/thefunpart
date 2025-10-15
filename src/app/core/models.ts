@@ -52,6 +52,9 @@ export interface Order {
   id: number;
   total_cents: number;
   status: 'pending' | 'confirmed' | 'preparing' | 'delivered' | string;
+  payment_state?: string;
+  paid_cents?: number;
+  remaining_balance_cents?: number;
   order_items: OrderItem[];
   restaurant?: {
     id: number;
@@ -64,6 +67,22 @@ export interface Order {
   };
   created_at: string;
   updated_at?: string;
+}
+
+export interface Payment {
+  id: number;
+  amount_cents: number;
+  status: string;
+  provider: string;
+  provider_payment_id: string;
+  checkout_url?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrderPaymentResponse {
+  payment: Payment;
+  order: Pick<Order, 'id' | 'payment_state' | 'paid_cents' | 'remaining_balance_cents'>;
 }
 
 export interface OrderItem {
