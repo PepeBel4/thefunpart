@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { BehaviorSubject, Observable, filter, firstValueFrom, shareReplay, switchMap, tap } from 'rxjs';
 import { OrderService } from '../orders/order.service';
 import { RestaurantService } from '../restaurants/restaurant.service';
-import { Restaurant, RestaurantPhoto } from '../core/models';
+import { Restaurant, RestaurantPhoto, RestaurantUpdateInput } from '../core/models';
 import { MenuManagerComponent } from '../menu/menu-manager.component';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
@@ -135,7 +135,64 @@ import { TranslationService } from '../core/translation.service';
       align-items: center;
     }
 
-    .upload-controls button {
+    .details-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .language-fields {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .language-card {
+      border: 1px solid rgba(10, 10, 10, 0.08);
+      border-radius: 0.85rem;
+      padding: clamp(1rem, 2vw, 1.25rem);
+      background: rgba(255, 255, 255, 0.85);
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .language-card h4 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .details-form label {
+      font-weight: 600;
+      font-size: 0.95rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .details-form input,
+    .details-form textarea {
+      width: 100%;
+      padding: 0.65rem 0.75rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(10, 10, 10, 0.12);
+      background: rgba(255, 255, 255, 0.9);
+      font: inherit;
+    }
+
+    .details-form textarea {
+      min-height: 96px;
+      resize: vertical;
+    }
+
+    .details-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .upload-controls button,
+    .details-actions button {
       background: var(--brand-green);
       color: #042f1a;
       border: 0;
@@ -147,9 +204,16 @@ import { TranslationService } from '../core/translation.service';
       transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
-    .upload-controls button:hover {
+    .upload-controls button:hover,
+    .details-actions button:hover {
       transform: translateY(-1px);
       box-shadow: 0 16px 32px rgba(6, 193, 103, 0.28);
+    }
+
+    .details-actions button[disabled] {
+      opacity: 0.7;
+      cursor: default;
+      box-shadow: none;
     }
 
     .file-info {
@@ -246,6 +310,70 @@ import { TranslationService } from '../core/translation.service';
 
         <ng-container *ngIf="selectedRestaurantId !== null; else managePlaceholder">
           <ng-container *ngIf="selectedRestaurant$ | async as restaurant">
+            <section class="card">
+              <header>
+                <h3>{{ 'admin.details.heading' | translate: 'Restaurant details' }}</h3>
+                <p>{{ 'admin.details.description' | translate: 'Edit the name and multi-language description guests see on the site.' }}</p>
+              </header>
+
+              <form class="details-form" (ngSubmit)="saveDetails()" novalidate>
+                <div class="language-fields">
+                  <div class="language-card" *ngFor="let language of languages">
+                    <h4>{{ language.label }}</h4>
+                    <label [attr.for]="'name-' + language.code">
+                      {{
+                        'admin.details.nameLabel'
+                          | translate: 'Name ({{language}})': { language: language.label }
+                      }}
+                      <input
+                        [id]="'name-' + language.code"
+                        name="name-{{ language.code }}"
+                        [(ngModel)]="detailsForm.names[language.code]"
+                        [required]="language.code === primaryLanguageCode"
+                        [attr.placeholder]="
+                          'admin.details.namePlaceholder'
+                            | translate: 'Enter the restaurant name'
+                        "
+                      />
+                    </label>
+
+                    <label [attr.for]="'description-' + language.code">
+                      {{
+                        'admin.details.descriptionLabel'
+                          | translate: 'Description ({{language}})': { language: language.label }
+                      }}
+                      <textarea
+                        [id]="'description-' + language.code"
+                        name="description-{{ language.code }}"
+                        [(ngModel)]="detailsForm.descriptions[language.code]"
+                        [attr.placeholder]="
+                          'admin.details.descriptionPlaceholder'
+                            | translate: 'Describe the restaurant in {{language}}': { language: language.label }
+                        "
+                      ></textarea>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="details-actions">
+                  <span
+                    *ngIf="detailsMessage"
+                    class="status"
+                    [class.success]="detailsMessageType === 'success'"
+                    [class.error]="detailsMessageType === 'error'"
+                    >{{ detailsMessage }}</span
+                  >
+                  <button type="submit" [disabled]="detailsSaving">
+                    {{
+                      detailsSaving
+                        ? ('admin.details.saving' | translate: 'Saving…')
+                        : ('admin.details.save' | translate: 'Save details')
+                    }}
+                  </button>
+                </div>
+              </form>
+            </section>
+
             <section class="card">
               <header>
                 <h3>{{ 'admin.photos.heading' | translate: 'Restaurant photos' }}</h3>
@@ -377,6 +505,7 @@ export class AdminDashboardPage {
   selectedRestaurant$ = this.selectedRestaurantIdSubject.pipe(
     filter((id): id is number => id !== null),
     switchMap(id => this.restaurantService.get(id)),
+    tap(restaurant => this.populateDetailsForm(restaurant)),
     shareReplay({ bufferSize: 1, refCount: true })
   );
 
@@ -388,11 +517,23 @@ export class AdminDashboardPage {
   statusType: 'success' | 'error' | '' = '';
   removingPhotoId: number | null = null;
 
+  languages = this.i18n.languages;
+  primaryLanguageCode = this.languages[0]?.code ?? 'en';
+
+  detailsForm: { names: Record<string, string>; descriptions: Record<string, string> } = {
+    names: {},
+    descriptions: {},
+  };
+  detailsSaving = false;
+  detailsMessage = '';
+  detailsMessageType: 'success' | 'error' | '' = '';
+
   onRestaurantChange(value: string | number) {
     const id = Number(value);
     this.selectedRestaurantId = id;
     this.selectedRestaurantIdSubject.next(id);
     this.resetUploadState();
+    this.resetDetailsStatus();
   }
 
   onPhotoSelection(files: FileList | null) {
@@ -464,5 +605,122 @@ export class AdminDashboardPage {
     this.statusType = '';
     this.uploading = false;
     this.removingPhotoId = null;
+  }
+
+  private populateDetailsForm(restaurant: Restaurant) {
+    const names: Record<string, string> = {};
+    const descriptions: Record<string, string> = {};
+
+    this.languages.forEach(language => {
+      names[language.code] = this.getTranslationForLanguage(
+        restaurant.name_translations,
+        restaurant.name,
+        language.code
+      );
+      descriptions[language.code] = this.getTranslationForLanguage(
+        restaurant.description_translations,
+        restaurant.description,
+        language.code
+      );
+    });
+
+    this.detailsForm = { names, descriptions };
+    this.resetDetailsStatus();
+  }
+
+  private getTranslationForLanguage(
+    translations: Record<string, string> | undefined,
+    fallback: string | undefined,
+    languageCode: string
+  ): string {
+    const normalizedCode = languageCode.toLowerCase();
+    if (translations) {
+      const direct =
+        translations[languageCode] ?? translations[normalizedCode] ?? translations[languageCode.toUpperCase()];
+      if (direct?.trim()) {
+        return direct.trim();
+      }
+
+      const variant = Object.entries(translations).find(([key]) => key.toLowerCase().startsWith(`${normalizedCode}-`));
+      if (variant?.[1]?.trim()) {
+        return variant[1].trim();
+      }
+    }
+
+    if (languageCode === this.primaryLanguageCode && fallback?.trim()) {
+      return fallback.trim();
+    }
+
+    return '';
+  }
+
+  async saveDetails() {
+    if (this.selectedRestaurantId === null || this.detailsSaving) {
+      return;
+    }
+
+    const payload = this.buildUpdatePayload();
+
+    if (!payload.name.trim()) {
+      this.detailsMessage = this.i18n.translate(
+        'admin.details.requiredName',
+        'Enter at least one restaurant name.'
+      );
+      this.detailsMessageType = 'error';
+      return;
+    }
+
+    this.detailsSaving = true;
+    this.detailsMessage = '';
+    this.detailsMessageType = '';
+
+    try {
+      await firstValueFrom(this.restaurantService.update(this.selectedRestaurantId, payload));
+      this.detailsMessage = this.i18n.translate('admin.details.saved', 'Restaurant details updated!');
+      this.detailsMessageType = 'success';
+      this.selectedRestaurantIdSubject.next(this.selectedRestaurantId);
+    } catch (err) {
+      console.error(err);
+      this.detailsMessage = this.i18n.translate(
+        'admin.details.error',
+        'Unable to update the restaurant. Please try again.'
+      );
+      this.detailsMessageType = 'error';
+    } finally {
+      this.detailsSaving = false;
+    }
+  }
+
+  private buildUpdatePayload(): RestaurantUpdateInput {
+    const nameTranslations: Record<string, string> = {};
+    const descriptionTranslations: Record<string, string> = {};
+
+    this.languages.forEach(language => {
+      const nameValue = this.detailsForm.names[language.code]?.trim();
+      if (nameValue) {
+        nameTranslations[language.code] = nameValue;
+      }
+
+      const descriptionValue = this.detailsForm.descriptions[language.code]?.trim();
+      if (descriptionValue) {
+        descriptionTranslations[language.code] = descriptionValue;
+      }
+    });
+
+    const primaryName = nameTranslations[this.primaryLanguageCode] ?? '';
+    const primaryDescription = descriptionTranslations[this.primaryLanguageCode] ?? '';
+
+    return {
+      name: primaryName,
+      description: primaryDescription,
+      name_translations: nameTranslations,
+      description_translations: descriptionTranslations,
+    };
+  }
+
+  private resetDetailsStatus() {
+    this.detailsMessage = '';
+    this.detailsMessageType = '';
+    this.detailsSaving = false;
   }
 }

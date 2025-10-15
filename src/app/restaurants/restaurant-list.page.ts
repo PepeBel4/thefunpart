@@ -5,6 +5,7 @@ import { map } from 'rxjs';
 import { Restaurant } from '../core/models';
 import { RestaurantService } from './restaurant.service';
 import { TranslatePipe } from '../shared/translate.pipe';
+import { TranslationService } from '../core/translation.service';
 
 @Component({
   standalone: true,
@@ -131,16 +132,16 @@ import { TranslatePipe } from '../shared/translate.pipe';
       <a class="card" *ngFor="let r of restaurants" [routerLink]="['/restaurants', r.id]">
         <div class="card-media">
           <ng-container *ngIf="r.heroPhoto; else placeholder">
-            <img [src]="r.heroPhoto" [alt]="r.name" loading="lazy" />
+            <img [src]="r.heroPhoto" [alt]="getRestaurantName(r)" loading="lazy" />
           </ng-container>
           <ng-template #placeholder>
-            <span class="placeholder">{{ r.name.charAt(0) }}</span>
+            <span class="placeholder">{{ getRestaurantInitial(r) }}</span>
           </ng-template>
         </div>
         <div class="card-body">
-          <h3>{{ r.name }}</h3>
+          <h3>{{ getRestaurantName(r) }}</h3>
           <p>
-            {{ r.description || ('restaurants.defaultDescription' | translate: 'Popular choices • Comfort food') }}
+            {{ getRestaurantDescription(r) }}
           </p>
           <div class="meta">
             <span class="pill">{{ 'restaurants.express' | translate: 'Express' }}</span>
@@ -154,6 +155,7 @@ import { TranslatePipe } from '../shared/translate.pipe';
 })
 export class RestaurantListPage {
   private svc = inject(RestaurantService);
+  private i18n = inject(TranslationService);
   private heroPhotoCache = new Map<number, string>();
 
   private ensureHeroPhoto(restaurant: Restaurant): string | undefined {
@@ -184,4 +186,106 @@ export class RestaurantListPage {
       })),
     ),
   );
+
+  getRestaurantName(restaurant: Restaurant): string {
+    return this.resolveRestaurantField(restaurant.name, restaurant.name_translations) || restaurant.name;
+  }
+
+  getRestaurantDescription(restaurant: Restaurant): string {
+    const resolved = this.resolveRestaurantField(
+      restaurant.description,
+      restaurant.description_translations
+    );
+
+    return resolved || this.i18n.translate('restaurants.defaultDescription', 'Popular choices • Comfort food');
+  }
+
+  getRestaurantInitial(restaurant: Restaurant): string {
+    const name = this.getRestaurantName(restaurant) || restaurant.name || '';
+    return name.trim().charAt(0) || '?';
+  }
+
+  private resolveRestaurantField(
+    fallback: string | undefined,
+    translations: Record<string, string> | undefined
+  ): string {
+    if (translations && Object.keys(translations).length) {
+      const candidates = this.buildLocaleCandidates();
+
+      for (const locale of candidates) {
+        const localized = this.tryResolveTranslation(translations, locale);
+        if (localized) {
+          return localized;
+        }
+      }
+
+      for (const value of Object.values(translations)) {
+        if (value?.trim()) {
+          return value.trim();
+        }
+      }
+    }
+
+    return fallback?.trim() ?? '';
+  }
+
+  private buildLocaleCandidates(): string[] {
+    const candidates = new Set<string>();
+    const localeValue = this.i18n.currentLocale();
+    const currentLocale = localeValue ? localeValue.toLowerCase() : '';
+    const currentLanguage = this.i18n.currentLanguageCode().toLowerCase();
+
+    if (currentLocale) {
+      candidates.add(currentLocale);
+      const [languagePart] = currentLocale.split('-');
+      if (languagePart) {
+        candidates.add(languagePart);
+      }
+    }
+
+    if (currentLanguage) {
+      candidates.add(currentLanguage);
+    }
+
+    candidates.add('en');
+
+    return Array.from(candidates);
+  }
+
+  private tryResolveTranslation(translations: Record<string, string>, locale: string): string | null {
+    const variations = new Set<string>();
+    const trimmed = locale.trim();
+
+    if (!trimmed) {
+      return null;
+    }
+
+    variations.add(trimmed);
+    variations.add(trimmed.toLowerCase());
+    variations.add(trimmed.toUpperCase());
+
+    if (trimmed.includes('-')) {
+      const [language, region] = trimmed.split('-');
+      const lowerLanguage = language.toLowerCase();
+      const lowerRegion = region?.toLowerCase();
+      const upperRegion = region?.toUpperCase();
+
+      variations.add(language);
+      variations.add(lowerLanguage);
+
+      if (lowerRegion) {
+        variations.add(`${lowerLanguage}-${lowerRegion}`);
+        variations.add(`${lowerLanguage}-${upperRegion}`);
+      }
+    }
+
+    for (const variant of variations) {
+      const value = translations[variant];
+      if (value?.trim()) {
+        return value.trim();
+      }
+    }
+
+    return null;
+  }
 }

@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { ApiService } from '../core/api.service';
-import { Restaurant } from '../core/models';
+import { Restaurant, RestaurantUpdateInput } from '../core/models';
 import { Observable } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
@@ -18,5 +18,9 @@ export class RestaurantService {
 
   deletePhoto(restaurantId: number, photoId: number): Observable<Restaurant> {
     return this.api.delete<Restaurant>(`/restaurants/${restaurantId}/photos/${photoId}`);
+  }
+
+  update(restaurantId: number, payload: RestaurantUpdateInput): Observable<Restaurant> {
+    return this.api.put<Restaurant>(`/restaurants/${restaurantId}`, payload);
   }
 }

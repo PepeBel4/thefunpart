@@ -7,8 +7,17 @@ export interface Restaurant {
   id: number;
   name: string;
   description?: string;
+  name_translations?: Record<string, string>;
+  description_translations?: Record<string, string>;
   photos?: RestaurantPhoto[];
   photo_urls?: string[];
+}
+
+export interface RestaurantUpdateInput {
+  name: string;
+  description?: string;
+  name_translations?: Record<string, string>;
+  description_translations?: Record<string, string>;
 }
 
 export interface MenuItemCategory {
