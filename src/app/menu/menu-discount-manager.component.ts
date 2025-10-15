@@ -694,6 +694,7 @@ export class MenuDiscountManagerComponent implements OnDestroy {
         'Discount created.'
       );
       this.pruneAssignmentsForDiscount(created);
+      await this.syncAssignmentsForDiscount(created.id);
       void this.refreshDiscountsAndAssignments();
     } catch (error) {
       console.error(error);
@@ -744,6 +745,7 @@ export class MenuDiscountManagerComponent implements OnDestroy {
       const updated = await firstValueFrom(this.discountsApi.update(id, payload));
       this.upsertDiscount(updated);
       this.pruneAssignmentsForDiscount(updated);
+      await this.syncAssignmentsForDiscount(updated.id);
       this.discountStatus = this.i18n.translate(
         'menu.discounts.form.statusUpdated',
         'Discount updated.'
@@ -1139,6 +1141,34 @@ export class MenuDiscountManagerComponent implements OnDestroy {
 
     if (changed) {
       this.assignments = retained;
+    }
+  }
+
+  private async syncAssignmentsForDiscount(discountId: number) {
+    const restaurantId = this.restaurantIdValue;
+    if (restaurantId === null) {
+      return;
+    }
+
+    try {
+      const assignments = await firstValueFrom(
+        this.assignmentsApi.list({ menu_item_discount_id: discountId })
+      );
+
+      const relevant = assignments.filter(
+        assignment => assignment.menu_item.restaurant_id === restaurantId
+      );
+
+      const remaining = this.assignments.filter(
+        assignment => assignment.menu_item_discount_id !== discountId
+      );
+      this.assignments = remaining;
+
+      for (const assignment of relevant) {
+        this.addAssignmentToCollections(assignment);
+      }
+    } catch (error) {
+      console.error(error);
     }
   }
 
