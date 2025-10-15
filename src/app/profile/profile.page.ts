@@ -4,6 +4,7 @@ import { NgIf } from '@angular/common';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { ProfileService } from '../core/profile.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { finalize } from 'rxjs';
 import { AuthService } from '../core/auth.service';
 
 @Component({
@@ -271,10 +272,9 @@ export class ProfilePage {
 
     this.profile
       .updateProfile({ firstName, lastName, gender, birthDate })
-      .pipe(takeUntilDestroyed())
+      .pipe(takeUntilDestroyed(), finalize(() => this.saving.set(false)))
       .subscribe({
         next: (profile) => {
-          this.saving.set(false);
           this.status.set('success');
           this.form.patchValue(
             {
@@ -293,7 +293,6 @@ export class ProfilePage {
           });
         },
         error: () => {
-          this.saving.set(false);
           this.status.set('error');
         },
       });
