@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
 import { NgIf } from '@angular/common';
 import { TranslatePipe } from '../shared/translate.pipe';
@@ -224,6 +224,7 @@ export class ProfilePage {
   private fb = inject(FormBuilder);
   private profile = inject(ProfileService);
   private auth = inject(AuthService);
+  private destroyRef = inject(DestroyRef);
 
   form = this.fb.group({
     firstName: this.fb.control('', { nonNullable: true, validators: [Validators.required] }),
@@ -272,7 +273,10 @@ export class ProfilePage {
 
     this.profile
       .updateProfile({ firstName, lastName, gender, birthDate })
-      .pipe(takeUntilDestroyed(), finalize(() => this.saving.set(false)))
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.saving.set(false))
+      )
       .subscribe({
         next: (profile) => {
           this.status.set('success');
