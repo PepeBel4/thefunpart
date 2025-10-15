@@ -75,7 +75,7 @@ import { Order } from '../core/models';
         <span>{{ 'checkout.total' | translate: 'Total' }}</span>
         <span>{{ (cart.subtotalCents()/100) | currency:'EUR' }}</span>
       </div>
-      <button (click)="placeOrder()" [disabled]="cart.lines().length === 0">
+      <button (click)="placeOrder()" [disabled]="cart.lines().length === 0 || isPlacingOrder">
         {{ 'checkout.placeOrder' | translate: 'Place order' }}
       </button>
     </div>
@@ -85,10 +85,11 @@ export class CheckoutPage {
   cart = inject(CartService);
   private orders = inject(OrderService);
   private router = inject(Router);
+  isPlacingOrder = false;
 
   async placeOrder(){
     const lines = this.cart.lines();
-    if (!lines.length) return;
+    if (!lines.length || this.isPlacingOrder) return;
 
     const restaurantId = lines[0].item.restaurant_id;
     const items = lines.map(l => ({
@@ -96,8 +97,32 @@ export class CheckoutPage {
       quantity: l.quantity,
       category_id: l.category?.id ?? null,
     }));
-    const order: Order = await firstValueFrom(this.orders.create({ restaurantId, items }));
-    this.cart.clear();
-    this.router.navigate(['/orders', order!.id]);
+    this.isPlacingOrder = true;
+
+    try {
+      const order: Order = await firstValueFrom(this.orders.create({ restaurantId, items }));
+
+      const paymentResponse = await firstValueFrom(
+        this.orders.createPayment(order.id, {
+          amountCents: order.total_cents,
+          description: `Order #${order.id}`,
+          redirectUrl: `${window.location.origin}/orders/${order.id}`,
+        })
+      );
+
+      this.cart.clear();
+
+      const checkoutUrl = paymentResponse.payment.checkout_url;
+      if (checkoutUrl) {
+        window.location.href = checkoutUrl;
+        return;
+      }
+
+      await this.router.navigate(['/orders', order.id]);
+    } catch (error) {
+      console.error('Failed to place order', error);
+    } finally {
+      this.isPlacingOrder = false;
+    }
   }
 }
