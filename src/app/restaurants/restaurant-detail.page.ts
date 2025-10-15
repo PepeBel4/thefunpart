@@ -9,6 +9,7 @@ import { CartCategorySelection, CartRestaurant, CartService } from '../cart/cart
 import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
 import { MenuItemPhotoSliderComponent } from './menu-item-photo-slider.component';
+import { AllergenIconComponent } from '../shared/allergen-icon.component';
 
 type MenuCategoryGroup = {
   name: string;
@@ -28,7 +29,7 @@ type PendingCartAddition = {
 @Component({
   standalone: true,
   selector: 'app-restaurant-detail',
-  imports: [AsyncPipe, CurrencyPipe, NgFor, NgIf, TranslatePipe, NgStyle, MenuItemPhotoSliderComponent],
+  imports: [AsyncPipe, CurrencyPipe, NgFor, NgIf, TranslatePipe, NgStyle, MenuItemPhotoSliderComponent, AllergenIconComponent],
   styles: [`
     :host {
       display: block;
@@ -217,9 +218,18 @@ type PendingCartAddition = {
       background: rgba(229, 62, 62, 0.12);
       color: #8f1e1e;
       border-radius: 999px;
-      padding: 0.25rem 0.6rem;
+      padding: 0.3rem 0.65rem;
       font-size: 0.75rem;
       font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      line-height: 1;
+    }
+
+    .allergen-badges .badge app-allergen-icon {
+      --allergen-icon-bg: rgba(229, 62, 62, 0.2);
+      --allergen-icon-border: rgba(143, 30, 30, 0.24);
     }
 
     .price-group .price.discounted {
@@ -412,9 +422,14 @@ type PendingCartAddition = {
                 <span class="price">{{ (m.price_cents / 100) | currency:'EUR' }}</span>
               </ng-template>
               <div class="allergen-badges" *ngIf="m.allergens?.length">
-                <span class="badge" *ngFor="let allergen of m.allergens">
-                  {{ resolveAllergenLabel(allergen) }}
-                </span>
+                <ng-container *ngFor="let allergen of m.allergens">
+                  <ng-container *ngIf="resolveAllergenLabel(allergen) as allergenLabel">
+                    <span class="badge">
+                      <app-allergen-icon [allergen]="allergen"></app-allergen-icon>
+                      <span>{{ allergenLabel }}</span>
+                    </span>
+                  </ng-container>
+                </ng-container>
               </div>
               <button (click)="addToCart(m, category.cartCategory, r)">
                 {{ 'restaurantDetail.addToCart' | translate: 'Add to cart' }}

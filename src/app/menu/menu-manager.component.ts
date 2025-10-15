@@ -8,6 +8,7 @@ import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
 import { CategoriesService } from './categories.service';
 import { AllergensService } from './allergens.service';
+import { AllergenIconComponent } from '../shared/allergen-icon.component';
 
 interface CategoryFormModel {
   id?: number;
@@ -30,7 +31,7 @@ interface QueuedPhoto {
 @Component({
   standalone: true,
   selector: 'app-menu-manager',
-  imports: [FormsModule, NgFor, NgIf, CurrencyPipe, TranslatePipe],
+  imports: [FormsModule, NgFor, NgIf, CurrencyPipe, TranslatePipe, AllergenIconComponent],
   styles: [`
     :host {
       display: block;
@@ -241,13 +242,17 @@ interface QueuedPhoto {
       background: var(--surface-elevated);
       border: 1px solid var(--border-soft);
       border-radius: 999px;
-      padding: 0.35rem 0.85rem;
+      padding: 0.4rem 0.9rem;
       font-size: 0.85rem;
       font-weight: 600;
       box-shadow: none;
       color: inherit;
       cursor: pointer;
       transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      line-height: 1;
     }
 
     .allergen-selector button.pill:hover {
@@ -258,6 +263,17 @@ interface QueuedPhoto {
       background: rgba(229, 62, 62, 0.12);
       border-color: rgba(229, 62, 62, 0.4);
       color: #8f1e1e;
+    }
+
+    .allergen-selector button.pill app-allergen-icon {
+      --allergen-icon-bg: rgba(229, 62, 62, 0.14);
+      --allergen-icon-border: rgba(143, 30, 30, 0.14);
+    }
+
+    .allergen-selector button.pill:not(.selected) app-allergen-icon {
+      --allergen-icon-bg: rgba(10, 10, 10, 0.04);
+      --allergen-icon-color: var(--text-secondary);
+      --allergen-icon-border: rgba(10, 10, 10, 0.08);
     }
 
     .allergen-help {
@@ -275,9 +291,18 @@ interface QueuedPhoto {
       background: rgba(229, 62, 62, 0.12);
       color: #8f1e1e;
       border-radius: 999px;
-      padding: 0.25rem 0.55rem;
+      padding: 0.3rem 0.65rem;
       font-size: 0.75rem;
       font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      line-height: 1;
+    }
+
+    .allergen-tags .tag app-allergen-icon {
+      --allergen-icon-bg: rgba(229, 62, 62, 0.18);
+      --allergen-icon-border: rgba(143, 30, 30, 0.2);
     }
 
     .photo-section {
@@ -423,7 +448,8 @@ interface QueuedPhoto {
                 [class.selected]="isAllergenSelected('new', allergen.id)"
                 (click)="toggleAllergen('new', allergen)"
               >
-                {{ resolveAllergenName(allergen) }}
+                <app-allergen-icon [allergen]="allergen"></app-allergen-icon>
+                <span>{{ resolveAllergenName(allergen) }}</span>
               </button>
             </div>
             <span class="allergen-help">
@@ -550,7 +576,8 @@ interface QueuedPhoto {
                       [class.selected]="isAllergenSelected('edit', allergen.id)"
                       (click)="toggleAllergen('edit', allergen)"
                     >
-                      {{ resolveAllergenName(allergen) }}
+                      <app-allergen-icon [allergen]="allergen"></app-allergen-icon>
+                      <span>{{ resolveAllergenName(allergen) }}</span>
                     </button>
                   </div>
                   <span class="allergen-help">
@@ -651,7 +678,10 @@ interface QueuedPhoto {
               <div *ngIf="item.allergens?.length" class="allergen-tags">
                 <ng-container *ngFor="let allergen of item.allergens">
                   <ng-container *ngIf="resolveAllergenName(allergen) as allergenLabel">
-                    <span class="tag">{{ allergenLabel }}</span>
+                    <span class="tag">
+                      <app-allergen-icon [allergen]="allergen"></app-allergen-icon>
+                      <span>{{ allergenLabel }}</span>
+                    </span>
                   </ng-container>
                 </ng-container>
               </div>
