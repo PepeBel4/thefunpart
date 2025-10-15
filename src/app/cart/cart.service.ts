@@ -18,7 +18,9 @@ export class CartService {
   private _lines = signal<CartLine[]>([]);
   lines = computed(() => this._lines());
   count = computed(() => this._lines().reduce((a, l) => a + l.quantity, 0));
-  subtotalCents = computed(() => this._lines().reduce((a, l) => a + l.item.price_cents * l.quantity, 0));
+  subtotalCents = computed(() =>
+    this._lines().reduce((a, l) => a + this.getPriceCents(l.item) * l.quantity, 0)
+  );
 
   private _restaurant = signal<CartRestaurant | null>(null);
   restaurant = computed(() => this._restaurant());
@@ -135,6 +137,15 @@ export class CartService {
     this._targetTimeType.set('asap');
     this._targetTimeInput.set(null);
     this._restaurant.set(null);
+  }
+
+  private getPriceCents(item: MenuItem): number {
+    const discounted = item.discounted_price_cents ?? undefined;
+    if (typeof discounted === 'number' && discounted >= 0) {
+      return discounted;
+    }
+
+    return item.price_cents;
   }
 
   private normalizeCategory(category?: CartCategorySelection | null): CartCategorySelection | null {

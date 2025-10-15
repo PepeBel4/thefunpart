@@ -42,6 +42,7 @@ export interface MenuItem {
   restaurant_id: number;
   name: string;
   price_cents: number; // integer cents from Rails
+  discounted_price_cents?: number | null;
   description?: string;
   categories?: MenuItemCategory[];
   photos?: RestaurantPhoto[];
