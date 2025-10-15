@@ -30,6 +30,7 @@ export interface MenuItemInput {
   name: string;
   description?: string;
   price_cents: number;
+  menu_item_categories?: Pick<MenuItemCategory, 'id' | 'name'>[];
 }
 
 export interface OrderItemInput {
