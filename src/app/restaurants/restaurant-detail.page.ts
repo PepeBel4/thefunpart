@@ -2,10 +2,12 @@ import { Component, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { MenuService } from '../menu/menu.service';
 import { RestaurantService } from './restaurant.service';
-import { AsyncPipe, CurrencyPipe, NgIf, NgFor } from '@angular/common';
-import { Restaurant } from '../core/models';
-import { Observable, firstValueFrom } from 'rxjs';
+import { AsyncPipe, CurrencyPipe, NgIf, NgFor, DOCUMENT } from '@angular/common';
+import { MenuItem, Restaurant } from '../core/models';
+import { Observable, firstValueFrom, map } from 'rxjs';
 import { CartService } from '../cart/cart.service';
+
+type MenuCategoryGroup = { name: string; anchor: string; items: MenuItem[]; value: string | null };
 
 @Component({
   standalone: true,
@@ -86,7 +88,42 @@ import { CartService } from '../cart/cart.service';
       display: block;
     }
 
-    .menu {
+    .category-nav {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 2rem;
+    }
+
+    .category-nav button {
+      border: 1px solid var(--border-soft);
+      background: var(--surface);
+      border-radius: 999px;
+      padding: 0.45rem 1rem;
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--text-secondary);
+      transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .category-nav button:hover {
+      background: rgba(6, 193, 103, 0.12);
+      color: var(--brand-green);
+      box-shadow: 0 6px 16px rgba(6, 193, 103, 0.16);
+    }
+
+    .menu-section {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .menu-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .menu-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 1.5rem;
@@ -147,7 +184,7 @@ import { CartService } from '../cart/cart.service';
         padding: 2rem 1.5rem;
       }
 
-      .menu {
+      .menu-grid {
         grid-template-columns: 1fr;
       }
     }
@@ -170,15 +207,25 @@ import { CartService } from '../cart/cart.service';
           <img [src]="url" [alt]="r.name + ' photo'" loading="lazy" />
         </figure>
       </section>
-      <h3>Menu</h3>
-      <div class="menu" *ngIf="(menu$ | async) as menu">
-        <div class="card" *ngFor="let m of menu">
-          <h4>{{ m.name }}</h4>
-          <p>{{ m.description || 'Customer favourite' }}</p>
-          <span class="price">{{ (m.price_cents / 100) | currency:'EUR' }}</span>
-          <button (click)="add(m)">Add to cart</button>
-        </div>
-      </div>
+      <ng-container *ngIf="(menuCategories$ | async) as menuCategories">
+        <h3 *ngIf="menuCategories.length">Menu</h3>
+        <nav class="category-nav" *ngIf="menuCategories.length">
+          <button type="button" *ngFor="let category of menuCategories" (click)="scrollTo(category.anchor)">
+            {{ category.name }}
+          </button>
+        </nav>
+        <section class="menu-section" *ngFor="let category of menuCategories" [attr.id]="category.anchor">
+          <h4>{{ category.name }}</h4>
+          <div class="menu-grid">
+            <div class="card" *ngFor="let m of category.items">
+              <h4>{{ m.name }}</h4>
+              <p>{{ m.description || 'Customer favourite' }}</p>
+              <span class="price">{{ (m.price_cents / 100) | currency:'EUR' }}</span>
+              <button (click)="addToCart(m, category.value)">Add to cart</button>
+            </div>
+          </div>
+        </section>
+      </ng-container>
 
     </ng-container>
   `
@@ -188,11 +235,13 @@ export class RestaurantDetailPage {
   private menuSvc = inject(MenuService);
   private rSvc = inject(RestaurantService);
   private cart = inject(CartService);
+  private document = inject(DOCUMENT);
 
   id = Number(this.route.snapshot.paramMap.get('id'));
   restaurant$: Observable<Restaurant> = this.rSvc.get(this.id);
-  menu$ = this.menuSvc.listByRestaurant(this.id);
-  add = this.cart.add.bind(this.cart);
+  menuCategories$: Observable<MenuCategoryGroup[]> = this.menuSvc
+    .listByRestaurant(this.id)
+    .pipe(map(items => this.organizeMenu(items)));
 
   selectedPhotos: File[] = [];
   uploading = false;
@@ -229,6 +278,64 @@ export class RestaurantDetailPage {
   }
 
   refreshMenu() {
-    this.menu$ = this.menuSvc.listByRestaurant(this.id);
+    this.menuCategories$ = this.menuSvc.listByRestaurant(this.id).pipe(map(items => this.organizeMenu(items)));
+  }
+
+  addToCart(item: MenuItem, categoryName: string | null) {
+    this.cart.add(item, categoryName);
+  }
+
+  scrollTo(anchor: string) {
+    this.document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  private organizeMenu(items: MenuItem[]): MenuCategoryGroup[] {
+    const grouped = new Map<string, MenuCategoryGroup>();
+    const fallback: MenuItem[] = [];
+
+    items.forEach(item => {
+      if (item.categories?.length) {
+        item.categories.forEach(category => {
+          const key = category.id != null ? `id-${category.id}` : `name-${category.name.toLowerCase()}`;
+          if (!grouped.has(key)) {
+            grouped.set(key, {
+              name: category.name,
+              anchor: this.buildAnchor(category),
+              items: [],
+              value: category.name,
+            });
+          }
+          grouped.get(key)!.items.push(item);
+        });
+      } else {
+        fallback.push(item);
+      }
+    });
+
+    const result = Array.from(grouped.values()).sort((a, b) => a.name.localeCompare(b.name));
+
+    if (fallback.length) {
+      result.push({
+        name: 'Other items',
+        anchor: 'category-uncategorized',
+        items: fallback,
+        value: null,
+      });
+    }
+
+    return result;
+  }
+
+  private buildAnchor(category: NonNullable<MenuItem['categories']>[number]) {
+    if (category.id != null) {
+      return `category-${category.id}`;
+    }
+
+    const slug = category.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    return `category-${slug || 'general'}`;
   }
 }
