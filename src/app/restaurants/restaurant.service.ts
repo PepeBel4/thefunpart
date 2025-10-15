@@ -10,16 +10,11 @@ export class RestaurantService {
   private normalizeRestaurant(restaurant: RestaurantApiResponse): Restaurant {
     const { chain, chains, ...rest } = restaurant;
 
-    const combinedChains = [
-      ...(Array.isArray(chains) ? chains.filter((item): item is Chain => !!item) : []),
-      ...(chain ? [chain] : []),
-    ];
-
-    const uniqueChains = Array.from(new Map(combinedChains.map(item => [item.id, item])).values());
+    const normalizedChain = chain ?? (Array.isArray(chains) ? chains.find(item => !!item) ?? null : null);
 
     return {
       ...rest,
-      chains: uniqueChains,
+      chain: normalizedChain ?? null,
     };
   }
 
@@ -56,7 +51,7 @@ export class RestaurantService {
   }
 }
 
-type RestaurantApiResponse = Omit<Restaurant, 'chains'> & {
+type RestaurantApiResponse = Omit<Restaurant, 'chain'> & {
   chains?: Chain[] | null;
   chain?: Chain | null;
 };

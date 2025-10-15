@@ -374,27 +374,27 @@ import { TranslationService } from '../core/translation.service';
                 <div class="chain-manager">
                   <div>
                     <h4 style="margin: 0; font-size: 1.1rem;">
-                      {{ 'admin.chains.heading' | translate: 'Chains' }}
+                      {{ 'admin.chains.heading' | translate: 'Chain' }}
                     </h4>
                     <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">
                       {{
                         'admin.chains.description'
-                          | translate: 'Add or remove the chains this restaurant belongs to.'
+                          | translate: 'Add or remove the chain this restaurant belongs to.'
                       }}
                     </p>
                   </div>
 
-                  <ng-container *ngIf="restaurantChains.length; else noChains">
+                  <ng-container *ngIf="restaurantChain; else noChains">
                     <div class="chain-list">
-                      <span class="admin-chain-pill" *ngFor="let chain of restaurantChains">
-                        {{ chain.name }}
+                      <span class="admin-chain-pill">
+                        {{ restaurantChain.name }}
                         <button
                           type="button"
-                          (click)="removeChain(chain)"
-                          [disabled]="removingChainId === chain.id"
+                          (click)="removeChain(restaurantChain)"
+                          [disabled]="removingChainId === restaurantChain.id"
                         >
                           {{
-                            removingChainId === chain.id
+                            removingChainId === restaurantChain.id
                               ? ('admin.chains.removing' | translate: 'Removing…')
                               : ('admin.chains.remove' | translate: 'Remove')
                           }}
@@ -403,7 +403,7 @@ import { TranslationService } from '../core/translation.service';
                     </div>
                   </ng-container>
                   <ng-template #noChains>
-                    <p>{{ 'admin.chains.empty' | translate: 'Not part of any chains yet.' }}</p>
+                    <p>{{ 'admin.chains.empty' | translate: 'Not part of a chain yet.' }}</p>
                   </ng-template>
 
                   <div class="chain-inputs">
@@ -642,7 +642,7 @@ export class AdminDashboardPage {
   removingChainId: number | null = null;
 
   chains: Chain[] = [];
-  restaurantChains: Chain[] = [];
+  restaurantChain: Chain | null = null;
   chainInput = '';
   addingChain = false;
   chainMessage = '';
@@ -756,7 +756,7 @@ export class AdminDashboardPage {
     );
 
     this.detailsForm = { name, descriptions };
-    this.setRestaurantChains(restaurant);
+    this.setRestaurantChain(restaurant);
     this.chainInput = '';
     this.resetDetailsStatus();
     this.resetChainStatus();
@@ -855,9 +855,8 @@ export class AdminDashboardPage {
     return [...chains].sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  private setRestaurantChains(restaurant: Restaurant) {
-    const chains = (restaurant.chains ?? []).filter((chain): chain is Chain => !!chain);
-    this.restaurantChains = this.sortChains(chains);
+  private setRestaurantChain(restaurant: Restaurant) {
+    this.restaurantChain = restaurant.chain ?? null;
   }
 
   private resetChainStatus() {
@@ -883,7 +882,7 @@ export class AdminDashboardPage {
   }
 
   isChainAttached(chainId: number): boolean {
-    return this.restaurantChains.some(chain => chain.id === chainId);
+    return this.restaurantChain?.id === chainId;
   }
 
   get chainInputMatchesExisting(): boolean {
@@ -905,12 +904,12 @@ export class AdminDashboardPage {
 
     try {
       await firstValueFrom(this.chainService.removeChainFromRestaurant(this.selectedRestaurantId, chain.id));
-      this.restaurantChains = this.restaurantChains.filter(item => item.id !== chain.id);
+      this.restaurantChain = null;
       this.setChainMessage('success', 'admin.chains.removed', 'Chain removed from restaurant.');
       this.selectedRestaurantIdSubject.next(this.selectedRestaurantId);
     } catch (err) {
       console.error(err);
-      this.setChainMessage('error', 'admin.chains.error', 'Unable to update chains. Please try again.');
+      this.setChainMessage('error', 'admin.chains.error', 'Unable to update chain. Please try again.');
     } finally {
       this.removingChainId = null;
     }
@@ -947,18 +946,25 @@ export class AdminDashboardPage {
         this.chains = this.sortChains([...this.chains, chain]);
       }
 
+      if (this.restaurantChain && this.restaurantChain.id !== chain.id) {
+        await firstValueFrom(
+          this.chainService.removeChainFromRestaurant(this.selectedRestaurantId, this.restaurantChain.id)
+        );
+        this.restaurantChain = null;
+      }
+
       await firstValueFrom(this.chainService.addChainToRestaurant(this.selectedRestaurantId, chain.id));
-      this.restaurantChains = this.sortChains([...this.restaurantChains, chain]);
+      this.restaurantChain = chain;
       this.setChainMessage(
         'success',
         chain === existingChain ? 'admin.chains.added' : 'admin.chains.created',
-        chain === existingChain ? 'Chain added to restaurant.' : 'New chain created and added!'
+        chain === existingChain ? 'Chain assigned to restaurant.' : 'New chain created and assigned!'
       );
       this.chainInput = '';
       this.selectedRestaurantIdSubject.next(this.selectedRestaurantId);
     } catch (err) {
       console.error(err);
-      this.setChainMessage('error', 'admin.chains.error', 'Unable to update chains. Please try again.');
+      this.setChainMessage('error', 'admin.chains.error', 'Unable to update chain. Please try again.');
     } finally {
       this.addingChain = false;
     }

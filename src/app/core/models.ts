@@ -20,7 +20,7 @@ export interface Restaurant {
   photos?: RestaurantPhoto[];
   photo_urls?: string[];
   chain_id?: number | null;
-  chains?: Chain[];
+  chain?: Chain | null;
 }
 
 export interface RestaurantUpdateInput {
