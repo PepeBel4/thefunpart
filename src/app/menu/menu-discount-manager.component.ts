@@ -1,8 +1,8 @@
 import { DecimalPipe, NgFor, NgIf } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, Input, inject } from '@angular/core';
+import { Component, Input, OnDestroy, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { firstValueFrom } from 'rxjs';
+import { Subscription, firstValueFrom, forkJoin } from 'rxjs';
 import {
   MenuItem,
   MenuItemDiscount,
@@ -600,7 +600,7 @@ interface AssignmentFormModel {
     </section>
   `,
 })
-export class MenuDiscountManagerComponent {
+export class MenuDiscountManagerComponent implements OnDestroy {
   private restaurantIdValue: number | null = null;
 
   private menu = inject(MenuService);
@@ -613,6 +613,7 @@ export class MenuDiscountManagerComponent {
   discounts: MenuItemDiscount[] = [];
   assignments: MenuItemDiscountAssignment[] = [];
   private activeLoadToken = 0;
+  private loadSubscription: Subscription | null = null;
 
   newDiscount: DiscountFormModel = this.createEmptyDiscountForm();
   editingDiscountId: number | null = null;
@@ -640,15 +641,20 @@ export class MenuDiscountManagerComponent {
 
     if (this.restaurantIdValue === null) {
       this.activeLoadToken++;
+      this.teardownOngoingLoad();
       this.resetState();
       return;
     }
 
-    void this.initialize(this.restaurantIdValue);
+    this.initialize(this.restaurantIdValue);
   }
 
   get restaurantId(): number | null {
     return this.restaurantIdValue;
+  }
+
+  ngOnDestroy() {
+    this.teardownOngoingLoad();
   }
 
   get restaurantDiscounts(): MenuItemDiscount[] {
@@ -927,7 +933,7 @@ export class MenuDiscountManagerComponent {
     }
   }
 
-  private async initialize(restaurantId: number) {
+  private initialize(restaurantId: number) {
     const loadToken = ++this.activeLoadToken;
     this.loading = true;
     this.loadError = '';
@@ -935,38 +941,47 @@ export class MenuDiscountManagerComponent {
     this.discountError = '';
     this.assignmentStatus = '';
     this.assignmentError = '';
+    this.menuItems = [];
+    this.discounts = [];
+    this.assignments = [];
 
-    try {
-      const [items, discounts, assignments] = await Promise.all([
-        firstValueFrom(this.menu.listByRestaurant(restaurantId)),
-        firstValueFrom(this.discountsApi.list()),
-        firstValueFrom(this.assignmentsApi.list()),
-      ]);
+    this.teardownOngoingLoad();
 
-      if (this.activeLoadToken !== loadToken) {
-        return;
-      }
+    this.loadSubscription = forkJoin({
+      items: this.menu.listByRestaurant(restaurantId),
+      discounts: this.discountsApi.list(),
+      assignments: this.assignmentsApi.list(),
+    }).subscribe({
+      next: ({ items, discounts, assignments }) => {
+        if (this.activeLoadToken !== loadToken) {
+          return;
+        }
 
-      this.menuItems = items;
-      this.discounts = discounts;
-      this.assignments = assignments.filter(
-        assignment => assignment.menu_item.restaurant_id === restaurantId
-      );
-    } catch (error) {
-      if (this.activeLoadToken !== loadToken) {
-        return;
-      }
-
-      console.error(error);
-      this.loadError = this.i18n.translate(
-        'menu.discounts.error.load',
-        'Unable to load discount data. Please refresh and try again.'
-      );
-    } finally {
-      if (this.activeLoadToken === loadToken) {
+        this.menuItems = items;
+        this.discounts = discounts;
+        this.assignments = assignments.filter(
+          assignment => assignment.menu_item.restaurant_id === restaurantId
+        );
         this.loading = false;
-      }
-    }
+      },
+      error: error => {
+        if (this.activeLoadToken !== loadToken) {
+          return;
+        }
+
+        console.error(error);
+        this.loadError = this.i18n.translate(
+          'menu.discounts.error.load',
+          'Unable to load discount data. Please refresh and try again.'
+        );
+        this.loading = false;
+      },
+    });
+  }
+
+  private teardownOngoingLoad() {
+    this.loadSubscription?.unsubscribe();
+    this.loadSubscription = null;
   }
 
   private async refreshDiscountsAndAssignments() {
