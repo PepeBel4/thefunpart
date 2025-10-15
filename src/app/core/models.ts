@@ -24,10 +24,11 @@ export interface Restaurant {
 }
 
 export interface RestaurantUpdateInput {
-  name: string;
+  name?: string;
   description?: string;
   name_translations?: Record<string, string>;
   description_translations?: Record<string, string>;
+  chain_id?: number | null;
 }
 
 export interface MenuItemCategory {

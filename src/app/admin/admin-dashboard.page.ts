@@ -582,6 +582,7 @@ export class AdminDashboardPage {
   removingPhotoId: number | null = null;
 
   chains: Chain[] = [];
+  currentRestaurant: Restaurant | null = null;
   restaurantChain: Chain | null = null;
   chainSelection = '';
   chainSaving = false;
@@ -680,6 +681,7 @@ export class AdminDashboardPage {
   }
 
   private populateDetailsForm(restaurant: Restaurant) {
+    this.currentRestaurant = restaurant;
     const descriptions: Record<string, string> = {};
 
     this.languages.forEach(language => {
@@ -751,7 +753,10 @@ export class AdminDashboardPage {
     this.detailsMessageType = '';
 
     try {
-      await firstValueFrom(this.restaurantService.update(this.selectedRestaurantId, payload));
+      const updatedRestaurant = await firstValueFrom(
+        this.restaurantService.update(this.selectedRestaurantId, payload)
+      );
+      this.currentRestaurant = updatedRestaurant;
       this.detailsMessage = this.i18n.translate('admin.details.saved', 'Restaurant details updated!');
       this.detailsMessageType = 'success';
       this.selectedRestaurantIdSubject.next(this.selectedRestaurantId);
@@ -905,22 +910,27 @@ export class AdminDashboardPage {
     }
 
     try {
-      if (previousChain && previousChain.id !== chain?.id) {
-        await firstValueFrom(
-          this.chainService.removeChainFromRestaurant(this.selectedRestaurantId, previousChain.id)
-        );
+      const payload: RestaurantUpdateInput = {
+        chain_id: chain?.id ?? null,
+      };
+
+      if (this.currentRestaurant?.name) {
+        payload.name = this.currentRestaurant.name;
       }
 
-      if (chain) {
-        await firstValueFrom(this.chainService.addChainToRestaurant(this.selectedRestaurantId, chain.id));
-      }
+      const updatedRestaurant = await firstValueFrom(
+        this.restaurantService.update(this.selectedRestaurantId, payload)
+      );
 
-      this.restaurantChain = chain;
-      this.chainSelection = chain ? String(chain.id) : '';
+      const resolvedChain = updatedRestaurant.chain ?? chain ?? null;
+
+      this.currentRestaurant = updatedRestaurant;
+      this.restaurantChain = resolvedChain;
+      this.chainSelection = resolvedChain ? String(resolvedChain.id) : '';
       this.setChainMessage(
         'success',
-        chain ? 'admin.chains.added' : 'admin.chains.removed',
-        chain ? 'Chain assigned to restaurant.' : 'Chain removed from restaurant.'
+        resolvedChain ? 'admin.chains.added' : 'admin.chains.removed',
+        resolvedChain ? 'Chain assigned to restaurant.' : 'Chain removed from restaurant.'
       );
       this.selectedRestaurantIdSubject.next(this.selectedRestaurantId);
     } catch (err) {
