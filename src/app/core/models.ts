@@ -6,6 +6,11 @@ export interface RestaurantPhoto {
   url: string;
 }
 
+export interface Chain {
+  id: number;
+  name: string;
+}
+
 export interface Restaurant {
   id: number;
   name: string;
@@ -14,6 +19,7 @@ export interface Restaurant {
   description_translations?: Record<string, string>;
   photos?: RestaurantPhoto[];
   photo_urls?: string[];
+  chains?: Chain[];
 }
 
 export interface RestaurantUpdateInput {
