@@ -85,10 +85,15 @@ export class OrderEventsListenerService implements OnDestroy {
     }
   }
 
-  private unwrapMqttModule(module: unknown): typeof import('mqtt') | undefined {
-    if (!module) {
+  private unwrapMqttModule(
+    module: unknown,
+    seen: Set<unknown> = new Set()
+  ): typeof import('mqtt') | undefined {
+    if (!module || seen.has(module)) {
       return undefined;
     }
+
+    seen.add(module);
 
     const wrapConnect = (fn: unknown): typeof import('mqtt') | undefined => {
       if (typeof fn === 'function') {
@@ -114,13 +119,21 @@ export class OrderEventsListenerService implements OnDestroy {
 
     const defaultExport = candidate.default;
 
+    if (
+      defaultExport &&
+      typeof defaultExport === 'object' &&
+      typeof (defaultExport as Partial<typeof import('mqtt')>).connect === 'function'
+    ) {
+      return defaultExport as typeof import('mqtt');
+    }
+
     const wrappedDefault = wrapConnect(defaultExport);
     if (wrappedDefault) {
       return wrappedDefault;
     }
 
-    if (defaultExport && typeof defaultExport === 'object' && defaultExport !== module) {
-      return this.unwrapMqttModule(defaultExport);
+    if (defaultExport && typeof defaultExport === 'object') {
+      return this.unwrapMqttModule(defaultExport, seen);
     }
 
     return undefined;
