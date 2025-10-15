@@ -33,6 +33,12 @@ export interface RestaurantUpdateInput {
   cuisines?: string[];
 }
 
+export interface Allergen {
+  id: number;
+  name?: string;
+  name_translations?: Record<string, string>;
+}
+
 export interface MenuItemCategory {
   id?: number;
   name?: string;
@@ -47,6 +53,7 @@ export interface MenuItem {
   discounted_price_cents?: number | null;
   description?: string;
   categories?: MenuItemCategory[];
+  allergens?: Allergen[];
   photos?: RestaurantPhoto[];
 }
 
@@ -55,6 +62,7 @@ export interface MenuItemInput {
   description?: string;
   price_cents: number;
   menu_item_categories?: Pick<MenuItemCategory, 'id' | 'name'>[];
+  allergen_ids?: number[];
 }
 
 export interface OrderItemInput {
