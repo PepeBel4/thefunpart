@@ -686,32 +686,27 @@ export class MenuManagerComponent implements OnChanges, OnInit {
     this.error = '';
     try {
       const categories = this.prepareCategories(this.editItem.categories);
-      await firstValueFrom(this.menu.update(id, {
+      const updated = await firstValueFrom(this.menu.update(id, {
         name: this.editItem.name,
         description: this.editItem.description || undefined,
         price_cents,
         ...(categories ? { menu_item_categories: categories } : {}),
       }));
-      let uploadedItem: MenuItem | null = null;
-      if (this.editPhotos.length) {
-        try {
-          uploadedItem = await this.uploadMenuItemPhotos(id, this.editPhotos);
-        } catch (uploadError) {
-          console.error(uploadError);
-          this.error = this.i18n.translate(
-            'menu.photos.error.upload',
-            'Could not upload item photos. Please try again.'
-          );
-        }
+      if (updated) {
+        this.mergeMenuItemUpdate(updated);
       }
+
+      const pendingPhotos = this.editPhotos.length ? [...this.editPhotos] : [];
       this.editPhotos = [];
-      if (uploadedItem) {
-        this.mergeMenuItemUpdate(uploadedItem);
-      }
       this.cancelEdit();
-      void this.loadMenu(true);
       void this.fetchCategories();
       this.menuChanged.emit();
+
+      if (pendingPhotos.length) {
+        void this.finishPhotoUpload(id, pendingPhotos);
+      } else {
+        void this.loadMenu(true);
+      }
     } catch (err) {
       console.error(err);
       this.error = this.i18n.translate('menu.form.error.update', 'Unable to save changes. Please try again.');
@@ -799,6 +794,24 @@ export class MenuManagerComponent implements OnChanges, OnInit {
       ...updated,
       photos: updated.photos ?? current.photos,
     };
+  }
+
+  private async finishPhotoUpload(menuItemId: number, files: File[]) {
+    try {
+      const uploadedItem = await this.uploadMenuItemPhotos(menuItemId, files);
+      if (uploadedItem) {
+        this.mergeMenuItemUpdate(uploadedItem);
+      }
+    } catch (uploadError) {
+      console.error(uploadError);
+      this.error = this.i18n.translate(
+        'menu.photos.error.upload',
+        'Could not upload item photos. Please try again.'
+      );
+    } finally {
+      void this.loadMenu(true);
+      this.menuChanged.emit();
+    }
   }
 
   private formatPrice(priceCents: number): string {
