@@ -80,4 +80,25 @@ export interface OrderItem {
   category?: string | null;
 }
 
-export interface SessionUser { id: number; email: string; }
+export interface SessionUser {
+  id: number;
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  gender?: string | null;
+  birthDate?: string | null;
+}
+
+export interface UserProfile {
+  firstName: string | null;
+  lastName: string | null;
+  gender: string | null;
+  birthDate: string | null;
+}
+
+export interface UserProfileInput {
+  firstName: string;
+  lastName: string;
+  gender: string;
+  birthDate: string;
+}

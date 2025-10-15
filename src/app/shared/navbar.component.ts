@@ -251,6 +251,7 @@ import { FormsModule } from '@angular/forms';
       <div class="nav-links">
         <a routerLink="/">{{ 'nav.discover' | translate: 'Discover' }}</a>
         <a routerLink="/orders">{{ 'nav.orders' | translate: 'Orders' }}</a>
+        <a *ngIf="auth.isLoggedIn()" routerLink="/profile">{{ 'nav.profile' | translate: 'Profile' }}</a>
         <a *ngIf="auth.isLoggedIn()" routerLink="/admin">{{ 'nav.manage' | translate: 'Manage' }}</a>
       </div>
       <label class="language-select">

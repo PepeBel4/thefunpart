@@ -67,6 +67,16 @@ export class AuthService {
   }
 
 
+  updateSessionUser(update: Partial<SessionUser>) {
+    const current = this._user();
+    if (!current) {
+      return;
+    }
+
+    this._user.set({ ...current, ...update });
+  }
+
+
   private getStoredUser(): SessionUser | null {
     if (!this.isBrowser()) {
       return null;
@@ -99,18 +109,42 @@ export class AuthService {
     }
 
     const userRecord = maybeUser as Record<string, unknown>;
-    const id = userRecord['id'];
-    const email = userRecord['email'];
+    const id = this.normalizeId(userRecord['id']);
+    const email = typeof userRecord['email'] === 'string' ? userRecord['email'] : null;
 
-    if (typeof id === 'number' && typeof email === 'string') {
-      return { id, email };
+    if (id == null || !email) {
+      return null;
     }
 
-    if (typeof id === 'string' && typeof email === 'string') {
-      const numericId = Number.parseInt(id, 10);
+    return {
+      id,
+      email,
+      firstName: this.readOptionalString(userRecord['first_name'] ?? userRecord['firstName']),
+      lastName: this.readOptionalString(userRecord['last_name'] ?? userRecord['lastName']),
+      gender: this.readOptionalString(userRecord['gender']),
+      birthDate: this.readOptionalString(userRecord['birth_date'] ?? userRecord['birthDate']),
+    };
+  }
+
+  private normalizeId(value: unknown): number | null {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const numericId = Number.parseInt(value, 10);
       if (Number.isFinite(numericId)) {
-        return { id: numericId, email };
+        return numericId;
       }
+    }
+
+    return null;
+  }
+
+  private readOptionalString(value: unknown): string | null {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed ? trimmed : null;
     }
 
     return null;

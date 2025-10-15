@@ -2,10 +2,11 @@ import { Component, inject } from '@angular/core';
 import { AsyncPipe, NgFor, NgIf } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { map } from 'rxjs';
-import { Restaurant } from '../core/models';
+import { Restaurant, SessionUser } from '../core/models';
 import { RestaurantService } from './restaurant.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
+import { AuthService } from '../core/auth.service';
 
 @Component({
   standalone: true,
@@ -27,6 +28,51 @@ import { TranslationService } from '../core/translation.service';
     .subhead {
       color: var(--text-secondary);
       font-size: 1rem;
+    }
+
+    .profile-card {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 1.1rem;
+      padding: 1.4rem 1.6rem;
+      border: 1px solid rgba(6, 193, 103, 0.28);
+      background: linear-gradient(135deg, rgba(6, 193, 103, 0.12), rgba(6, 193, 103, 0.03));
+    }
+
+    .profile-card .profile-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: rgba(6, 193, 103, 0.18);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+    }
+
+    .profile-card .card-body h3 {
+      margin: 0;
+      font-size: 1.25rem;
+    }
+
+    .profile-card .card-body p {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+
+    .profile-card .cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-weight: 600;
+      color: var(--brand-green);
+    }
+
+    .profile-card .cta::after {
+      content: '›';
+      font-size: 1.1rem;
     }
 
     .grid {
@@ -128,6 +174,23 @@ import { TranslationService } from '../core/translation.service';
         {{ 'restaurants.subheading' | translate: 'Hand-picked favourites delivering fast, just like the Uber Eats app.' }}
       </p>
     </div>
+    <a
+      class="card profile-card"
+      routerLink="/profile"
+      *ngIf="shouldShowProfilePrompt()"
+    >
+      <span class="profile-icon">👤</span>
+      <div class="card-body">
+        <h3>{{ 'profilePrompt.title' | translate: 'Complete your profile' }}</h3>
+        <p>
+          {{
+            'profilePrompt.subtitle'
+              | translate: 'Add your name, gender, and birth date for a more personal experience.'
+          }}
+        </p>
+      </div>
+      <span class="cta">{{ 'profilePrompt.action' | translate: 'Finish profile' }}</span>
+    </a>
     <div class="grid" *ngIf="restaurants$ | async as restaurants">
       <a class="card" *ngFor="let r of restaurants" [routerLink]="['/restaurants', r.id]">
         <div class="card-media">
@@ -156,6 +219,7 @@ import { TranslationService } from '../core/translation.service';
 export class RestaurantListPage {
   private svc = inject(RestaurantService);
   private i18n = inject(TranslationService);
+  private auth = inject(AuthService);
   private heroPhotoCache = new Map<number, string>();
 
   private ensureHeroPhoto(restaurant: Restaurant): string | undefined {
@@ -186,6 +250,23 @@ export class RestaurantListPage {
       })),
     ),
   );
+
+  shouldShowProfilePrompt(): boolean {
+    const user = this.auth.user();
+    if (!user) {
+      return false;
+    }
+
+    return !this.hasCompletedProfile(user);
+  }
+
+  private hasCompletedProfile(user: SessionUser | null): boolean {
+    if (!user) {
+      return false;
+    }
+
+    return Boolean(user.firstName && user.lastName && user.gender && user.birthDate);
+  }
 
   getRestaurantName(restaurant: Restaurant): string {
     return this.resolveRestaurantField(restaurant.name, restaurant.name_translations) || restaurant.name;
