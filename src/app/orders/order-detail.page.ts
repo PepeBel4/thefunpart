@@ -3,6 +3,9 @@ import { ActivatedRoute } from '@angular/router';
 import { OrderService } from './order.service';
 import { AsyncPipe, CurrencyPipe, DatePipe, NgFor, NgIf } from '@angular/common';
 import { TranslatePipe } from '../shared/translate.pipe';
+import { CartService } from '../cart/cart.service';
+import { Observable, of, switchMap, tap } from 'rxjs';
+import { Order } from '../core/models';
 
 @Component({
   standalone: true,
@@ -100,6 +103,58 @@ import { TranslatePipe } from '../shared/translate.pipe';
 export class OrderDetailPage {
   private route = inject(ActivatedRoute);
   private svc = inject(OrderService);
+  private cart = inject(CartService);
   id = Number(this.route.snapshot.paramMap.get('id'));
-  order$ = this.svc.get(this.id);
+  order$: Observable<Order> = this.svc.get(this.id).pipe(
+    switchMap(order => {
+      const desiredState = this.resolveState(order);
+      if (this.isFullyPaid(order)) {
+        this.cart.clear();
+      }
+
+      if (!desiredState) {
+        return of(order);
+      }
+
+      return this.svc.updateState(order.id, desiredState).pipe(
+        tap(updated => {
+          if (desiredState === 'sent' && this.isFullyPaid(updated)) {
+            this.cart.clear();
+          }
+        })
+      );
+    })
+  );
+
+  private isFullyPaid(order: Order): boolean {
+    const total = order.total_cents ?? 0;
+    const paid = order.paid_cents ?? 0;
+    const remaining = order.remaining_balance_cents;
+    const paymentState = order.payment_state?.toLowerCase?.();
+
+    if (typeof remaining === 'number') {
+      return remaining <= 0;
+    }
+
+    if (total > 0 && paid >= total) {
+      return true;
+    }
+
+    return paymentState === 'paid' || paymentState === 'succeeded' || paymentState === 'successful';
+  }
+
+  private resolveState(order: Order): 'sent' | 'composing' | null {
+    const normalized = order.state?.toLowerCase?.();
+    const fullyPaid = this.isFullyPaid(order);
+
+    if (fullyPaid) {
+      return normalized === 'sent' ? null : 'sent';
+    }
+
+    if (!normalized || normalized === 'sent' || normalized === 'composing') {
+      return normalized === 'composing' ? null : 'composing';
+    }
+
+    return null;
+  }
 }

@@ -110,7 +110,15 @@ export class CheckoutPage {
         })
       );
 
-      this.cart.clear();
+      const status = paymentResponse.payment.status?.toLowerCase?.();
+      const isSuccess = status === 'succeeded' || status === 'paid' || status === 'successful';
+
+      if (isSuccess) {
+        await firstValueFrom(this.orders.updateState(order.id, 'sent'));
+        this.cart.clear();
+        await this.router.navigate(['/orders', order.id]);
+        return;
+      }
 
       const checkoutUrl = paymentResponse.payment.checkout_url;
       if (checkoutUrl) {
@@ -118,7 +126,7 @@ export class CheckoutPage {
         return;
       }
 
-      await this.router.navigate(['/orders', order.id]);
+      console.warn('Payment was not successful and no checkout URL was provided.', paymentResponse.payment.status);
     } catch (error) {
       console.error('Failed to place order', error);
     } finally {

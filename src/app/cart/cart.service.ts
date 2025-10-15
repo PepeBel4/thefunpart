@@ -1,4 +1,4 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, effect } from '@angular/core';
 import { MenuItem } from '../core/models';
 
 export interface CartCategorySelection {
@@ -10,10 +10,20 @@ export interface CartLine { item: MenuItem; quantity: number; category?: CartCat
 
 @Injectable({ providedIn: 'root' })
 export class CartService {
+  private static readonly STORAGE_KEY = 'cart.lines';
   private _lines = signal<CartLine[]>([]);
   lines = computed(() => this._lines());
   count = computed(() => this._lines().reduce((a, l) => a + l.quantity, 0));
   subtotalCents = computed(() => this._lines().reduce((a, l) => a + l.item.price_cents * l.quantity, 0));
+
+  constructor() {
+    this.restoreFromStorage();
+
+    effect(() => {
+      const lines = this._lines();
+      this.persistToStorage(lines);
+    });
+  }
 
   add(item: MenuItem, category?: CartCategorySelection | null) {
     const lines = [...this._lines()];
@@ -66,5 +76,63 @@ export class CartService {
     const label = category.label?.trim();
 
     return { id, label: label ?? null };
+  }
+
+  private restoreFromStorage() {
+    const stored = this.readStorage();
+    if (!stored?.length) {
+      return;
+    }
+
+    this._lines.set(
+      stored.map(line => ({
+        ...line,
+        category: this.normalizeCategory(line.category) ?? undefined,
+      }))
+    );
+  }
+
+  private persistToStorage(lines: CartLine[]) {
+    if (!this.canUseStorage()) {
+      return;
+    }
+
+    try {
+      const serialized = JSON.stringify(lines);
+      window.localStorage.setItem(CartService.STORAGE_KEY, serialized);
+    } catch (error) {
+      console.warn('Failed to persist cart state', error);
+    }
+  }
+
+  private readStorage(): CartLine[] | null {
+    if (!this.canUseStorage()) {
+      return null;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(CartService.STORAGE_KEY);
+      if (!raw) {
+        return null;
+      }
+
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        return null;
+      }
+
+      return parsed as CartLine[];
+    } catch (error) {
+      console.warn('Failed to restore cart state', error);
+      return null;
+    }
+  }
+
+  private canUseStorage(): boolean {
+    try {
+      return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+    } catch {
+      return false;
+    }
   }
 }
