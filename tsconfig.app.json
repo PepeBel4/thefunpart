@@ -7,8 +7,9 @@
     "types": []
   },
   "include": [
-    "src/**/*.ts"
-, "src/environments/environment.tsobsole"  ],
+    "src/**/*.ts",
+    "src/**/*.d.ts"
+  ],
   "exclude": [
     "src/**/*.spec.ts"
   ]

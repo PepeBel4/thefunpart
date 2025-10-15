@@ -3,8 +3,7 @@ export const environment = {
   apiBaseUrl: 'https://YOUR-PROD-RAILS-HOST/api/v1',
   useCookieSession: true,
   mqtt: {
-    host: 'YOUR-PROD-MQTT-HOST',
-    port: 1883,
+    url: 'wss://YOUR-PROD-MQTT-HOST/mqtt',
     topic: 'orders/created',
     ssl: true,
     keepAlive: 15,
