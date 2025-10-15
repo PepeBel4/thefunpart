@@ -113,13 +113,13 @@ type MenuCategoryGroup = {
       z-index: 20;
       padding: 0.75rem 0;
       background: transparent;
-      border-bottom: 1px solid rgba(10, 10, 10, 0.08);
     }
 
     .category-nav button {
-      border: 0;
-      background: none;
-      padding: 0;
+      border: 1px solid var(--border-soft);
+      background: var(--surface);
+      border-radius: 999px;
+      padding: 0.45rem 1rem;
       cursor: pointer;
       font-weight: 600;
       color: var(--text-secondary);
