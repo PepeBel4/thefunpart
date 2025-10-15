@@ -1,5 +1,5 @@
 import { Injectable, OnDestroy } from '@angular/core';
-import mqtt from 'mqtt/dist/mqtt';
+import { connect } from 'mqtt/dist/mqtt';
 import type { IClientOptions, ISubscriptionGrant, MqttClient } from 'mqtt';
 import { environment } from '../../environments/environment';
 
@@ -52,7 +52,7 @@ export class OrderEventsListenerService implements OnDestroy {
     }
 
     try {
-      this.client = mqtt.connect(url, options);
+      this.client = connect(url, options);
     } catch (error) {
       console.error('[MQTT] Failed to initialise client', error);
       return;
