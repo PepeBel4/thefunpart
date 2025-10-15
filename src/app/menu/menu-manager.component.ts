@@ -692,9 +692,10 @@ export class MenuManagerComponent implements OnChanges, OnInit {
         price_cents,
         ...(categories ? { menu_item_categories: categories } : {}),
       }));
+      let uploadedItem: MenuItem | null = null;
       if (this.editPhotos.length) {
         try {
-          await this.uploadMenuItemPhotos(id, this.editPhotos);
+          uploadedItem = await this.uploadMenuItemPhotos(id, this.editPhotos);
         } catch (uploadError) {
           console.error(uploadError);
           this.error = this.i18n.translate(
@@ -704,9 +705,12 @@ export class MenuManagerComponent implements OnChanges, OnInit {
         }
       }
       this.editPhotos = [];
+      if (uploadedItem) {
+        this.mergeMenuItemUpdate(uploadedItem);
+      }
       this.cancelEdit();
-      await this.loadMenu(true);
-      await this.fetchCategories();
+      void this.loadMenu(true);
+      void this.fetchCategories();
       this.menuChanged.emit();
     } catch (err) {
       console.error(err);
@@ -780,9 +784,21 @@ export class MenuManagerComponent implements OnChanges, OnInit {
     return Math.round(amount * 100);
   }
 
-  private async uploadMenuItemPhotos(menuItemId: number, files: File[]) {
-    if (!files.length) { return; }
-    await firstValueFrom(this.menu.uploadPhotos(menuItemId, files));
+  private async uploadMenuItemPhotos(menuItemId: number, files: File[]): Promise<MenuItem | null> {
+    if (!files.length) { return null; }
+    return await firstValueFrom(this.menu.uploadPhotos(menuItemId, files));
+  }
+
+  private mergeMenuItemUpdate(updated: MenuItem) {
+    const index = this.menuItems.findIndex(item => item.id === updated.id);
+    if (index === -1) { return; }
+
+    const current = this.menuItems[index];
+    this.menuItems[index] = {
+      ...current,
+      ...updated,
+      photos: updated.photos ?? current.photos,
+    };
   }
 
   private formatPrice(priceCents: number): string {
