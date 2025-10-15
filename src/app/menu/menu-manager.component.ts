@@ -509,7 +509,7 @@ export class MenuManagerComponent implements OnChanges, OnInit {
     this.creationStatus = '';
     try {
       const categories = this.prepareCategories(this.newItem.categories);
-      await firstValueFrom(this.menu.create(this.restaurantId, {
+      const createdItem = await firstValueFrom(this.menu.create(this.restaurantId, {
         name: this.newItem.name,
         description: this.newItem.description || undefined,
         price_cents,
@@ -517,7 +517,8 @@ export class MenuManagerComponent implements OnChanges, OnInit {
       }));
       this.newItem = this.createEmptyForm();
       this.creationStatus = this.i18n.translate('menu.form.status', 'Menu item added!');
-      await this.loadMenu(true);
+      this.menuItems = [...this.menuItems, createdItem];
+      void this.loadMenu(true);
       await this.fetchCategories();
       this.menuChanged.emit();
     } catch (err) {
@@ -540,14 +541,15 @@ export class MenuManagerComponent implements OnChanges, OnInit {
     this.error = '';
     try {
       const categories = this.prepareCategories(this.editItem.categories);
-      await firstValueFrom(this.menu.update(id, {
+      const updatedItem = await firstValueFrom(this.menu.update(id, {
         name: this.editItem.name,
         description: this.editItem.description || undefined,
         price_cents,
         ...(categories ? { menu_item_categories: categories } : {}),
       }));
+      this.menuItems = this.menuItems.map((item) => (item.id === id ? updatedItem : item));
       this.cancelEdit();
-      await this.loadMenu(true);
+      void this.loadMenu(true);
       await this.fetchCategories();
       this.menuChanged.emit();
     } catch (err) {
@@ -564,7 +566,8 @@ export class MenuManagerComponent implements OnChanges, OnInit {
     this.error = '';
     try {
       await firstValueFrom(this.menu.delete(id));
-      await this.loadMenu(true);
+      this.menuItems = this.menuItems.filter((item) => item.id !== id);
+      void this.loadMenu(true);
       this.menuChanged.emit();
     } catch (err) {
       console.error(err);
