@@ -1,5 +1,4 @@
 import { Injectable, OnDestroy } from '@angular/core';
-import { connect } from 'mqtt/dist/mqtt';
 import type { IClientOptions, ISubscriptionGrant, MqttClient } from 'mqtt';
 import { environment } from '../../environments/environment';
 
@@ -25,14 +24,14 @@ export class OrderEventsListenerService implements OnDestroy {
     if (typeof TextDecoder !== 'undefined') {
       this.decoder = new TextDecoder();
     }
-    this.initialiseClient();
+    void this.initialiseClient();
   }
 
   ngOnDestroy(): void {
     this.client?.end(true);
   }
 
-  private initialiseClient(): void {
+  private async initialiseClient(): Promise<void> {
     const config = environment.mqtt as MqttConfig | undefined;
 
     if (!config?.topic || (!config.url && !config.host)) {
@@ -51,14 +50,59 @@ export class OrderEventsListenerService implements OnDestroy {
       );
     }
 
+    const mqttLibrary = await this.loadMqttLibrary();
+
+    if (!mqttLibrary) {
+      return;
+    }
+
     try {
-      this.client = connect(url, options);
+      this.client = mqttLibrary.connect(url, options);
     } catch (error) {
       console.error('[MQTT] Failed to initialise client', error);
       return;
     }
 
     this.registerEventHandlers(config.topic, config);
+  }
+
+  private async loadMqttLibrary(): Promise<typeof import('mqtt') | undefined> {
+    try {
+      const module = await import('mqtt/dist/mqtt');
+      const mqttModule = this.unwrapMqttModule(module);
+
+      if (!mqttModule) {
+        const availableExports = module && typeof module === 'object' ? Object.keys(module).join(', ') : 'none';
+        console.error(
+          `[MQTT] MQTT bundle did not expose a connect() function. Available exports: ${availableExports}.`
+        );
+      }
+
+      return mqttModule;
+    } catch (error) {
+      console.error('[MQTT] Failed to load MQTT bundle', error);
+      return undefined;
+    }
+  }
+
+  private unwrapMqttModule(module: unknown): typeof import('mqtt') | undefined {
+    if (!module || typeof module !== 'object') {
+      return undefined;
+    }
+
+    const candidate = module as Partial<typeof import('mqtt')> & {
+      default?: Partial<typeof import('mqtt')>;
+    };
+
+    if (typeof candidate.connect === 'function') {
+      return candidate as typeof import('mqtt');
+    }
+
+    if (candidate.default && typeof candidate.default.connect === 'function') {
+      return candidate.default as typeof import('mqtt');
+    }
+
+    return undefined;
   }
 
   private buildUrl(config: MqttConfig): string {
