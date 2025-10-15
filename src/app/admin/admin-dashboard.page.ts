@@ -188,8 +188,8 @@ import { MenuManagerComponent } from '../menu/menu-manager.component';
       <div class="stack">
         <section class="card">
           <header>
-            <h3>Restaurant photos</h3>
-            <p>Keep your storefront up to date by refreshing the gallery.</p>
+            <h3>Manage restaurant</h3>
+            <p>Choose which location you'd like to update.</p>
           </header>
 
           <ng-container *ngIf="restaurants$ | async as restaurants; else loading">
@@ -200,26 +200,6 @@ import { MenuManagerComponent } from '../menu/menu-manager.component';
                   <option *ngFor="let restaurant of restaurants" [value]="restaurant.id">{{ restaurant.name }}</option>
                 </select>
               </label>
-
-              <ng-container *ngIf="selectedRestaurant$ | async as restaurant">
-                <div class="photo-grid" *ngIf="restaurant.photo_urls?.length">
-                  <figure *ngFor="let url of restaurant.photo_urls">
-                    <img [src]="url" [alt]="restaurant.name + ' photo'" loading="lazy" />
-                  </figure>
-                </div>
-
-                <div class="upload-controls">
-                  <input type="file" #photoInput multiple accept="image/*" (change)="onPhotoSelection(photoInput.files)" [disabled]="uploading" />
-                  <button type="button" (click)="uploadPhotos()" [disabled]="!selectedPhotos.length || uploading">
-                    {{ uploading ? 'Uploading…' : 'Upload photos' }}
-                  </button>
-                  <span class="file-info" *ngIf="selectedPhotos.length">{{ selectedPhotos.length }} file{{ selectedPhotos.length === 1 ? '' : 's' }} ready</span>
-                </div>
-
-                <div *ngIf="statusMessage" class="status" [class.error]="statusType === 'error'" [class.success]="statusType === 'success'">
-                  {{ statusMessage }}
-                </div>
-              </ng-container>
             </ng-container>
           </ng-container>
 
@@ -231,12 +211,36 @@ import { MenuManagerComponent } from '../menu/menu-manager.component';
           </ng-template>
         </section>
 
-        <ng-container *ngIf="restaurants$ | async as restaurants">
-          <ng-container *ngIf="restaurants.length && selectedRestaurantId !== null; else managePlaceholder">
+        <ng-container *ngIf="selectedRestaurantId !== null; else managePlaceholder">
+          <ng-container *ngIf="selectedRestaurant$ | async as restaurant">
+            <section class="card">
+              <header>
+                <h3>Restaurant photos</h3>
+                <p>Keep your storefront up to date by refreshing the gallery.</p>
+              </header>
+
+              <div class="photo-grid" *ngIf="restaurant.photo_urls?.length">
+                <figure *ngFor="let url of restaurant.photo_urls">
+                  <img [src]="url" [alt]="restaurant.name + ' photo'" loading="lazy" />
+                </figure>
+              </div>
+
+              <div class="upload-controls">
+                <input type="file" #photoInput multiple accept="image/*" (change)="onPhotoSelection(photoInput.files)" [disabled]="uploading" />
+                <button type="button" (click)="uploadPhotos()" [disabled]="!selectedPhotos.length || uploading">
+                  {{ uploading ? 'Uploading…' : 'Upload photos' }}
+                </button>
+                <span class="file-info" *ngIf="selectedPhotos.length">{{ selectedPhotos.length }} file{{ selectedPhotos.length === 1 ? '' : 's' }} ready</span>
+              </div>
+
+              <div *ngIf="statusMessage" class="status" [class.error]="statusType === 'error'" [class.success]="statusType === 'success'">
+                {{ statusMessage }}
+              </div>
+            </section>
+
             <app-menu-manager [restaurantId]="selectedRestaurantId!"></app-menu-manager>
           </ng-container>
         </ng-container>
-
       </div>
 
       <section class="card">
@@ -273,9 +277,9 @@ import { MenuManagerComponent } from '../menu/menu-manager.component';
     <ng-template #managePlaceholder>
       <section class="card">
         <header>
-          <h3>Manage menu</h3>
+          <h3>Manage restaurant content</h3>
         </header>
-        <p>Select a restaurant to manage its menu.</p>
+        <p>Choose a restaurant above to start uploading photos and editing menus.</p>
       </section>
     </ng-template>
   `
