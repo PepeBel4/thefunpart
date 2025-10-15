@@ -3,9 +3,8 @@ import { ActivatedRoute } from '@angular/router';
 import { MenuService } from '../menu/menu.service';
 import { RestaurantService } from './restaurant.service';
 import { AsyncPipe, CurrencyPipe, NgIf, NgFor } from '@angular/common';
-import { AuthService } from '../core/auth.service';
 import { Restaurant } from '../core/models';
-import { Observable, firstValueFrom } from 'rxjs';
+import { Observable } from 'rxjs';
 import { CartService } from '../cart/cart.service';
 
 @Component({
@@ -85,47 +84,6 @@ import { CartService } from '../cart/cart.service';
       height: 100%;
       object-fit: cover;
       display: block;
-    }
-
-    .upload-card {
-      background: var(--surface);
-      border-radius: var(--radius-card);
-      padding: 1.75rem;
-      box-shadow: var(--shadow-soft);
-      border: 1px solid rgba(10, 10, 10, 0.05);
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      margin-bottom: 2.5rem;
-    }
-
-    .upload-card h3 {
-      margin: 0;
-    }
-
-    .upload-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-      align-items: center;
-    }
-
-    .file-info {
-      font-size: 0.9rem;
-      color: var(--text-secondary);
-    }
-
-    .status {
-      font-size: 0.95rem;
-      font-weight: 600;
-    }
-
-    .status.error {
-      color: #d14343;
-    }
-
-    .status.success {
-      color: var(--brand-green);
     }
 
     .menu {
@@ -212,24 +170,6 @@ import { CartService } from '../cart/cart.service';
           <img [src]="url" [alt]="r.name + ' photo'" loading="lazy" />
         </figure>
       </section>
-
-      <section *ngIf="auth.isLoggedIn()" class="upload-card">
-        <div>
-          <h3>Add new photos</h3>
-          <p>Share your experience to help others pick their next meal.</p>
-        </div>
-        <div class="upload-actions">
-          <input type="file" #photoInput multiple accept="image/*" (change)="onPhotoSelection(photoInput.files)" [disabled]="uploading" />
-          <button type="button" (click)="uploadPhotos()" [disabled]="!selectedPhotos.length || uploading">
-            {{ uploading ? 'Uploading…' : 'Upload photos' }}
-          </button>
-          <span class="file-info" *ngIf="selectedPhotos.length">{{ selectedPhotos.length }} file{{ selectedPhotos.length === 1 ? '' : 's' }} selected</span>
-        </div>
-        <div *ngIf="statusMessage" class="status" [class.error]="statusType === 'error'" [class.success]="statusType === 'success'">
-          {{ statusMessage }}
-        </div>
-      </section>
-
       <h3>Menu</h3>
       <div class="menu" *ngIf="(menu$ | async) as menu">
         <div class="card" *ngFor="let m of menu">
@@ -247,43 +187,9 @@ export class RestaurantDetailPage {
   private menuSvc = inject(MenuService);
   private rSvc = inject(RestaurantService);
   private cart = inject(CartService);
-  auth = inject(AuthService);
 
   id = Number(this.route.snapshot.paramMap.get('id'));
   restaurant$: Observable<Restaurant> = this.rSvc.get(this.id);
   menu$ = this.menuSvc.listByRestaurant(this.id);
   add = this.cart.add.bind(this.cart);
-
-  selectedPhotos: File[] = [];
-  uploading = false;
-  statusMessage = '';
-  statusType: 'success' | 'error' | '' = '';
-
-  onPhotoSelection(files: FileList | null) {
-    this.selectedPhotos = files ? Array.from(files) : [];
-    this.statusMessage = '';
-    this.statusType = '';
-  }
-
-  async uploadPhotos() {
-    if (!this.selectedPhotos.length || this.uploading) { return; }
-
-    this.uploading = true;
-    this.statusMessage = '';
-    this.statusType = '';
-
-    try {
-      await firstValueFrom(this.rSvc.uploadPhotos(this.id, this.selectedPhotos));
-      this.selectedPhotos = [];
-      this.statusMessage = 'Photos uploaded successfully!';
-      this.statusType = 'success';
-      this.restaurant$ = this.rSvc.get(this.id);
-    } catch (err) {
-      console.error(err);
-      this.statusMessage = 'Something went wrong while uploading photos. Please try again.';
-      this.statusType = 'error';
-    } finally {
-      this.uploading = false;
-    }
-  }
 }

@@ -193,6 +193,7 @@ import { CartService } from '../cart/cart.service';
       <div class="nav-links">
         <a routerLink="/">Discover</a>
         <a routerLink="/orders">Orders</a>
+        <a *ngIf="auth.isLoggedIn()" routerLink="/admin">Manage</a>
       </div>
       <a routerLink="/checkout" class="cart-pill">Cart ({{ cart.count() }})</a>
       <button *ngIf="auth.isLoggedIn(); else login" (click)="auth.logout()">Logout</button>
