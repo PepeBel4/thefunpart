@@ -5,11 +5,12 @@ import { BehaviorSubject, Observable, filter, firstValueFrom, shareReplay, switc
 import { OrderService } from '../orders/order.service';
 import { RestaurantService } from '../restaurants/restaurant.service';
 import { Restaurant } from '../core/models';
+import { MenuManagerComponent } from '../menu/menu-manager.component';
 
 @Component({
   standalone: true,
   selector: 'app-admin-dashboard',
-  imports: [AsyncPipe, CurrencyPipe, DatePipe, FormsModule, NgFor, NgIf],
+  imports: [AsyncPipe, CurrencyPipe, DatePipe, FormsModule, MenuManagerComponent, NgFor, NgIf],
   styles: [`
     :host {
       display: flex;
@@ -32,6 +33,12 @@ import { Restaurant } from '../core/models';
     .grid {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 2rem;
+    }
+
+    .stack {
+      display: flex;
+      flex-direction: column;
       gap: 2rem;
     }
 
@@ -178,50 +185,59 @@ import { Restaurant } from '../core/models';
     </header>
 
     <div class="grid">
-      <section class="card">
-        <header>
-          <h3>Restaurant photos</h3>
-          <p>Keep your storefront up to date by refreshing the gallery.</p>
-        </header>
+      <div class="stack">
+        <section class="card">
+          <header>
+            <h3>Restaurant photos</h3>
+            <p>Keep your storefront up to date by refreshing the gallery.</p>
+          </header>
 
-        <ng-container *ngIf="restaurants$ | async as restaurants; else loading">
-          <ng-container *ngIf="restaurants.length; else noRestaurants">
-            <label>
-              Choose restaurant
-              <select [ngModel]="selectedRestaurantId" (ngModelChange)="onRestaurantChange($event)">
-                <option *ngFor="let restaurant of restaurants" [value]="restaurant.id">{{ restaurant.name }}</option>
-              </select>
-            </label>
+          <ng-container *ngIf="restaurants$ | async as restaurants; else loading">
+            <ng-container *ngIf="restaurants.length; else noRestaurants">
+              <label>
+                Choose restaurant
+                <select [ngModel]="selectedRestaurantId" (ngModelChange)="onRestaurantChange($event)">
+                  <option *ngFor="let restaurant of restaurants" [value]="restaurant.id">{{ restaurant.name }}</option>
+                </select>
+              </label>
 
-            <ng-container *ngIf="selectedRestaurant$ | async as restaurant">
-              <div class="photo-grid" *ngIf="restaurant.photo_urls?.length">
-                <figure *ngFor="let url of restaurant.photo_urls">
-                  <img [src]="url" [alt]="restaurant.name + ' photo'" loading="lazy" />
-                </figure>
-              </div>
+              <ng-container *ngIf="selectedRestaurant$ | async as restaurant">
+                <div class="photo-grid" *ngIf="restaurant.photo_urls?.length">
+                  <figure *ngFor="let url of restaurant.photo_urls">
+                    <img [src]="url" [alt]="restaurant.name + ' photo'" loading="lazy" />
+                  </figure>
+                </div>
 
-              <div class="upload-controls">
-                <input type="file" #photoInput multiple accept="image/*" (change)="onPhotoSelection(photoInput.files)" [disabled]="uploading" />
-                <button type="button" (click)="uploadPhotos()" [disabled]="!selectedPhotos.length || uploading">
-                  {{ uploading ? 'Uploading…' : 'Upload photos' }}
-                </button>
-                <span class="file-info" *ngIf="selectedPhotos.length">{{ selectedPhotos.length }} file{{ selectedPhotos.length === 1 ? '' : 's' }} ready</span>
-              </div>
+                <div class="upload-controls">
+                  <input type="file" #photoInput multiple accept="image/*" (change)="onPhotoSelection(photoInput.files)" [disabled]="uploading" />
+                  <button type="button" (click)="uploadPhotos()" [disabled]="!selectedPhotos.length || uploading">
+                    {{ uploading ? 'Uploading…' : 'Upload photos' }}
+                  </button>
+                  <span class="file-info" *ngIf="selectedPhotos.length">{{ selectedPhotos.length }} file{{ selectedPhotos.length === 1 ? '' : 's' }} ready</span>
+                </div>
 
-              <div *ngIf="statusMessage" class="status" [class.error]="statusType === 'error'" [class.success]="statusType === 'success'">
-                {{ statusMessage }}
-              </div>
+                <div *ngIf="statusMessage" class="status" [class.error]="statusType === 'error'" [class.success]="statusType === 'success'">
+                  {{ statusMessage }}
+                </div>
+              </ng-container>
             </ng-container>
+          </ng-container>
+
+          <ng-template #loading>
+            <p>Loading restaurants…</p>
+          </ng-template>
+          <ng-template #noRestaurants>
+            <p>No restaurants found.</p>
+          </ng-template>
+        </section>
+
+        <ng-container *ngIf="restaurants$ | async as restaurants">
+          <ng-container *ngIf="restaurants.length && selectedRestaurantId !== null; else managePlaceholder">
+            <app-menu-manager [restaurantId]="selectedRestaurantId!"></app-menu-manager>
           </ng-container>
         </ng-container>
 
-        <ng-template #loading>
-          <p>Loading restaurants…</p>
-        </ng-template>
-        <ng-template #noRestaurants>
-          <p>No restaurants found.</p>
-        </ng-template>
-      </section>
+      </div>
 
       <section class="card">
         <header>
@@ -253,6 +269,15 @@ import { Restaurant } from '../core/models';
         </ng-template>
       </section>
     </div>
+
+    <ng-template #managePlaceholder>
+      <section class="card">
+        <header>
+          <h3>Manage menu</h3>
+        </header>
+        <p>Select a restaurant to manage its menu.</p>
+      </section>
+    </ng-template>
   `
 })
 export class AdminDashboardPage {

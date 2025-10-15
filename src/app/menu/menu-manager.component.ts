@@ -1,5 +1,5 @@
 import { CurrencyPipe, NgFor, NgIf } from '@angular/common';
-import { Component, EventEmitter, Input, Output, inject, OnInit } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject, OnChanges, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { MenuItem } from '../core/models';
@@ -221,7 +221,7 @@ interface MenuFormModel {
     </section>
   `,
 })
-export class MenuManagerComponent implements OnInit {
+export class MenuManagerComponent implements OnChanges {
   @Input({ required: true }) restaurantId!: number;
   @Output() menuChanged = new EventEmitter<void>();
 
@@ -236,12 +236,18 @@ export class MenuManagerComponent implements OnInit {
   newItem: MenuFormModel = { name: '', description: '', price: '' };
   editItem: MenuFormModel = { name: '', description: '', price: '' };
 
-  ngOnInit() {
-    this.loadMenu();
+  ngOnChanges(changes: SimpleChanges) {
+    if ('restaurantId' in changes) {
+      const id = changes['restaurantId'].currentValue;
+      if (typeof id === 'number' && !Number.isNaN(id)) {
+        this.resetState();
+        this.loadMenu();
+      }
+    }
   }
 
   async loadMenu() {
-    if (!this.restaurantId) { return; }
+    if (this.restaurantId === null || this.restaurantId === undefined) { return; }
     this.loading = true;
     this.error = '';
     try {
@@ -349,5 +355,16 @@ export class MenuManagerComponent implements OnInit {
 
   private formatPrice(priceCents: number): string {
     return (priceCents / 100).toFixed(2);
+  }
+
+  private resetState() {
+    this.menuItems = [];
+    this.loading = false;
+    this.saving = false;
+    this.error = '';
+    this.creationStatus = '';
+    this.editingId = null;
+    this.newItem = { name: '', description: '', price: '' };
+    this.editItem = { name: '', description: '', price: '' };
   }
 }
