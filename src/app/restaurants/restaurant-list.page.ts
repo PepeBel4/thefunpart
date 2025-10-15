@@ -1,12 +1,13 @@
-import { Component, inject } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { AsyncPipe, NgFor, NgIf } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { map } from 'rxjs';
-import { Restaurant, SessionUser } from '../core/models';
+import { Restaurant, SessionUser, UserProfile } from '../core/models';
 import { RestaurantService } from './restaurant.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
 import { AuthService } from '../core/auth.service';
+import { ProfileService } from '../core/profile.service';
 
 @Component({
   standalone: true,
@@ -220,7 +221,44 @@ export class RestaurantListPage {
   private svc = inject(RestaurantService);
   private i18n = inject(TranslationService);
   private auth = inject(AuthService);
+  private profile = inject(ProfileService);
   private heroPhotoCache = new Map<number, string>();
+  private profilePromptState = signal<{ loading: boolean; profile: UserProfile | null }>({
+    loading: false,
+    profile: null,
+  });
+
+  constructor() {
+    effect(() => {
+      const user = this.auth.user();
+
+      if (!user || this.hasCompletedProfile(user)) {
+        this.profilePromptState.set({ loading: false, profile: null });
+        return;
+      }
+
+      this.profilePromptState.set({ loading: true, profile: null });
+
+      const subscription = this.profile
+        .getProfile()
+        .subscribe({
+          next: (profile) => {
+            this.profilePromptState.set({ loading: false, profile });
+            this.auth.updateSessionUser({
+              firstName: profile.firstName,
+              lastName: profile.lastName,
+              gender: profile.gender,
+              birthDate: profile.birthDate,
+            });
+          },
+          error: () => {
+            this.profilePromptState.set({ loading: false, profile: null });
+          },
+        });
+
+      return () => subscription.unsubscribe();
+    });
+  }
 
   private ensureHeroPhoto(restaurant: Restaurant): string | undefined {
     const cached = this.heroPhotoCache.get(restaurant.id);
@@ -257,10 +295,29 @@ export class RestaurantListPage {
       return false;
     }
 
-    return !this.hasCompletedProfile(user);
+    if (this.hasCompletedProfile(user)) {
+      return false;
+    }
+
+    const state = this.profilePromptState();
+    if (state.loading) {
+      return false;
+    }
+
+    return !this.hasCompletedProfile(state.profile);
   }
 
-  private hasCompletedProfile(user: SessionUser | null): boolean {
+  private hasCompletedProfile(
+    user:
+      | {
+          firstName?: string | null;
+          lastName?: string | null;
+          gender?: string | null;
+          birthDate?: string | null;
+        }
+      | null
+      | undefined,
+  ): boolean {
     if (!user) {
       return false;
     }
