@@ -368,6 +368,7 @@ import { TranslationService } from '../core/translation.service';
                       }}
                     </span>
                     <select
+                      name="chainSelection"
                       [(ngModel)]="chainSelection"
                       (ngModelChange)="onChainSelectionChange($event)"
                       [disabled]="chainSaving"
