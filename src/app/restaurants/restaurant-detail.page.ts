@@ -3,19 +3,8 @@ import { ActivatedRoute } from '@angular/router';
 import { MenuService } from '../menu/menu.service';
 import { RestaurantService } from './restaurant.service';
 import { AsyncPipe, CurrencyPipe, NgIf, NgFor, NgStyle, DOCUMENT } from '@angular/common';
-import { MenuItem, Restaurant } from '../core/models';
-import {
-  Observable,
-  combineLatest,
-  firstValueFrom,
-  map,
-  of,
-  shareReplay,
-  startWith,
-  switchMap,
-  tap,
-  timer,
-} from 'rxjs';
+import { Allergen, MenuItem, Restaurant } from '../core/models';
+import { Observable, combineLatest, firstValueFrom, map, of, shareReplay, startWith, switchMap, tap, timer } from 'rxjs';
 import { CartCategorySelection, CartRestaurant, CartService } from '../cart/cart.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
@@ -218,6 +207,21 @@ type PendingCartAddition = {
       gap: 0.5rem;
     }
 
+    .allergen-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+
+    .allergen-badges .badge {
+      background: rgba(229, 62, 62, 0.12);
+      color: #8f1e1e;
+      border-radius: 999px;
+      padding: 0.25rem 0.6rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
     .price-group .price.discounted {
       color: var(--brand-green);
       font-size: 1.25rem;
@@ -407,6 +411,11 @@ type PendingCartAddition = {
               <ng-template #regularPrice>
                 <span class="price">{{ (m.price_cents / 100) | currency:'EUR' }}</span>
               </ng-template>
+              <div class="allergen-badges" *ngIf="m.allergens?.length">
+                <span class="badge" *ngFor="let allergen of m.allergens">
+                  {{ resolveAllergenLabel(allergen) }}
+                </span>
+              </div>
               <button (click)="addToCart(m, category.cartCategory, r)">
                 {{ 'restaurantDetail.addToCart' | translate: 'Add to cart' }}
               </button>
@@ -861,6 +870,37 @@ export class RestaurantDetailPage implements OnDestroy {
     }
 
     return null;
+  }
+
+  resolveAllergenLabel(allergen: Allergen | undefined): string {
+    if (!allergen) {
+      return '';
+    }
+
+    const direct = allergen.name?.trim();
+    if (direct) {
+      return direct;
+    }
+
+    const translations = allergen.name_translations;
+    if (translations) {
+      const localeCandidates = this.buildLocaleCandidates();
+
+      for (const locale of localeCandidates) {
+        const localized = this.tryResolveTranslation(translations, locale);
+        if (localized) {
+          return localized;
+        }
+      }
+
+      for (const value of Object.values(translations)) {
+        if (value?.trim()) {
+          return value.trim();
+        }
+      }
+    }
+
+    return '';
   }
 
   private buildLocaleCandidates(): string[] {
