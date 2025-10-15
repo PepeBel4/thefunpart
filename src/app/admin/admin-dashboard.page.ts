@@ -856,14 +856,8 @@ export class AdminDashboardPage {
   }
 
   private setRestaurantChains(restaurant: Restaurant) {
-    const combinedChains = [
-      ...(restaurant.chains ?? []),
-      ...(restaurant.chain ? [restaurant.chain] : []),
-    ].filter((chain): chain is Chain => !!chain);
-
-    const uniqueChains = Array.from(new Map(combinedChains.map(chain => [chain.id, chain])).values());
-
-    this.restaurantChains = this.sortChains(uniqueChains);
+    const chains = (restaurant.chains ?? []).filter((chain): chain is Chain => !!chain);
+    this.restaurantChains = this.sortChains(chains);
   }
 
   private resetChainStatus() {
