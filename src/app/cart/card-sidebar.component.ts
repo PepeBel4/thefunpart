@@ -202,7 +202,7 @@ import { RouterLink } from '@angular/router';
           <div>
             <div class="line-name">{{ l.item.name }}</div>
             <div class="line-price">{{ (l.item.price_cents / 100) | currency:'EUR' }}</div>
-            <div class="line-category" *ngIf="l.category">{{ l.category }}</div>
+            <div class="line-category" *ngIf="l.category?.label as label">{{ label }}</div>
           </div>
           <div class="qty-controls">
             <button

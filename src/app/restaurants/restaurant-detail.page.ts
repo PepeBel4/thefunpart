@@ -5,9 +5,14 @@ import { RestaurantService } from './restaurant.service';
 import { AsyncPipe, CurrencyPipe, NgIf, NgFor, DOCUMENT } from '@angular/common';
 import { MenuItem, Restaurant } from '../core/models';
 import { Observable, firstValueFrom, map } from 'rxjs';
-import { CartService } from '../cart/cart.service';
+import { CartCategorySelection, CartService } from '../cart/cart.service';
 
-type MenuCategoryGroup = { name: string; anchor: string; items: MenuItem[]; value: string | null };
+type MenuCategoryGroup = {
+  name: string;
+  anchor: string;
+  items: MenuItem[];
+  cartCategory: CartCategorySelection | null;
+};
 
 @Component({
   standalone: true,
@@ -221,7 +226,7 @@ type MenuCategoryGroup = { name: string; anchor: string; items: MenuItem[]; valu
               <h4>{{ m.name }}</h4>
               <p>{{ m.description || 'Customer favourite' }}</p>
               <span class="price">{{ (m.price_cents / 100) | currency:'EUR' }}</span>
-              <button (click)="addToCart(m, category.value)">Add to cart</button>
+              <button (click)="addToCart(m, category.cartCategory)">Add to cart</button>
             </div>
           </div>
         </section>
@@ -282,8 +287,8 @@ export class RestaurantDetailPage {
     this.menuCategories$ = this.menuSvc.listByRestaurant(this.id).pipe(map(items => this.organizeMenu(items)));
   }
 
-  addToCart(item: MenuItem, categoryName: string | null) {
-    this.cart.add(item, categoryName);
+  addToCart(item: MenuItem, category: CartCategorySelection | null) {
+    this.cart.add(item, category);
   }
 
   scrollTo(anchor: string) {
@@ -312,7 +317,7 @@ export class RestaurantDetailPage {
               name: label,
               anchor: this.buildAnchor(category, label),
               items: [],
-              value: label,
+              cartCategory: { id: category.id ?? null, label },
             });
           }
 
@@ -335,7 +340,7 @@ export class RestaurantDetailPage {
         name: 'Other items',
         anchor: 'category-uncategorized',
         items: fallback,
-        value: null,
+        cartCategory: null,
       });
     }
 

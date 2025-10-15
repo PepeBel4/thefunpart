@@ -91,7 +91,7 @@ export class CheckoutPage {
     const items = lines.map(l => ({
       menu_item_id: l.item.id,
       quantity: l.quantity,
-      category: l.category ?? null,
+      category_id: l.category?.id ?? null,
     }));
     const order: Order = await firstValueFrom(this.orders.create({ restaurantId, items }));
     this.cart.clear();

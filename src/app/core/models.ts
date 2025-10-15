@@ -29,7 +29,7 @@ export interface MenuItemInput {
 export interface OrderItemInput {
   menu_item_id: number;
   quantity: number;
-  category?: string | null;
+  category_id?: number | null;
 }
 
 export interface Order {
@@ -60,6 +60,7 @@ export interface OrderItem {
     name: string;
     price_cents: number;
   };
+  category_id?: number | null;
   category?: string | null;
 }
 
