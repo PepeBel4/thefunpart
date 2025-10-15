@@ -46,10 +46,16 @@ export class AuthService {
 
 
   async login(email: string, password: string) {
-    const user = await firstValueFrom(
-      this.api.post<SessionUser>('/auth/login', { user: { email, password } })
+    const response = await firstValueFrom(
+      this.api.post<SessionUser | { user: SessionUser }>('/auth/login', {
+        user: { email, password }
+      })
     );
-    this._user.set(user);
+    const sessionUser = this.normalizeSessionUser(response);
+    if (!sessionUser) {
+      throw new Error('Unexpected login response shape');
+    }
+    this._user.set(sessionUser);
     await this.router.navigateByUrl('/');
   }
 
@@ -73,11 +79,38 @@ export class AuthService {
       }
 
       const parsed = JSON.parse(stored);
-      if (typeof parsed === 'object' && parsed && 'email' in parsed && 'id' in parsed) {
-        return { id: Number(parsed.id) || 0, email: String(parsed.email) };
-      }
+      return this.normalizeSessionUser(parsed);
     } catch {
       // ignore parsing errors
+    }
+
+    return null;
+  }
+
+  private normalizeSessionUser(value: unknown): SessionUser | null {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+
+    const source = value as Record<string, unknown>;
+    const maybeUser = 'user' in source ? source['user'] : value;
+    if (!maybeUser || typeof maybeUser !== 'object') {
+      return null;
+    }
+
+    const userRecord = maybeUser as Record<string, unknown>;
+    const id = userRecord['id'];
+    const email = userRecord['email'];
+
+    if (typeof id === 'number' && typeof email === 'string') {
+      return { id, email };
+    }
+
+    if (typeof id === 'string' && typeof email === 'string') {
+      const numericId = Number.parseInt(id, 10);
+      if (Number.isFinite(numericId)) {
+        return { id: numericId, email };
+      }
     }
 
     return null;
