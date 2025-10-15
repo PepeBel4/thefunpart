@@ -1,15 +1,16 @@
-import { Component, inject } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { NgFor, NgIf } from '@angular/common';
 import { CartService } from '../cart/cart.service';
 import { TranslatePipe } from './translate.pipe';
 import { TranslationService } from '../core/translation.service';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [RouterLink, NgIf, NgFor, TranslatePipe],
+  imports: [RouterLink, NgIf, NgFor, TranslatePipe, FormsModule],
   styles: [`
     nav {
       position: sticky;
@@ -255,8 +256,8 @@ import { TranslationService } from '../core/translation.service';
       <label class="language-select">
         <span class="sr-only">{{ 'nav.languageLabel' | translate: 'Language' }}</span>
         <select
-          [value]="language()"
-          (change)="onLanguageChange($event)"
+          [ngModel]="selectedLanguage()"
+          (ngModelChange)="onLanguageChange($event)"
           [attr.aria-label]="'nav.languageAria' | translate: 'Select website language'"
         >
           <option *ngFor="let lang of languages" [value]="lang.code">{{ lang.label }}</option>
@@ -280,12 +281,15 @@ export class NavbarComponent {
   private i18n = inject(TranslationService);
   languages = this.i18n.languages;
   language = this.i18n.languageSignal;
+  selectedLanguage = signal(this.language());
 
-  onLanguageChange(event: Event) {
-    const element = event.target as HTMLSelectElement | null;
-    if (!element) {
-      return;
-    }
-    this.i18n.setLanguage(element.value);
+  constructor() {
+    effect(() => {
+      this.selectedLanguage.set(this.language());
+    });
+  }
+
+  onLanguageChange(code: string) {
+    this.i18n.setLanguage(code);
   }
 }
