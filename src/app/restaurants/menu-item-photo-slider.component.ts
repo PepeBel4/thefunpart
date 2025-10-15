@@ -1,6 +1,8 @@
 import { NgForOf, NgIf } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, NgZone, OnChanges, OnDestroy, OnInit, SimpleChanges, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, NgZone, OnDestroy, OnInit, inject } from '@angular/core';
 import { RestaurantPhoto } from '../core/models';
+
+type SliderPhoto = Pick<RestaurantPhoto, 'url'>;
 
 @Component({
   standalone: true,
@@ -58,40 +60,39 @@ import { RestaurantPhoto } from '../core/models';
     }
   `],
   template: `
-    <div class="photo-slider" *ngIf="photos?.length" [class.single]="(photos?.length ?? 0) === 1">
+    <div class="photo-slider" *ngIf="displayPhotos.length" [class.single]="displayPhotos.length === 1">
       <img
-        *ngFor="let photo of photos || []; index as i"
+        *ngFor="let photo of displayPhotos; index as i"
         [src]="photo.url"
         [alt]="createAltText(i)"
         loading="lazy"
         [class.active]="i === currentIndex"
-        [class.previous]="previousIndex === i && (photos?.length ?? 0) > 1"
+        [class.previous]="previousIndex === i && displayPhotos.length > 1"
       />
     </div>
   `,
 })
-export class MenuItemPhotoSliderComponent implements OnChanges, OnDestroy, OnInit {
-  @Input() photos: RestaurantPhoto[] | null | undefined = [];
+export class MenuItemPhotoSliderComponent implements OnDestroy, OnInit {
+  readonly displayPhotos: SliderPhoto[] = [];
+
+  @Input()
+  set photos(value: ReadonlyArray<RestaurantPhoto | string> | null | undefined) {
+    this.replacePhotos(value);
+  }
+
   @Input() itemName = '';
 
   currentIndex = 0;
   previousIndex: number | null = null;
 
   private readonly intervalMs = 5000;
-  private timerId: number | null = null;
+  private timerId: ReturnType<typeof setInterval> | null = null;
   private readonly zone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly isBrowser = typeof window !== 'undefined';
 
   ngOnInit() {
     this.restartTimer();
-  }
-
-  ngOnChanges(changes: SimpleChanges) {
-    if (changes['photos']) {
-      this.currentIndex = 0;
-      this.previousIndex = null;
-      this.restartTimer();
-    }
   }
 
   ngOnDestroy() {
@@ -100,11 +101,11 @@ export class MenuItemPhotoSliderComponent implements OnChanges, OnDestroy, OnIni
 
   private restartTimer() {
     this.clearTimer();
-    const total = this.photos?.length ?? 0;
-    if (total <= 1) { return; }
+    const total = this.displayPhotos.length;
+    if (!this.isBrowser || total <= 1) { return; }
 
     this.zone.runOutsideAngular(() => {
-      this.timerId = window.setInterval(() => {
+      this.timerId = setInterval(() => {
         this.zone.run(() => {
           this.previousIndex = this.currentIndex;
           this.currentIndex = (this.currentIndex + 1) % total;
@@ -116,9 +117,27 @@ export class MenuItemPhotoSliderComponent implements OnChanges, OnDestroy, OnIni
 
   private clearTimer() {
     if (this.timerId !== null) {
-      window.clearInterval(this.timerId);
+      clearInterval(this.timerId);
       this.timerId = null;
     }
+  }
+
+  private replacePhotos(value: ReadonlyArray<RestaurantPhoto | string> | null | undefined) {
+    this.displayPhotos.splice(0, this.displayPhotos.length);
+
+    if (value?.length) {
+      for (const entry of value) {
+        const url = typeof entry === 'string' ? entry : entry?.url;
+        if (url) {
+          this.displayPhotos.push({ url });
+        }
+      }
+    }
+
+    this.currentIndex = 0;
+    this.previousIndex = null;
+    this.restartTimer();
+    this.cdr.markForCheck();
   }
 
   createAltText(index: number) {
