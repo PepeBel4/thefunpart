@@ -198,14 +198,19 @@ import { TranslationService } from '../core/translation.service';
       gap: 0.5rem;
     }
 
-    .new-chain {
+    .chain-inputs {
+      display: grid;
+      gap: 0.5rem;
+    }
+
+    .chain-entry {
       display: flex;
       flex-wrap: wrap;
       gap: 0.5rem;
       align-items: center;
     }
 
-    .new-chain input {
+    .chain-entry input {
       flex: 1 1 220px;
       min-width: 180px;
       padding: 0.55rem 0.75rem;
@@ -225,7 +230,7 @@ import { TranslationService } from '../core/translation.service';
 
     .upload-controls button,
     .details-actions button,
-    .new-chain button {
+    .chain-entry button {
       background: var(--brand-green);
       color: #042f1a;
       border: 0;
@@ -239,13 +244,13 @@ import { TranslationService } from '../core/translation.service';
 
     .upload-controls button:hover,
     .details-actions button:hover,
-    .new-chain button:hover {
+    .chain-entry button:hover {
       transform: translateY(-1px);
       box-shadow: 0 16px 32px rgba(6, 193, 103, 0.28);
     }
 
     .details-actions button[disabled],
-    .new-chain button[disabled] {
+    .chain-entry button[disabled] {
       opacity: 0.7;
       cursor: default;
       box-shadow: none;
@@ -401,49 +406,39 @@ import { TranslationService } from '../core/translation.service';
                     <p>{{ 'admin.chains.empty' | translate: 'Not part of any chains yet.' }}</p>
                   </ng-template>
 
-                  <div>
+                  <div class="chain-inputs">
                     <label>
                       {{ 'admin.chains.addExisting' | translate: 'Add existing chain' }}
-                      <select
-                        name="chain-selection"
-                        [(ngModel)]="chainSelection"
-                        (ngModelChange)="onChainSelect($event)"
-                      >
-                        <option value="">
-                          {{ 'admin.chains.selectPlaceholder' | translate: 'Select a chain' }}
-                        </option>
-                        <option
-                          *ngFor="let chain of chains"
-                          [value]="chain.id"
-                          [disabled]="isChainAttached(chain.id)"
+                      <div class="chain-entry">
+                        <input
+                          type="text"
+                          name="chain-entry"
+                          [(ngModel)]="chainInput"
+                          [attr.placeholder]="
+                            'admin.chains.namePlaceholder'
+                              | translate: 'Start typing to find or create a chain'
+                          "
+                          [attr.list]="chains.length ? 'chain-options' : null"
+                          (keydown.enter)="addChainFromInput(); $event.preventDefault()"
+                        />
+                        <button
+                          type="button"
+                          (click)="addChainFromInput()"
+                          [disabled]="addingChain || !chainInput.trim()"
                         >
-                          {{ chain.name }}
-                        </option>
-                      </select>
+                          {{
+                            addingChain
+                              ? ('admin.chains.creating' | translate: 'Saving…')
+                              : chainInputMatchesExisting
+                                ? ('admin.chains.addButton' | translate: 'Add chain')
+                                : ('admin.chains.create' | translate: 'Create & add')
+                          }}
+                        </button>
+                      </div>
                     </label>
-                  </div>
-
-                  <div class="new-chain">
-                    <input
-                      type="text"
-                      name="new-chain-name"
-                      [(ngModel)]="newChainName"
-                      [attr.placeholder]="
-                        'admin.chains.namePlaceholder'
-                          | translate: 'Enter a new chain name'
-                      "
-                    />
-                    <button
-                      type="button"
-                      (click)="createAndAttachChain()"
-                      [disabled]="creatingChain || !newChainName.trim()"
-                    >
-                      {{
-                        creatingChain
-                          ? ('admin.chains.creating' | translate: 'Creating…')
-                          : ('admin.chains.create' | translate: 'Create & add')
-                      }}
-                    </button>
+                    <datalist id="chain-options" *ngIf="chains.length">
+                      <option *ngFor="let chain of chains" [value]="chain.name"></option>
+                    </datalist>
                   </div>
 
                   <span
@@ -648,9 +643,8 @@ export class AdminDashboardPage {
 
   chains: Chain[] = [];
   restaurantChains: Chain[] = [];
-  chainSelection = '';
-  newChainName = '';
-  creatingChain = false;
+  chainInput = '';
+  addingChain = false;
   chainMessage = '';
   chainMessageType: 'success' | 'error' | '' = '';
 
@@ -763,8 +757,7 @@ export class AdminDashboardPage {
 
     this.detailsForm = { name, descriptions };
     this.setRestaurantChains(restaurant);
-    this.chainSelection = '';
-    this.newChainName = '';
+    this.chainInput = '';
     this.resetDetailsStatus();
     this.resetChainStatus();
   }
@@ -870,6 +863,7 @@ export class AdminDashboardPage {
     this.chainMessage = '';
     this.chainMessageType = '';
     this.removingChainId = null;
+    this.addingChain = false;
   }
 
   private clearChainMessage() {
@@ -883,6 +877,7 @@ export class AdminDashboardPage {
       this.chains = this.sortChains(chains ?? []);
     } catch (err) {
       console.error('Failed to load chains', err);
+      this.chains = [];
     }
   }
 
@@ -890,33 +885,13 @@ export class AdminDashboardPage {
     return this.restaurantChains.some(chain => chain.id === chainId);
   }
 
-  async onChainSelect(value: string) {
-    if (!value) {
-      this.chainSelection = '';
-      return;
+  get chainInputMatchesExisting(): boolean {
+    const trimmed = this.chainInput.trim().toLowerCase();
+    if (!trimmed) {
+      return false;
     }
 
-    const chainId = Number(value);
-    this.chainSelection = '';
-
-    if (Number.isNaN(chainId) || !chainId || this.selectedRestaurantId === null || this.isChainAttached(chainId)) {
-      return;
-    }
-
-    this.clearChainMessage();
-
-    try {
-      await firstValueFrom(this.chainService.addChainToRestaurant(this.selectedRestaurantId, chainId));
-      const chain = this.chains.find(item => item.id === chainId);
-      if (chain) {
-        this.restaurantChains = this.sortChains([...this.restaurantChains, chain]);
-      }
-      this.setChainMessage('success', 'admin.chains.added', 'Chain added to restaurant.');
-      this.selectedRestaurantIdSubject.next(this.selectedRestaurantId);
-    } catch (err) {
-      console.error(err);
-      this.setChainMessage('error', 'admin.chains.error', 'Unable to update chains. Please try again.');
-    }
+    return this.chains.some(chain => chain.name.trim().toLowerCase() === trimmed);
   }
 
   async removeChain(chain: Chain) {
@@ -940,35 +915,57 @@ export class AdminDashboardPage {
     }
   }
 
-  async createAndAttachChain() {
-    if (this.selectedRestaurantId === null || this.creatingChain) {
+  async addChainFromInput() {
+    if (this.selectedRestaurantId === null || this.addingChain) {
       return;
     }
 
-    const trimmedName = this.newChainName.trim();
+    const trimmedName = this.chainInput.trim();
 
     if (!trimmedName) {
-      this.newChainName = trimmedName;
+      this.chainInput = trimmedName;
       return;
     }
 
-    this.creatingChain = true;
+    const existingChain = this.findChainByName(trimmedName);
+
+    if (existingChain && this.isChainAttached(existingChain.id)) {
+      this.setChainMessage('error', 'admin.chains.alreadyAdded', 'This chain is already linked to the restaurant.');
+      this.chainInput = '';
+      return;
+    }
+
+    this.addingChain = true;
     this.clearChainMessage();
 
     try {
-      const chain = await firstValueFrom(this.chainService.create({ name: trimmedName }));
-      this.chains = this.sortChains([...this.chains, chain]);
+      let chain: Chain | undefined = existingChain;
+
+      if (!chain) {
+        chain = await firstValueFrom(this.chainService.create({ name: trimmedName }));
+        this.chains = this.sortChains([...this.chains, chain]);
+      }
+
       await firstValueFrom(this.chainService.addChainToRestaurant(this.selectedRestaurantId, chain.id));
       this.restaurantChains = this.sortChains([...this.restaurantChains, chain]);
-      this.setChainMessage('success', 'admin.chains.created', 'New chain created and added!');
-      this.newChainName = '';
+      this.setChainMessage(
+        'success',
+        chain === existingChain ? 'admin.chains.added' : 'admin.chains.created',
+        chain === existingChain ? 'Chain added to restaurant.' : 'New chain created and added!'
+      );
+      this.chainInput = '';
       this.selectedRestaurantIdSubject.next(this.selectedRestaurantId);
     } catch (err) {
       console.error(err);
       this.setChainMessage('error', 'admin.chains.error', 'Unable to update chains. Please try again.');
     } finally {
-      this.creatingChain = false;
+      this.addingChain = false;
     }
+  }
+
+  private findChainByName(name: string): Chain | undefined {
+    const normalized = name.trim().toLowerCase();
+    return this.chains.find(chain => chain.name.trim().toLowerCase() === normalized);
   }
 
   private setChainMessage(type: 'success' | 'error', key: string, fallback: string) {
