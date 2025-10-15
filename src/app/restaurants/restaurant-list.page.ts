@@ -1,19 +1,29 @@
 import { Component, effect, inject, signal } from '@angular/core';
-import { AsyncPipe, NgFor, NgIf, TitleCasePipe } from '@angular/common';
+import { AsyncPipe, CurrencyPipe, NgFor, NgIf, TitleCasePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { map } from 'rxjs';
-import { Restaurant, SessionUser, UserProfile } from '../core/models';
+import { combineLatest, map, shareReplay } from 'rxjs';
+import { MenuItem, Restaurant, SessionUser, UserProfile } from '../core/models';
 import { RestaurantService } from './restaurant.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
 import { AuthService } from '../core/auth.service';
 import { ProfileService } from '../core/profile.service';
 import { RESTAURANT_CUISINES } from './cuisines';
+import { MenuService } from '../menu/menu.service';
+
+type DiscountHighlight = {
+  restaurant: Restaurant;
+  item: MenuItem;
+  currentPriceCents: number;
+  originalPriceCents: number;
+  savingsCents: number;
+  savingsPercent: number | null;
+};
 
 @Component({
   standalone: true,
   selector: 'app-restaurant-list',
-  imports: [AsyncPipe, RouterLink, NgFor, NgIf, TitleCasePipe, TranslatePipe],
+  imports: [AsyncPipe, RouterLink, NgFor, NgIf, TitleCasePipe, TranslatePipe, CurrencyPipe],
   styles: [`
     :host {
       display: flex;
@@ -30,6 +40,90 @@ import { RESTAURANT_CUISINES } from './cuisines';
     .subhead {
       color: var(--text-secondary);
       font-size: 1rem;
+    }
+
+    .discounts-section {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1.4rem 1.6rem;
+      border-radius: var(--radius-card);
+      background: linear-gradient(135deg, rgba(6, 193, 103, 0.08), rgba(6, 193, 103, 0.02));
+      border: 1px solid rgba(6, 193, 103, 0.2);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .discounts-header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .discounts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1rem;
+    }
+
+    a.discount-card {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      padding: 1rem 1.2rem;
+      border-radius: var(--radius-card);
+      text-decoration: none;
+      color: inherit;
+      background: var(--surface);
+      border: 1px solid rgba(10, 10, 10, 0.06);
+      box-shadow: var(--shadow-soft);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    a.discount-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+    }
+
+    .discount-chip {
+      align-self: flex-start;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(6, 193, 103, 0.16);
+      color: var(--brand-green);
+      font-weight: 600;
+      font-size: 0.8rem;
+      letter-spacing: 0.02em;
+    }
+
+    .discount-card .item-name {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .discount-card .restaurant-name {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+
+    .discount-prices {
+      display: flex;
+      align-items: baseline;
+      gap: 0.6rem;
+    }
+
+    .discount-prices .current {
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+
+    .discount-prices .original {
+      color: var(--text-secondary);
+      text-decoration: line-through;
     }
 
     .profile-card {
@@ -196,6 +290,41 @@ import { RESTAURANT_CUISINES } from './cuisines';
         {{ 'restaurants.subheading' | translate: 'Hand-picked favourites delivering fast, just like the Uber Eats app.' }}
       </p>
     </div>
+    <ng-container *ngIf="discounts$ | async as discounts">
+      <section class="discounts-section" *ngIf="discounts.length">
+        <div class="discounts-header">
+          <h3>{{ 'restaurants.discountsHeading' | translate: 'Limited-time deals' }}</h3>
+          <p class="subhead">
+            {{
+              'restaurants.discountsSubheading'
+                | translate: 'Tap a deal to jump straight to the menu item.'
+            }}
+          </p>
+        </div>
+        <div class="discounts-grid">
+          <a
+            class="discount-card"
+            *ngFor="let deal of discounts"
+            [routerLink]="['/restaurants', deal.restaurant.id]"
+            [queryParams]="{ highlightItem: deal.item.id }"
+          >
+            <span class="discount-chip">
+              {{ 'restaurants.saveLabel' | translate: 'Save' }}
+              {{ (deal.savingsCents / 100) | currency:'EUR' }}
+              <ng-container *ngIf="deal.savingsPercent !== null">
+                ({{ deal.savingsPercent }}%)
+              </ng-container>
+            </span>
+            <h4 class="item-name">{{ deal.item.name }}</h4>
+            <p class="restaurant-name">{{ getRestaurantName(deal.restaurant) }}</p>
+            <div class="discount-prices">
+              <span class="current">{{ (deal.currentPriceCents / 100) | currency:'EUR' }}</span>
+              <span class="original">{{ (deal.originalPriceCents / 100) | currency:'EUR' }}</span>
+            </div>
+          </a>
+        </div>
+      </section>
+    </ng-container>
     <a
       class="card profile-card"
       routerLink="/profile"
@@ -243,6 +372,7 @@ import { RESTAURANT_CUISINES } from './cuisines';
 })
 export class RestaurantListPage {
   private svc = inject(RestaurantService);
+  private menu = inject(MenuService);
   private i18n = inject(TranslationService);
   private auth = inject(AuthService);
   private profile = inject(ProfileService);
@@ -327,6 +457,41 @@ export class RestaurantListPage {
     return combined.length ? combined : undefined;
   }
 
+  private hasDiscount(item: MenuItem): boolean {
+    const discounted = item.discounted_price_cents;
+    return typeof discounted === 'number' && discounted >= 0 && discounted < item.price_cents;
+  }
+
+  private toDiscountHighlight(restaurant: Restaurant, item: MenuItem): DiscountHighlight | null {
+    if (!this.hasDiscount(item)) {
+      return null;
+    }
+
+    const discounted = item.discounted_price_cents;
+    if (typeof discounted !== 'number') {
+      return null;
+    }
+
+    const original = item.price_cents;
+    const current = discounted;
+    const savings = Math.max(original - current, 0);
+
+    if (savings <= 0) {
+      return null;
+    }
+
+    const percent = original > 0 ? Math.round((savings / original) * 100) : null;
+
+    return {
+      restaurant,
+      item,
+      currentPriceCents: current,
+      originalPriceCents: original,
+      savingsCents: savings,
+      savingsPercent: percent,
+    };
+  }
+
   restaurants$ = this.svc.list().pipe(
     map((restaurants) =>
       restaurants.map((restaurant) => ({
@@ -335,6 +500,34 @@ export class RestaurantListPage {
         cuisines: this.normalizeCuisines(restaurant.cuisines),
       })),
     ),
+    shareReplay({ bufferSize: 1, refCount: true })
+  );
+
+  discounts$ = combineLatest([
+    this.restaurants$,
+    this.menu.listDiscounted(),
+  ]).pipe(
+    map(([restaurants, items]) => {
+      const restaurantMap = new Map(restaurants.map(restaurant => [restaurant.id, restaurant]));
+
+      return items
+        .map(item => {
+          const restaurant = restaurantMap.get(item.restaurant_id);
+          if (!restaurant) {
+            return null;
+          }
+
+          return this.toDiscountHighlight(restaurant, item);
+        })
+        .filter((highlight): highlight is DiscountHighlight => Boolean(highlight))
+        .sort((a, b) => {
+          if (a.savingsPercent != null && b.savingsPercent != null && a.savingsPercent !== b.savingsPercent) {
+            return b.savingsPercent - a.savingsPercent;
+          }
+
+          return b.savingsCents - a.savingsCents;
+        });
+    })
   );
 
   shouldShowProfilePrompt(): boolean {

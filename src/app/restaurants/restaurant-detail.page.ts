@@ -4,7 +4,18 @@ import { MenuService } from '../menu/menu.service';
 import { RestaurantService } from './restaurant.service';
 import { AsyncPipe, CurrencyPipe, NgIf, NgFor, NgStyle, DOCUMENT } from '@angular/common';
 import { MenuItem, Restaurant } from '../core/models';
-import { Observable, firstValueFrom, map, of, shareReplay, startWith, switchMap, timer } from 'rxjs';
+import {
+  Observable,
+  combineLatest,
+  firstValueFrom,
+  map,
+  of,
+  shareReplay,
+  startWith,
+  switchMap,
+  tap,
+  timer,
+} from 'rxjs';
 import { CartCategorySelection, CartRestaurant, CartService } from '../cart/cart.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
@@ -186,6 +197,11 @@ type PendingCartAddition = {
       pointer-events: none;
     }
 
+    .card.highlighted {
+      border-color: rgba(6, 193, 103, 0.4);
+      box-shadow: 0 0 0 3px rgba(6, 193, 103, 0.14), var(--shadow-soft);
+    }
+
     .card:hover::after {
       opacity: 1;
     }
@@ -359,7 +375,12 @@ type PendingCartAddition = {
         <section class="menu-section" *ngFor="let category of menuCategories" [attr.id]="category.anchor">
           <h4>{{ category.name }}</h4>
           <div class="menu-grid">
-            <div class="card" *ngFor="let m of category.items">
+            <div
+              class="card"
+              *ngFor="let m of category.items"
+              [attr.id]="getMenuItemAnchor(m)"
+              [class.highlighted]="shouldHighlightMenuItem(m)"
+            >
               <app-menu-item-photo-slider
                 *ngIf="m.photos?.length"
                 [photos]="m.photos"
@@ -437,12 +458,17 @@ export class RestaurantDetailPage implements OnDestroy {
   private cart = inject(CartService);
   private document = inject(DOCUMENT);
   private i18n = inject(TranslationService);
+  private highlightMenuItemId$ = this.route.queryParamMap.pipe(
+    map(params => this.parseHighlightParam(params.get('highlightItem'))),
+    startWith(this.parseHighlightParam(this.route.snapshot.queryParamMap.get('highlightItem')))
+  );
+  private highlightMenuItemId: number | null = null;
+  private highlightScrollTimeout: ReturnType<typeof setTimeout> | null = null;
+  private highlightRetryTimeout: ReturnType<typeof setTimeout> | null = null;
 
   id = Number(this.route.snapshot.paramMap.get('id'));
   restaurant$: Observable<Restaurant> = this.rSvc.get(this.id).pipe(shareReplay({ bufferSize: 1, refCount: true }));
-  menuCategories$: Observable<MenuCategoryGroup[]> = this.menuSvc
-    .listByRestaurant(this.id)
-    .pipe(map(items => this.organizeMenu(items)));
+  menuCategories$: Observable<MenuCategoryGroup[]> = this.createMenuCategoriesStream();
 
   defaultHeroBackground = 'linear-gradient(135deg, rgba(6, 193, 103, 0.32), rgba(4, 47, 26, 0.68))';
   heroBackground$: Observable<string> = this.restaurant$.pipe(
@@ -482,6 +508,14 @@ export class RestaurantDetailPage implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.highlightScrollTimeout) {
+      clearTimeout(this.highlightScrollTimeout);
+      this.highlightScrollTimeout = null;
+    }
+    if (this.highlightRetryTimeout) {
+      clearTimeout(this.highlightRetryTimeout);
+      this.highlightRetryTimeout = null;
+    }
     this.unlockBodyScroll();
   }
 
@@ -521,7 +555,22 @@ export class RestaurantDetailPage implements OnDestroy {
   }
 
   refreshMenu() {
-    this.menuCategories$ = this.menuSvc.listByRestaurant(this.id).pipe(map(items => this.organizeMenu(items)));
+    this.menuCategories$ = this.createMenuCategoriesStream();
+  }
+
+  private createMenuCategoriesStream(): Observable<MenuCategoryGroup[]> {
+    return combineLatest([
+      this.menuSvc.listByRestaurant(this.id).pipe(map(items => this.organizeMenu(items))),
+      this.highlightMenuItemId$,
+    ]).pipe(
+      tap(([, highlightId]) => {
+        this.highlightMenuItemId = highlightId;
+        if (highlightId != null) {
+          this.scheduleHighlightScroll(highlightId);
+        }
+      }),
+      map(([categories]) => categories)
+    );
   }
 
   hasDiscount(item: MenuItem): boolean {
@@ -617,6 +666,64 @@ export class RestaurantDetailPage implements OnDestroy {
 
   scrollTo(anchor: string) {
     this.document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  getMenuItemAnchor(item: MenuItem): string {
+    return this.buildMenuItemAnchorById(item.id);
+  }
+
+  shouldHighlightMenuItem(item: MenuItem): boolean {
+    return this.highlightMenuItemId === item.id;
+  }
+
+  private scheduleHighlightScroll(menuItemId: number) {
+    if (this.highlightScrollTimeout) {
+      clearTimeout(this.highlightScrollTimeout);
+      this.highlightScrollTimeout = null;
+    }
+
+    this.highlightScrollTimeout = setTimeout(() => {
+      this.highlightScrollTimeout = null;
+      this.tryScrollToMenuItem(menuItemId);
+    }, 120);
+  }
+
+  private tryScrollToMenuItem(menuItemId: number, attempt = 0) {
+    const anchor = this.buildMenuItemAnchorById(menuItemId);
+    const target = this.document.getElementById(anchor);
+
+    if (!target) {
+      if (attempt < 5) {
+        if (this.highlightRetryTimeout) {
+          clearTimeout(this.highlightRetryTimeout);
+        }
+        this.highlightRetryTimeout = setTimeout(() => {
+          this.highlightRetryTimeout = null;
+          this.tryScrollToMenuItem(menuItemId, attempt + 1);
+        }, 150);
+      }
+      return;
+    }
+
+    if (this.highlightRetryTimeout) {
+      clearTimeout(this.highlightRetryTimeout);
+      this.highlightRetryTimeout = null;
+    }
+
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  private parseHighlightParam(value: string | null): number | null {
+    if (!value) {
+      return null;
+    }
+
+    const parsed = parseInt(value, 10);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  private buildMenuItemAnchorById(id: number): string {
+    return `menu-item-${id}`;
   }
 
   getRestaurantName(restaurant: Restaurant): string {

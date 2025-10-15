@@ -8,6 +8,7 @@ export class MenuService {
   private api = inject(ApiService);
   listByRestaurant(restaurantId: number) { return this.api.get<MenuItem[]>(`/menu_items?restaurant_id=${restaurantId}`); }
   get(id: number) { return this.api.get<MenuItem>(`/menu_items/${id}`); }
+  listDiscounted() { return this.api.get<MenuItem[]>('/menu_items?discounted=true'); }
   create(restaurantId: number, payload: MenuItemInput) {
     return this.api.post<MenuItem>('/menu_items', { menu_item: { ...payload, restaurant_id: restaurantId } });
   }
