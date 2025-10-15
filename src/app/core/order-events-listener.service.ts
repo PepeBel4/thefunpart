@@ -86,20 +86,41 @@ export class OrderEventsListenerService implements OnDestroy {
   }
 
   private unwrapMqttModule(module: unknown): typeof import('mqtt') | undefined {
-    if (!module || typeof module !== 'object') {
+    if (!module) {
       return undefined;
     }
 
-    const candidate = module as Partial<typeof import('mqtt')> & {
-      default?: Partial<typeof import('mqtt')>;
+    const wrapConnect = (fn: unknown): typeof import('mqtt') | undefined => {
+      if (typeof fn === 'function') {
+        return { connect: fn as typeof import('mqtt')['connect'] } as typeof import('mqtt');
+      }
+
+      return undefined;
     };
+
+    if (typeof module === 'function') {
+      return wrapConnect(module);
+    }
+
+    if (typeof module !== 'object') {
+      return undefined;
+    }
+
+    const candidate = module as Partial<typeof import('mqtt')> & { default?: unknown };
 
     if (typeof candidate.connect === 'function') {
       return candidate as typeof import('mqtt');
     }
 
-    if (candidate.default && typeof candidate.default.connect === 'function') {
-      return candidate.default as typeof import('mqtt');
+    const defaultExport = candidate.default;
+
+    const wrappedDefault = wrapConnect(defaultExport);
+    if (wrappedDefault) {
+      return wrappedDefault;
+    }
+
+    if (defaultExport && typeof defaultExport === 'object' && defaultExport !== module) {
+      return this.unwrapMqttModule(defaultExport);
     }
 
     return undefined;
