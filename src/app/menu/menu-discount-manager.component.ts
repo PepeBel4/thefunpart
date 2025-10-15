@@ -1,6 +1,6 @@
 import { DecimalPipe, NgFor, NgIf } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, Input, OnChanges, SimpleChanges, inject } from '@angular/core';
+import { Component, Input, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import {
@@ -600,8 +600,8 @@ interface AssignmentFormModel {
     </section>
   `,
 })
-export class MenuDiscountManagerComponent implements OnChanges {
-  @Input() restaurantId!: number;
+export class MenuDiscountManagerComponent {
+  private restaurantIdValue: number | null = null;
 
   private menu = inject(MenuService);
   private discountsApi = inject(MenuDiscountsService);
@@ -612,6 +612,7 @@ export class MenuDiscountManagerComponent implements OnChanges {
   menuItems: MenuItem[] = [];
   discounts: MenuItemDiscount[] = [];
   assignments: MenuItemDiscountAssignment[] = [];
+  private activeLoadToken = 0;
 
   newDiscount: DiscountFormModel = this.createEmptyDiscountForm();
   editingDiscountId: number | null = null;
@@ -629,20 +630,40 @@ export class MenuDiscountManagerComponent implements OnChanges {
   savingAssignment = false;
   loadError = '';
 
+  @Input()
+  set restaurantId(value: number | null) {
+    if (value === this.restaurantIdValue) {
+      return;
+    }
+
+    this.restaurantIdValue = value ?? null;
+
+    if (this.restaurantIdValue === null) {
+      this.activeLoadToken++;
+      this.resetState();
+      return;
+    }
+
+    void this.initialize(this.restaurantIdValue);
+  }
+
+  get restaurantId(): number | null {
+    return this.restaurantIdValue;
+  }
+
   get restaurantDiscounts(): MenuItemDiscount[] {
+    const restaurantId = this.restaurantIdValue;
+    if (restaurantId === null) {
+      return [];
+    }
+
     return this.discounts.filter(discount =>
-      discount.menu_items.some(item => item.restaurant_id === this.restaurantId)
+      discount.menu_items.some(item => item.restaurant_id === restaurantId)
     );
   }
 
-  async ngOnChanges(changes: SimpleChanges) {
-    if (changes['restaurantId'] && this.restaurantId) {
-      await this.initialize();
-    }
-  }
-
   async createDiscount() {
-    if (!this.restaurantId) { return; }
+    if (this.restaurantIdValue === null) { return; }
     this.discountStatus = '';
     this.discountError = '';
 
@@ -772,7 +793,7 @@ export class MenuDiscountManagerComponent implements OnChanges {
   }
 
   async createAssignment() {
-    if (!this.restaurantId) { return; }
+    if (this.restaurantIdValue === null) { return; }
 
     this.assignmentStatus = '';
     this.assignmentError = '';
@@ -906,7 +927,8 @@ export class MenuDiscountManagerComponent implements OnChanges {
     }
   }
 
-  private async initialize() {
+  private async initialize(restaurantId: number) {
+    const loadToken = ++this.activeLoadToken;
     this.loading = true;
     this.loadError = '';
     this.discountStatus = '';
@@ -916,28 +938,43 @@ export class MenuDiscountManagerComponent implements OnChanges {
 
     try {
       const [items, discounts, assignments] = await Promise.all([
-        firstValueFrom(this.menu.listByRestaurant(this.restaurantId)),
+        firstValueFrom(this.menu.listByRestaurant(restaurantId)),
         firstValueFrom(this.discountsApi.list()),
         firstValueFrom(this.assignmentsApi.list()),
       ]);
 
+      if (this.activeLoadToken !== loadToken) {
+        return;
+      }
+
       this.menuItems = items;
       this.discounts = discounts;
       this.assignments = assignments.filter(
-        assignment => assignment.menu_item.restaurant_id === this.restaurantId
+        assignment => assignment.menu_item.restaurant_id === restaurantId
       );
     } catch (error) {
+      if (this.activeLoadToken !== loadToken) {
+        return;
+      }
+
       console.error(error);
       this.loadError = this.i18n.translate(
         'menu.discounts.error.load',
         'Unable to load discount data. Please refresh and try again.'
       );
     } finally {
-      this.loading = false;
+      if (this.activeLoadToken === loadToken) {
+        this.loading = false;
+      }
     }
   }
 
   private async refreshDiscountsAndAssignments() {
+    const restaurantId = this.restaurantIdValue;
+    if (restaurantId === null) {
+      return;
+    }
+
     try {
       const [discounts, assignments] = await Promise.all([
         firstValueFrom(this.discountsApi.list()),
@@ -945,12 +982,26 @@ export class MenuDiscountManagerComponent implements OnChanges {
       ]);
       this.discounts = discounts;
       this.assignments = assignments.filter(
-        assignment => assignment.menu_item.restaurant_id === this.restaurantId
+        assignment => assignment.menu_item.restaurant_id === restaurantId
       );
       this.loadError = '';
     } catch (error) {
       console.error(error);
     }
+  }
+
+  private resetState() {
+    this.menuItems = [];
+    this.discounts = [];
+    this.assignments = [];
+    this.loading = false;
+    this.loadError = '';
+    this.discountStatus = '';
+    this.discountError = '';
+    this.assignmentStatus = '';
+    this.assignmentError = '';
+    this.savingDiscount = false;
+    this.savingAssignment = false;
   }
 
   private validateDiscountForm(form: DiscountFormModel): string | null {
