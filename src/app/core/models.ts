@@ -62,7 +62,7 @@ export interface Order {
   order_items: OrderItem[];
   scenario?: OrderScenario;
   target_time_type?: OrderTargetTimeType;
-  target_time?: string | null;
+  target_time_at?: string | null;
   restaurant?: {
     id: number;
     name: string;

@@ -27,7 +27,7 @@ export class OrderService {
     items: OrderItemInput[];
     scenario: OrderScenario;
     targetTimeType: OrderTargetTimeType;
-    targetTime: string | null;
+    targetTimeAt: string | null;
   }): Observable<Order> {
     const body = {
       order: {
@@ -35,7 +35,7 @@ export class OrderService {
         order_items: payload.items,
         scenario: payload.scenario,
         target_time_type: payload.targetTimeType,
-        target_time: payload.targetTime,
+        target_time_at: payload.targetTimeAt,
       },
     };
 

@@ -103,12 +103,12 @@ export class CheckoutPage {
     }));
     const scenario = this.cart.scenario();
     const targetTimeType = this.cart.targetTimeType();
-    const targetTime = this.cart.targetTime();
+    const targetTimeAt = this.cart.targetTime();
     this.isPlacingOrder = true;
 
     try {
       const order: Order = await firstValueFrom(
-        this.orders.create({ restaurantId, items, scenario, targetTimeType, targetTime })
+        this.orders.create({ restaurantId, items, scenario, targetTimeType, targetTimeAt })
       );
 
       const paymentResponse = await firstValueFrom(
