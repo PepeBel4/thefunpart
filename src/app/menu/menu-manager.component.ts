@@ -1,5 +1,5 @@
 import { CurrencyPipe, NgFor, NgIf } from '@angular/common';
-import { Component, EventEmitter, Input, Output, inject, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { MenuItem, MenuItemCategory, MenuItemInput } from '../core/models';
@@ -18,6 +18,11 @@ interface MenuFormModel {
   description: string;
   price: string;
   categories: CategoryFormModel[];
+}
+
+interface QueuedPhoto {
+  file: File;
+  preview: string;
 }
 
 @Component({
@@ -366,6 +371,19 @@ interface MenuFormModel {
               {{ 'menu.photos.clear' | translate: 'Clear selection' }}
             </button>
           </div>
+          <div class="photo-grid queued" *ngIf="newPhotos.length">
+            <figure *ngFor="let photo of newPhotos; index as i">
+              <img [src]="photo.preview" [alt]="'Selected photo ' + (i + 1)" />
+              <button
+                type="button"
+                class="remove-photo"
+                (click)="removeQueuedPhoto('new', i)"
+                [disabled]="saving"
+              >
+                {{ 'menu.photos.removeQueued' | translate: 'Remove photo' }}
+              </button>
+            </figure>
+          </div>
           <span class="photo-info" *ngIf="newPhotos.length">
             {{
               newPhotos.length === 1
@@ -476,6 +494,19 @@ interface MenuFormModel {
                     {{ 'menu.photos.clear' | translate: 'Clear selection' }}
                   </button>
                 </div>
+                <div class="photo-grid queued" *ngIf="editPhotos.length">
+                  <figure *ngFor="let photo of editPhotos; index as i">
+                    <img [src]="photo.preview" [alt]="'Selected photo ' + (i + 1)" />
+                    <button
+                      type="button"
+                      class="remove-photo"
+                      (click)="removeQueuedPhoto('edit', i)"
+                      [disabled]="saving"
+                    >
+                      {{ 'menu.photos.removeQueued' | translate: 'Remove photo' }}
+                    </button>
+                  </figure>
+                </div>
                 <span class="photo-info" *ngIf="editPhotos.length">
                   {{
                     editPhotos.length === 1
@@ -532,7 +563,7 @@ interface MenuFormModel {
     </section>
   `,
 })
-export class MenuManagerComponent implements OnChanges, OnInit {
+export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
   @Input({ required: true }) restaurantId!: number;
   @Output() menuChanged = new EventEmitter<void>();
 
@@ -551,12 +582,17 @@ export class MenuManagerComponent implements OnChanges, OnInit {
   editingId: number | null = null;
   newItem: MenuFormModel = this.createEmptyForm();
   editItem: MenuFormModel = this.createEmptyForm();
-  newPhotos: File[] = [];
-  editPhotos: File[] = [];
+  newPhotos: QueuedPhoto[] = [];
+  editPhotos: QueuedPhoto[] = [];
   removingPhotoId: number | null = null;
 
   ngOnInit() {
     void this.fetchCategories();
+  }
+
+  ngOnDestroy() {
+    this.releaseQueuedPhotos(this.newPhotos);
+    this.releaseQueuedPhotos(this.editPhotos);
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -613,6 +649,7 @@ export class MenuManagerComponent implements OnChanges, OnInit {
 
   startEdit(item: MenuItem) {
     this.editingId = item.id;
+    this.releaseQueuedPhotos(this.editPhotos);
     this.editPhotos = [];
     this.removingPhotoId = null;
     this.editItem = {
@@ -626,6 +663,7 @@ export class MenuManagerComponent implements OnChanges, OnInit {
   cancelEdit() {
     this.editingId = null;
     this.editItem = this.createEmptyForm();
+    this.releaseQueuedPhotos(this.editPhotos);
     this.editPhotos = [];
     this.removingPhotoId = null;
   }
@@ -651,7 +689,7 @@ export class MenuManagerComponent implements OnChanges, OnInit {
       }));
       if (created?.id && this.newPhotos.length) {
         try {
-          await this.uploadMenuItemPhotos(created.id, this.newPhotos);
+          await this.uploadMenuItemPhotos(created.id, this.newPhotos.map(photo => photo.file));
         } catch (uploadError) {
           console.error(uploadError);
           this.error = this.i18n.translate(
@@ -660,6 +698,7 @@ export class MenuManagerComponent implements OnChanges, OnInit {
           );
         }
       }
+      this.releaseQueuedPhotos(this.newPhotos);
       this.newPhotos = [];
       this.newItem = this.createEmptyForm();
       this.creationStatus = this.i18n.translate('menu.form.status', 'Menu item added!');
@@ -696,8 +735,8 @@ export class MenuManagerComponent implements OnChanges, OnInit {
         this.mergeMenuItemUpdate(updated);
       }
 
-      const pendingPhotos = this.editPhotos.length ? [...this.editPhotos] : [];
-      this.editPhotos = [];
+      const queuedPhotos = this.editPhotos;
+      const pendingPhotos = queuedPhotos.length ? queuedPhotos.map(photo => photo.file) : [];
       this.cancelEdit();
       void this.fetchCategories();
       this.menuChanged.emit();
@@ -735,18 +774,35 @@ export class MenuManagerComponent implements OnChanges, OnInit {
     const selection = files ? Array.from(files) : [];
     if (!selection.length) { return; }
     this.error = '';
+    const queued = this.createQueuedPhotos(selection);
     if (target === 'new') {
-      this.newPhotos = [...this.newPhotos, ...selection];
+      this.newPhotos = [...this.newPhotos, ...queued];
     } else {
-      this.editPhotos = [...this.editPhotos, ...selection];
+      this.editPhotos = [...this.editPhotos, ...queued];
     }
   }
 
   clearQueuedPhotos(target: 'new' | 'edit') {
     if (target === 'new') {
+      this.releaseQueuedPhotos(this.newPhotos);
       this.newPhotos = [];
     } else {
+      this.releaseQueuedPhotos(this.editPhotos);
       this.editPhotos = [];
+    }
+  }
+
+  removeQueuedPhoto(target: 'new' | 'edit', index: number) {
+    const list = target === 'new' ? this.newPhotos : this.editPhotos;
+    const working = [...list];
+    const [removed] = working.splice(index, 1);
+    if (removed) {
+      URL.revokeObjectURL(removed.preview);
+    }
+    if (target === 'new') {
+      this.newPhotos = working;
+    } else {
+      this.editPhotos = working;
     }
   }
 
@@ -782,6 +838,18 @@ export class MenuManagerComponent implements OnChanges, OnInit {
   private async uploadMenuItemPhotos(menuItemId: number, files: File[]): Promise<MenuItem | null> {
     if (!files.length) { return null; }
     return await firstValueFrom(this.menu.uploadPhotos(menuItemId, files));
+  }
+
+  private createQueuedPhotos(files: File[]): QueuedPhoto[] {
+    return files.map(file => ({ file, preview: URL.createObjectURL(file) }));
+  }
+
+  private releaseQueuedPhotos(list: QueuedPhoto[]) {
+    for (const photo of list) {
+      if (photo?.preview) {
+        URL.revokeObjectURL(photo.preview);
+      }
+    }
   }
 
   private mergeMenuItemUpdate(updated: MenuItem) {
@@ -828,6 +896,8 @@ export class MenuManagerComponent implements OnChanges, OnInit {
     this.newItem = this.createEmptyForm();
     this.editItem = this.createEmptyForm();
     this.availableCategories = [];
+    this.releaseQueuedPhotos(this.newPhotos);
+    this.releaseQueuedPhotos(this.editPhotos);
     this.newPhotos = [];
     this.editPhotos = [];
     this.removingPhotoId = null;

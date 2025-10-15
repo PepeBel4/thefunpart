@@ -8,6 +8,7 @@ import { Observable, firstValueFrom, map, of, shareReplay, startWith, switchMap,
 import { CartCategorySelection, CartService } from '../cart/cart.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
+import { MenuItemPhotoSliderComponent } from './menu-item-photo-slider.component';
 
 type MenuCategoryGroup = {
   name: string;
@@ -19,7 +20,7 @@ type MenuCategoryGroup = {
 @Component({
   standalone: true,
   selector: 'app-restaurant-detail',
-  imports: [AsyncPipe, CurrencyPipe, NgFor, NgIf, TranslatePipe, NgStyle],
+  imports: [AsyncPipe, CurrencyPipe, NgFor, NgIf, TranslatePipe, NgStyle, MenuItemPhotoSliderComponent],
   styles: [`
     :host {
       display: block;
@@ -171,50 +172,6 @@ type MenuCategoryGroup = {
       opacity: 1;
     }
 
-    .photo-slider {
-      position: relative;
-      overflow: hidden;
-      border-radius: 12px;
-      aspect-ratio: 4 / 3;
-      background: rgba(10, 10, 10, 0.04);
-      box-shadow: inset 0 0 0 1px rgba(10, 10, 10, 0.04);
-    }
-
-    .photo-slider img {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      opacity: 0;
-      transform: scale(1.02);
-      animation-name: menuItemSlide;
-      animation-timing-function: ease-in-out;
-      animation-iteration-count: infinite;
-      animation-duration: 4s;
-    }
-
-    .photo-slider.single img {
-      position: relative;
-      opacity: 1;
-      transform: none;
-      animation: none;
-    }
-
-    @keyframes menuItemSlide {
-      0%,
-      18% {
-        opacity: 1;
-        transform: scale(1);
-      }
-
-      25%,
-      100% {
-        opacity: 0;
-        transform: scale(1.05);
-      }
-    }
-
     .price {
       font-weight: 700;
       font-size: 1.1rem;
@@ -279,20 +236,11 @@ type MenuCategoryGroup = {
           <h4>{{ category.name }}</h4>
           <div class="menu-grid">
             <div class="card" *ngFor="let m of category.items">
-              <div
-                class="photo-slider"
+              <app-menu-item-photo-slider
                 *ngIf="m.photos?.length"
-                [class.single]="m.photos!.length === 1"
-              >
-                <img
-                  *ngFor="let photo of m.photos!; index as i"
-                  [src]="photo.url"
-                  [alt]="m.name + ' photo ' + (i + 1)"
-                  loading="lazy"
-                  [style.animation-delay]="i * 4 + 's'"
-                  [style.animation-duration]="m.photos!.length * 4 + 's'"
-                />
-              </div>
+                [photos]="m.photos"
+                [itemName]="m.name"
+              ></app-menu-item-photo-slider>
               <h4>{{ m.name }}</h4>
               <p>
                 {{
