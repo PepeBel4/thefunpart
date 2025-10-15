@@ -1,4 +1,4 @@
-import { AsyncPipe, CurrencyPipe, NgFor, NgIf } from '@angular/common';
+import { CurrencyPipe, NgFor, NgIf } from '@angular/common';
 import { Component, EventEmitter, Input, Output, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
@@ -14,7 +14,7 @@ interface MenuFormModel {
 @Component({
   standalone: true,
   selector: 'app-menu-manager',
-  imports: [FormsModule, NgFor, NgIf, CurrencyPipe, AsyncPipe],
+  imports: [FormsModule, NgFor, NgIf, CurrencyPipe],
   styles: [`
     :host {
       display: block;

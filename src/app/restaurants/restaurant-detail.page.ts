@@ -4,9 +4,10 @@ import { MenuService } from '../menu/menu.service';
 import { RestaurantService } from './restaurant.service';
 import { AsyncPipe, CurrencyPipe, NgIf, NgFor } from '@angular/common';
 import { Restaurant } from '../core/models';
-import { Observable } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { CartService } from '../cart/cart.service';
 import { MenuManagerComponent } from '../menu/menu-manager.component';
+import { AuthService } from '../core/auth.service';
 
 @Component({
   standalone: true,
@@ -194,6 +195,7 @@ export class RestaurantDetailPage {
   private menuSvc = inject(MenuService);
   private rSvc = inject(RestaurantService);
   private cart = inject(CartService);
+  auth = inject(AuthService);
 
   id = Number(this.route.snapshot.paramMap.get('id'));
   restaurant$: Observable<Restaurant> = this.rSvc.get(this.id);
