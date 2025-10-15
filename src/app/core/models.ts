@@ -33,6 +33,7 @@ export interface MenuItem {
   price_cents: number; // integer cents from Rails
   description?: string;
   categories?: MenuItemCategory[];
+  photos?: RestaurantPhoto[];
 }
 
 export interface MenuItemInput {
