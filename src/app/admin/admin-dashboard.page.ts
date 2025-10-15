@@ -317,25 +317,23 @@ import { TranslationService } from '../core/translation.service';
               </header>
 
               <form class="details-form" (ngSubmit)="saveDetails()" novalidate>
+                <label class="name-field" for="restaurant-name">
+                  {{ 'admin.details.nameLabel' | translate: 'Restaurant name' }}
+                  <input
+                    id="restaurant-name"
+                    name="name"
+                    [(ngModel)]="detailsForm.name"
+                    required
+                    [attr.placeholder]="
+                      'admin.details.namePlaceholder'
+                        | translate: 'Enter the restaurant name'
+                    "
+                  />
+                </label>
+
                 <div class="language-fields">
                   <div class="language-card" *ngFor="let language of languages">
                     <h4>{{ language.label }}</h4>
-                    <label [attr.for]="'name-' + language.code">
-                      {{
-                        'admin.details.nameLabel'
-                          | translate: 'Name ({{language}})': { language: language.label }
-                      }}
-                      <input
-                        [id]="'name-' + language.code"
-                        name="name-{{ language.code }}"
-                        [(ngModel)]="detailsForm.names[language.code]"
-                        [required]="language.code === primaryLanguageCode"
-                        [attr.placeholder]="
-                          'admin.details.namePlaceholder'
-                            | translate: 'Enter the restaurant name'
-                        "
-                      />
-                    </label>
 
                     <label [attr.for]="'description-' + language.code">
                       {{
@@ -520,8 +518,8 @@ export class AdminDashboardPage {
   languages = this.i18n.languages;
   primaryLanguageCode = this.languages[0]?.code ?? 'en';
 
-  detailsForm: { names: Record<string, string>; descriptions: Record<string, string> } = {
-    names: {},
+  detailsForm: { name: string; descriptions: Record<string, string> } = {
+    name: '',
     descriptions: {},
   };
   detailsSaving = false;
@@ -608,15 +606,9 @@ export class AdminDashboardPage {
   }
 
   private populateDetailsForm(restaurant: Restaurant) {
-    const names: Record<string, string> = {};
     const descriptions: Record<string, string> = {};
 
     this.languages.forEach(language => {
-      names[language.code] = this.getTranslationForLanguage(
-        restaurant.name_translations,
-        restaurant.name,
-        language.code
-      );
       descriptions[language.code] = this.getTranslationForLanguage(
         restaurant.description_translations,
         restaurant.description,
@@ -624,7 +616,13 @@ export class AdminDashboardPage {
       );
     });
 
-    this.detailsForm = { names, descriptions };
+    const name = this.getTranslationForLanguage(
+      restaurant.name_translations,
+      restaurant.name,
+      this.primaryLanguageCode
+    );
+
+    this.detailsForm = { name, descriptions };
     this.resetDetailsStatus();
   }
 
@@ -659,9 +657,9 @@ export class AdminDashboardPage {
       return;
     }
 
-    const payload = this.buildUpdatePayload();
+    const trimmedName = this.detailsForm.name.trim();
 
-    if (!payload.name.trim()) {
+    if (!trimmedName) {
       this.detailsMessage = this.i18n.translate(
         'admin.details.requiredName',
         'Enter at least one restaurant name.'
@@ -669,6 +667,8 @@ export class AdminDashboardPage {
       this.detailsMessageType = 'error';
       return;
     }
+
+    const payload = this.buildUpdatePayload(trimmedName);
 
     this.detailsSaving = true;
     this.detailsMessage = '';
@@ -691,31 +691,28 @@ export class AdminDashboardPage {
     }
   }
 
-  private buildUpdatePayload(): RestaurantUpdateInput {
-    const nameTranslations: Record<string, string> = {};
+  private buildUpdatePayload(trimmedName: string): RestaurantUpdateInput {
     const descriptionTranslations: Record<string, string> = {};
 
     this.languages.forEach(language => {
-      const nameValue = this.detailsForm.names[language.code]?.trim();
-      if (nameValue) {
-        nameTranslations[language.code] = nameValue;
-      }
-
       const descriptionValue = this.detailsForm.descriptions[language.code]?.trim();
       if (descriptionValue) {
         descriptionTranslations[language.code] = descriptionValue;
       }
     });
 
-    const primaryName = nameTranslations[this.primaryLanguageCode] ?? '';
-    const primaryDescription = descriptionTranslations[this.primaryLanguageCode] ?? '';
+    const primaryDescription = this.detailsForm.descriptions[this.primaryLanguageCode]?.trim() ?? '';
 
-    return {
-      name: primaryName,
+    const payload: RestaurantUpdateInput = {
+      name: trimmedName,
       description: primaryDescription,
-      name_translations: nameTranslations,
-      description_translations: descriptionTranslations,
     };
+
+    if (Object.keys(descriptionTranslations).length) {
+      payload.description_translations = descriptionTranslations;
+    }
+
+    return payload;
   }
 
   private resetDetailsStatus() {
