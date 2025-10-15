@@ -1,7 +1,13 @@
+export interface RestaurantPhoto {
+  id: number;
+  url: string;
+}
+
 export interface Restaurant {
   id: number;
   name: string;
   description?: string;
+  photos?: RestaurantPhoto[];
   photo_urls?: string[];
 }
 

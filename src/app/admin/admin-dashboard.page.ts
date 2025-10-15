@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { BehaviorSubject, Observable, filter, firstValueFrom, shareReplay, switchMap, tap } from 'rxjs';
 import { OrderService } from '../orders/order.service';
 import { RestaurantService } from '../restaurants/restaurant.service';
-import { Restaurant } from '../core/models';
+import { Restaurant, RestaurantPhoto } from '../core/models';
 import { MenuManagerComponent } from '../menu/menu-manager.component';
 
 @Component({
@@ -244,16 +244,16 @@ import { MenuManagerComponent } from '../menu/menu-manager.component';
                 <p>Keep your storefront up to date by refreshing the gallery.</p>
               </header>
 
-              <div class="photo-grid" *ngIf="restaurant.photo_urls?.length">
-                <figure *ngFor="let url of restaurant.photo_urls">
-                  <img [src]="url" [alt]="restaurant.name + ' photo'" loading="lazy" />
+              <div class="photo-grid" *ngIf="restaurant.photos?.length">
+                <figure *ngFor="let photo of restaurant.photos">
+                  <img [src]="photo.url" [alt]="restaurant.name + ' photo'" loading="lazy" />
                   <button
                     type="button"
                     class="remove-photo"
-                    (click)="removePhoto(url)"
-                    [disabled]="removingPhotoUrl === url"
+                    (click)="removePhoto(photo)"
+                    [disabled]="removingPhotoId === photo.id"
                   >
-                    {{ removingPhotoUrl === url ? 'Removing…' : 'Remove' }}
+                    {{ removingPhotoId === photo.id ? 'Removing…' : 'Remove' }}
                   </button>
                 </figure>
               </div>
@@ -347,7 +347,7 @@ export class AdminDashboardPage {
   uploading = false;
   statusMessage = '';
   statusType: 'success' | 'error' | '' = '';
-  removingPhotoUrl: string | null = null;
+  removingPhotoId: number | null = null;
 
   onRestaurantChange(value: string | number) {
     const id = Number(value);
@@ -386,8 +386,8 @@ export class AdminDashboardPage {
     }
   }
 
-  async removePhoto(url: string) {
-    if (this.selectedRestaurantId === null || this.removingPhotoUrl !== null) {
+  async removePhoto(photo: RestaurantPhoto) {
+    if (this.selectedRestaurantId === null || this.removingPhotoId !== null) {
       return;
     }
 
@@ -395,12 +395,12 @@ export class AdminDashboardPage {
       return;
     }
 
-    this.removingPhotoUrl = url;
+    this.removingPhotoId = photo.id;
     this.statusMessage = '';
     this.statusType = '';
 
     try {
-      await firstValueFrom(this.restaurantService.deletePhoto(this.selectedRestaurantId, url));
+      await firstValueFrom(this.restaurantService.deletePhoto(this.selectedRestaurantId, photo.id));
       this.statusMessage = 'Photo removed.';
       this.statusType = 'success';
       this.selectedRestaurantIdSubject.next(this.selectedRestaurantId);
@@ -409,7 +409,7 @@ export class AdminDashboardPage {
       this.statusMessage = 'Unable to remove the photo. Please try again.';
       this.statusType = 'error';
     } finally {
-      this.removingPhotoUrl = null;
+      this.removingPhotoId = null;
     }
   }
 
@@ -418,6 +418,6 @@ export class AdminDashboardPage {
     this.statusMessage = '';
     this.statusType = '';
     this.uploading = false;
-    this.removingPhotoUrl = null;
+    this.removingPhotoId = null;
   }
 }

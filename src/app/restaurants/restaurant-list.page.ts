@@ -157,12 +157,16 @@ export class RestaurantListPage {
       return cached;
     }
 
-    const urls = restaurant.photo_urls;
-    if (!urls?.length) {
+    const photos = restaurant.photos;
+    if (!photos?.length) {
       return undefined;
     }
 
-    const choice = urls[Math.floor(Math.random() * urls.length)];
+    const choice = photos[Math.floor(Math.random() * photos.length)]?.url;
+    if (!choice) {
+      return undefined;
+    }
+
     this.heroPhotoCache.set(restaurant.id, choice);
     return choice;
   }

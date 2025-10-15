@@ -16,9 +16,7 @@ export class RestaurantService {
     return this.api.post<Restaurant>(`/restaurants/${id}/photos`, formData);
   }
 
-  deletePhoto(id: number, url: string): Observable<Restaurant> {
-    return this.api.delete<Restaurant>(`/restaurants/${id}/photos`, {
-      body: { url },
-    });
+  deletePhoto(restaurantId: number, photoId: number): Observable<Restaurant> {
+    return this.api.delete<Restaurant>(`/restaurants/${restaurantId}/photos/${photoId}`);
   }
 }

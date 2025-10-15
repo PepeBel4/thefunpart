@@ -165,9 +165,9 @@ import { CartService } from '../cart/cart.service';
         </div>
       </section>
 
-      <section *ngIf="r.photo_urls?.length" class="photos">
-        <figure class="photo-card" *ngFor="let url of r.photo_urls">
-          <img [src]="url" [alt]="r.name + ' photo'" loading="lazy" />
+      <section *ngIf="r.photos?.length" class="photos">
+        <figure class="photo-card" *ngFor="let photo of r.photos">
+          <img [src]="photo.url" [alt]="r.name + ' photo'" loading="lazy" />
         </figure>
       </section>
       <h3>Menu</h3>
