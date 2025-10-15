@@ -7,7 +7,8 @@ export interface Restaurant {
 
 export interface MenuItemCategory {
   id?: number;
-  name: string;
+  name?: string;
+  name_translations?: Record<string, string>;
 }
 
 export interface MenuItem {

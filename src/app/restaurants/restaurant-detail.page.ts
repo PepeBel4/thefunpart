@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, LOCALE_ID, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { MenuService } from '../menu/menu.service';
 import { RestaurantService } from './restaurant.service';
@@ -236,6 +236,7 @@ export class RestaurantDetailPage {
   private rSvc = inject(RestaurantService);
   private cart = inject(CartService);
   private document = inject(DOCUMENT);
+  private locale = inject(LOCALE_ID);
 
   id = Number(this.route.snapshot.paramMap.get('id'));
   restaurant$: Observable<Restaurant> = this.rSvc.get(this.id);
@@ -295,18 +296,33 @@ export class RestaurantDetailPage {
 
     items.forEach(item => {
       if (item.categories?.length) {
+        let assignedToCategory = false;
+
         item.categories.forEach(category => {
-          const key = category.id != null ? `id-${category.id}` : `name-${category.name.toLowerCase()}`;
+          const label = this.getCategoryLabel(category);
+
+          if (!label) {
+            return;
+          }
+
+          const key = category.id != null ? `id-${category.id}` : `name-${label.toLowerCase()}`;
+
           if (!grouped.has(key)) {
             grouped.set(key, {
-              name: category.name,
-              anchor: this.buildAnchor(category),
+              name: label,
+              anchor: this.buildAnchor(category, label),
               items: [],
-              value: category.name,
+              value: label,
             });
           }
+
           grouped.get(key)!.items.push(item);
+          assignedToCategory = true;
         });
+
+        if (!assignedToCategory) {
+          fallback.push(item);
+        }
       } else {
         fallback.push(item);
       }
@@ -326,16 +342,106 @@ export class RestaurantDetailPage {
     return result;
   }
 
-  private buildAnchor(category: NonNullable<MenuItem['categories']>[number]) {
+  private buildAnchor(category: NonNullable<MenuItem['categories']>[number], fallbackName: string) {
     if (category.id != null) {
       return `category-${category.id}`;
     }
 
-    const slug = category.name
+    const base = fallbackName ?? '';
+    const slug = base
       .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
 
     return `category-${slug || 'general'}`;
+  }
+
+  private getCategoryLabel(category: NonNullable<MenuItem['categories']>[number]): string | null {
+    if (!category) {
+      return null;
+    }
+
+    const directName = category.name?.trim();
+    if (directName) {
+      return directName;
+    }
+
+    const translations = category.name_translations;
+    if (!translations) {
+      return null;
+    }
+
+    const localeCandidates = this.buildLocaleCandidates();
+
+    for (const locale of localeCandidates) {
+      const localized = this.tryResolveTranslation(translations, locale);
+      if (localized) {
+        return localized;
+      }
+    }
+
+    for (const value of Object.values(translations)) {
+      if (value?.trim()) {
+        return value.trim();
+      }
+    }
+
+    return null;
+  }
+
+  private buildLocaleCandidates(): string[] {
+    const normalized = (this.locale ?? '').toString().trim().toLowerCase();
+    const candidates = new Set<string>();
+
+    if (normalized) {
+      candidates.add(normalized);
+      const [languagePart] = normalized.split('-');
+      if (languagePart) {
+        candidates.add(languagePart);
+      }
+    }
+
+    candidates.add('en');
+
+    return Array.from(candidates);
+  }
+
+  private tryResolveTranslation(translations: Record<string, string>, locale: string): string | null {
+    const variations = new Set<string>();
+    const trimmed = locale.trim();
+
+    if (!trimmed) {
+      return null;
+    }
+
+    variations.add(trimmed);
+    variations.add(trimmed.toLowerCase());
+    variations.add(trimmed.toUpperCase());
+
+    if (trimmed.includes('-')) {
+      const [language, region] = trimmed.split('-');
+      const lowerLanguage = language.toLowerCase();
+      const lowerRegion = region?.toLowerCase();
+      const upperRegion = region?.toUpperCase();
+
+      variations.add(language);
+      variations.add(lowerLanguage);
+
+      if (lowerRegion) {
+        variations.add(`${lowerLanguage}-${lowerRegion}`);
+        variations.add(`${lowerLanguage}-${upperRegion}`);
+      }
+    }
+
+    for (const variant of variations) {
+      const value = translations[variant];
+      if (value?.trim()) {
+        return value.trim();
+      }
+    }
+
+    return null;
   }
 }
