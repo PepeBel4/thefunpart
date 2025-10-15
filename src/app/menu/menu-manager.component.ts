@@ -7,6 +7,7 @@ import { MenuService } from './menu.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
 import { CategoriesService } from './categories.service';
+import { MenuDiscountManagerComponent } from './menu-discount-manager.component';
 
 interface CategoryFormModel {
   id?: number;
@@ -28,7 +29,7 @@ interface QueuedPhoto {
 @Component({
   standalone: true,
   selector: 'app-menu-manager',
-  imports: [FormsModule, NgFor, NgIf, CurrencyPipe, TranslatePipe],
+  imports: [FormsModule, NgFor, NgIf, CurrencyPipe, TranslatePipe, MenuDiscountManagerComponent],
   styles: [`
     :host {
       display: block;
@@ -561,6 +562,8 @@ interface QueuedPhoto {
         <div>{{ 'menu.form.loading' | translate: 'Loading menu…' }}</div>
       </ng-template>
     </section>
+
+    <app-menu-discount-manager [restaurantId]="restaurantId"></app-menu-discount-manager>
   `,
 })
 export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
