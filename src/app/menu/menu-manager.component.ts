@@ -227,6 +227,8 @@ export class MenuManagerComponent implements OnChanges {
 
   private menu = inject(MenuService);
 
+  private loadToken = 0;
+
   menuItems: MenuItem[] = [];
   loading = false;
   saving = false;
@@ -241,22 +243,35 @@ export class MenuManagerComponent implements OnChanges {
       const id = changes['restaurantId'].currentValue;
       if (typeof id === 'number' && !Number.isNaN(id)) {
         this.resetState();
-        this.loadMenu();
+        void this.loadMenu();
       }
     }
   }
 
-  async loadMenu() {
+  private async loadMenu(preserveExisting = false) {
     if (this.restaurantId === null || this.restaurantId === undefined) { return; }
-    this.loading = true;
+
+    const token = ++this.loadToken;
+    if (!preserveExisting) {
+      this.loading = true;
+      this.menuItems = [];
+    }
     this.error = '';
+
     try {
-      this.menuItems = await firstValueFrom(this.menu.listByRestaurant(this.restaurantId));
+      const items = await firstValueFrom(this.menu.listByRestaurant(this.restaurantId));
+      if (token === this.loadToken) {
+        this.menuItems = items;
+      }
     } catch (err) {
       console.error(err);
-      this.error = 'Could not load menu items. Please try again.';
+      if (token === this.loadToken) {
+        this.error = 'Could not load menu items. Please try again.';
+      }
     } finally {
-      this.loading = false;
+      if (token === this.loadToken) {
+        this.loading = false;
+      }
     }
   }
 
@@ -293,7 +308,7 @@ export class MenuManagerComponent implements OnChanges {
       }));
       this.newItem = { name: '', description: '', price: '' };
       this.creationStatus = 'Menu item added!';
-      await this.loadMenu();
+      void this.loadMenu(true);
       this.menuChanged.emit();
     } catch (err) {
       console.error(err);
@@ -320,7 +335,7 @@ export class MenuManagerComponent implements OnChanges {
         price_cents,
       }));
       this.cancelEdit();
-      await this.loadMenu();
+      void this.loadMenu(true);
       this.menuChanged.emit();
     } catch (err) {
       console.error(err);
@@ -336,7 +351,7 @@ export class MenuManagerComponent implements OnChanges {
     this.error = '';
     try {
       await firstValueFrom(this.menu.delete(id));
-      await this.loadMenu();
+      void this.loadMenu(true);
       this.menuChanged.emit();
     } catch (err) {
       console.error(err);
@@ -366,5 +381,6 @@ export class MenuManagerComponent implements OnChanges {
     this.editingId = null;
     this.newItem = { name: '', description: '', price: '' };
     this.editItem = { name: '', description: '', price: '' };
+    this.loadToken++;
   }
 }
