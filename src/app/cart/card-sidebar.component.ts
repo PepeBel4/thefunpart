@@ -61,6 +61,26 @@ import { OrderScenario, OrderTargetTimeType } from '../core/models';
       color: var(--text-secondary);
       cursor: pointer;
       transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      line-height: 1.1;
+    }
+
+    .option-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .option svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
+    .option-label {
+      white-space: nowrap;
     }
 
     .option:hover {
@@ -277,7 +297,54 @@ import { OrderScenario, OrderTargetTimeType } from '../core/models';
               (click)="setScenario(scenario)"
               [ngClass]="{ active: cart.scenario() === scenario }"
             >
-              {{ 'cart.scenario.' + scenario | translate: scenario }}
+              <span class="option-icon" aria-hidden="true">
+                <svg
+                  *ngIf="scenario === 'takeaway'"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.6"
+                  aria-hidden="true"
+                >
+                  <path d="M8 7V6a4 4 0 0 1 8 0v1" />
+                  <path d="M5.25 7h13.5l.98 11.745A2 2 0 0 1 17.74 21H6.26a2 2 0 0 1-1.99-2.255z" />
+                </svg>
+                <svg
+                  *ngIf="scenario === 'delivery'"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M3 6.5a1 1 0 0 1 1-1h11.2a1 1 0 0 1 .8.4l2.8 3.6H21a1 1 0 0 1 1 1V17a1 1 0 0 1-1 1h-.3a2.7 2.7 0 1 1-5.4 0H9.7a2.7 2.7 0 1 1-5.4 0H4a1 1 0 0 1-1-1z"
+                  />
+                  <path d="M18 11.5h2V15h-2z" />
+                  <circle cx="17" cy="17" r="1.7" />
+                  <circle cx="7" cy="17" r="1.7" />
+                </svg>
+                <svg
+                  *ngIf="scenario === 'eatin'"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.6"
+                  aria-hidden="true"
+                >
+                  <path d="M4 10.5h16" />
+                  <path d="M6 10.5v8.25" />
+                  <path d="M18 10.5v8.25" />
+                  <path d="M12 10.5v8.25" />
+                  <path d="M7.5 4v6.5" />
+                  <path d="M16.5 4v6.5" />
+                </svg>
+              </span>
+              <span class="option-label">
+                {{ 'cart.scenario.' + scenario | translate: scenario }}
+              </span>
             </button>
           </div>
         </div>
@@ -294,7 +361,35 @@ import { OrderScenario, OrderTargetTimeType } from '../core/models';
               (click)="setTargetTimeType(type)"
               [ngClass]="{ active: cart.targetTimeType() === type }"
             >
-              {{ 'cart.targetTimeType.' + type | translate: type }}
+              <span class="option-icon" aria-hidden="true">
+                <svg
+                  *ngIf="type === 'asap'"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M13 2.25 5.25 12h5.5L10.5 21.75 18.75 12h-5.5z" />
+                </svg>
+                <svg
+                  *ngIf="type === 'scheduled'"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.6"
+                  aria-hidden="true"
+                >
+                  <rect x="4" y="6" width="16" height="14" rx="2" />
+                  <path d="M8 4v4" />
+                  <path d="M16 4v4" />
+                  <path d="M4 10h16" />
+                  <path d="M12 14l2 2 3-3" />
+                </svg>
+              </span>
+              <span class="option-label">
+                {{ 'cart.targetTimeType.' + type | translate: type }}
+              </span>
             </button>
           </div>
         </div>
