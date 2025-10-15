@@ -53,6 +53,7 @@ export interface Order {
   id: number;
   total_cents: number;
   status: 'pending' | 'confirmed' | 'preparing' | 'delivered' | string;
+  state?: 'composing' | 'sent' | string;
   payment_state?: string;
   paid_cents?: number;
   remaining_balance_cents?: number;
@@ -83,7 +84,7 @@ export interface Payment {
 
 export interface OrderPaymentResponse {
   payment: Payment;
-  order: Pick<Order, 'id' | 'payment_state' | 'paid_cents' | 'remaining_balance_cents'>;
+  order: Pick<Order, 'id' | 'payment_state' | 'paid_cents' | 'remaining_balance_cents' | 'state'>;
 }
 
 export interface OrderItem {
