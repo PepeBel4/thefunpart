@@ -686,13 +686,15 @@ export class MenuDiscountManagerComponent implements OnDestroy {
 
     this.savingDiscount = true;
     try {
-      await firstValueFrom(this.discountsApi.create(payload));
+      const created = await firstValueFrom(this.discountsApi.create(payload));
+      this.upsertDiscount(created);
       this.newDiscount = this.createEmptyDiscountForm();
       this.discountStatus = this.i18n.translate(
         'menu.discounts.form.statusCreated',
         'Discount created.'
       );
-      await this.refreshDiscountsAndAssignments();
+      this.pruneAssignmentsForDiscount(created);
+      void this.refreshDiscountsAndAssignments();
     } catch (error) {
       console.error(error);
       this.discountError =
@@ -739,13 +741,15 @@ export class MenuDiscountManagerComponent implements OnDestroy {
 
     this.savingDiscount = true;
     try {
-      await firstValueFrom(this.discountsApi.update(id, payload));
+      const updated = await firstValueFrom(this.discountsApi.update(id, payload));
+      this.upsertDiscount(updated);
+      this.pruneAssignmentsForDiscount(updated);
       this.discountStatus = this.i18n.translate(
         'menu.discounts.form.statusUpdated',
         'Discount updated.'
       );
       this.cancelDiscountEdit();
-      await this.refreshDiscountsAndAssignments();
+      void this.refreshDiscountsAndAssignments();
     } catch (error) {
       console.error(error);
       this.discountError =
@@ -1074,6 +1078,68 @@ export class MenuDiscountManagerComponent implements OnDestroy {
       menu_items: [...updated.menu_items],
     };
     this.discounts = nextDiscounts;
+  }
+
+  private upsertDiscount(discount: MenuItemDiscount) {
+    const normalized: MenuItemDiscount = {
+      ...discount,
+      menu_item_ids: [...discount.menu_item_ids],
+      menu_items: discount.menu_items.map(item => ({ ...item })),
+    };
+
+    const index = this.discounts.findIndex(existing => existing.id === discount.id);
+    if (index === -1) {
+      this.discounts = [...this.discounts, normalized];
+    } else {
+      const next = [...this.discounts];
+      next[index] = normalized;
+      this.discounts = next;
+    }
+  }
+
+  private pruneAssignmentsForDiscount(discount: MenuItemDiscount) {
+    if (!this.assignments.length) {
+      return;
+    }
+
+    const allowedIds = new Set(discount.menu_item_ids);
+    const replacementMenuItems = new Map(discount.menu_items.map(item => [item.id, { ...item }]));
+
+    let changed = false;
+    const retained: MenuItemDiscountAssignment[] = [];
+
+    for (const assignment of this.assignments) {
+      if (assignment.menu_item_discount_id !== discount.id) {
+        retained.push(assignment);
+        continue;
+      }
+
+      if (!allowedIds.has(assignment.menu_item_id)) {
+        changed = true;
+        continue;
+      }
+
+      const replacement = replacementMenuItems.get(assignment.menu_item_id);
+      if (replacement) {
+        const needsUpdate =
+          assignment.menu_item.name !== replacement.name ||
+          assignment.menu_item.restaurant_id !== replacement.restaurant_id;
+        if (needsUpdate) {
+          retained.push({
+            ...assignment,
+            menu_item: replacement,
+          });
+          changed = true;
+          continue;
+        }
+      }
+
+      retained.push(assignment);
+    }
+
+    if (changed) {
+      this.assignments = retained;
+    }
   }
 
   private async refreshDiscountsAndAssignments() {
