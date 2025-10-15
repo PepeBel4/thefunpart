@@ -256,7 +256,7 @@ export class TranslationService {
       'profile.gender.male': 'Man',
       'profile.gender.other': 'Anders',
       'profile.birthDate': 'Geboortedatum',
-      'profile.birthDateHint': 'Formaat: JJJJ-MM-DD',
+      'profile.birthDateHint': 'Formaat: DD-MM-JJJJ',
       'profile.birthDateError': 'Voer een geldige datum in.',
       'profile.save': 'Profiel opslaan',
       'profile.saving': 'Opslaan…',
