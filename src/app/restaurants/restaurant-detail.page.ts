@@ -31,6 +31,7 @@ type CartFlightAnimation = {
   startY: number;
   deltaX: number;
   deltaY: number;
+  arcHeight: number;
 };
 
 type PendingCartAddition = {
@@ -461,61 +462,6 @@ type PendingCartAddition = {
       background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.1);
     }
 
-    .cart-flight-layer {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 2000;
-    }
-
-    .cart-flight {
-      position: absolute;
-      top: 0;
-      left: 0;
-      transform: translate(var(--start-x), var(--start-y)) scale(0.85);
-      animation: cart-flight 0.65s cubic-bezier(0.22, 0.68, 0, 1) forwards;
-      will-change: transform, opacity;
-    }
-
-    .cart-flight-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 36px;
-      height: 36px;
-      border-radius: 12px;
-      background: var(--brand-green);
-      color: #fff;
-      font-weight: 700;
-      box-shadow: 0 16px 30px rgba(4, 24, 16, 0.28);
-      border: 2px solid rgba(255, 255, 255, 0.7);
-    }
-
-    @keyframes cart-flight {
-      0% {
-        transform: translate(var(--start-x), var(--start-y)) scale(0.85);
-        opacity: 0.9;
-      }
-
-      70% {
-        transform: translate(
-            calc(var(--start-x) + var(--delta-x) * 0.7),
-            calc(var(--start-y) + var(--delta-y) * 0.7)
-          )
-          scale(1);
-        opacity: 1;
-      }
-
-      100% {
-        transform: translate(
-            calc(var(--start-x) + var(--delta-x)),
-            calc(var(--start-y) + var(--delta-y))
-          )
-          scale(0.6);
-        opacity: 0;
-      }
-    }
-
     @media (max-width: 720px) {
       .hero {
         padding: 2rem 1.5rem;
@@ -659,6 +605,7 @@ type PendingCartAddition = {
         [style.--start-y]="flight.startY + 'px'"
         [style.--delta-x]="flight.deltaX + 'px'"
         [style.--delta-y]="flight.deltaY + 'px'"
+        [style.--arc-height]="flight.arcHeight + 'px'"
       >
         <span class="cart-flight-badge">+{{ flight.quantity }}</span>
       </div>
@@ -990,13 +937,19 @@ export class RestaurantDetailPage implements OnDestroy {
     const endX = targetRect.left + targetRect.width / 2 - badgeSize / 2;
     const endY = targetRect.top + targetRect.height / 2 - badgeSize / 2;
     const id = ++this.nextCartFlightId;
+    const deltaX = endX - startX;
+    const deltaY = endY - startY;
+    const distance = Math.hypot(deltaX, deltaY);
+    const arcHeight = Math.min(280, Math.max(110, distance * 0.42));
+
     const flight: CartFlightAnimation = {
       id,
       quantity,
       startX,
       startY,
-      deltaX: endX - startX,
-      deltaY: endY - startY,
+      deltaX,
+      deltaY,
+      arcHeight,
     };
 
     this.cartFlights.update(current => [...current, flight]);
@@ -1004,7 +957,7 @@ export class RestaurantDetailPage implements OnDestroy {
     const timeout = setTimeout(() => {
       this.cartFlights.update(current => current.filter(entry => entry.id !== id));
       this.cartFlightTimeouts.delete(id);
-    }, 650);
+    }, 1150);
 
     this.cartFlightTimeouts.set(id, timeout);
   }
