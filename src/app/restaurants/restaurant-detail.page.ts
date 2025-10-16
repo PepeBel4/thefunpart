@@ -4,7 +4,7 @@ import { MenuService } from '../menu/menu.service';
 import { RestaurantService } from './restaurant.service';
 import { AsyncPipe, CurrencyPipe, NgIf, NgFor, NgStyle, DOCUMENT, TitleCasePipe } from '@angular/common';
 import { Allergen, Card, MenuItem, Restaurant } from '../core/models';
-import { Observable, combineLatest, firstValueFrom, map, of, shareReplay, startWith, switchMap, tap, timer } from 'rxjs';
+import { BehaviorSubject, Observable, combineLatest, firstValueFrom, map, of, shareReplay, startWith, switchMap, tap, timer } from 'rxjs';
 import { CartCategorySelection, CartRestaurant, CartService } from '../cart/cart.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
@@ -174,6 +174,47 @@ type PendingCartAddition = {
     h3 {
       margin-top: 0;
       font-size: 1.5rem;
+    }
+
+    .menu-search {
+      margin: 1.75rem 0 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .menu-search-label {
+      font-weight: 600;
+      color: rgba(16, 24, 18, 0.7);
+    }
+
+    .menu-search input {
+      border: 1px solid rgba(10, 10, 10, 0.12);
+      border-radius: 999px;
+      padding: 0.75rem 1rem;
+      font: inherit;
+      background-color: #fff;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .menu-search input::placeholder {
+      color: rgba(16, 24, 18, 0.45);
+    }
+
+    .menu-search input:focus {
+      outline: none;
+      border-color: color-mix(in srgb, var(--brand-green) 55%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-green) 22%, transparent);
+    }
+
+    .menu-empty {
+      margin: 2.5rem 0;
+      padding: 2rem;
+      text-align: center;
+      border-radius: var(--radius-card);
+      background: rgba(4, 24, 16, 0.04);
+      color: rgba(16, 24, 18, 0.7);
+      font-weight: 500;
     }
 
     .category-nav {
@@ -513,7 +554,22 @@ type PendingCartAddition = {
         </div>
       </section>
       <ng-container *ngIf="(menuCategories$ | async) as menuCategories">
-        <h3 *ngIf="menuCategories.length">{{ 'restaurants.menuHeading' | translate: 'Menu' }}</h3>
+        <h3 *ngIf="menuCategories.length || searchTerm">
+          {{ 'restaurants.menuHeading' | translate: 'Menu' }}
+        </h3>
+        <div class="menu-search" *ngIf="menuCategories.length || searchTerm">
+          <label class="menu-search-label" for="restaurant-menu-search">
+            {{ 'restaurantDetail.searchMenu' | translate: 'Search menu' }}
+          </label>
+          <input
+            type="search"
+            id="restaurant-menu-search"
+            [value]="searchTerm"
+            (input)="onSearchTermChange($any($event.target).value)"
+            [attr.placeholder]="'restaurantDetail.searchMenuPlaceholder' | translate: 'Search menu items'"
+            [attr.aria-label]="'restaurantDetail.searchMenu' | translate: 'Search menu'"
+          />
+        </div>
         <nav class="category-nav" *ngIf="menuCategories.length">
           <button type="button" *ngFor="let category of menuCategories" (click)="scrollTo(category.anchor)">
             {{ category.name }}
@@ -593,6 +649,9 @@ type PendingCartAddition = {
             </div>
           </div>
         </section>
+        <div class="menu-empty" *ngIf="!menuCategories.length && searchTerm">
+          {{ 'restaurantDetail.menuSearchEmpty' | translate: 'No menu items match your search.' }}
+        </div>
       </ng-container>
 
     </ng-container>
@@ -668,6 +727,8 @@ export class RestaurantDetailPage implements OnDestroy {
   id = Number(this.route.snapshot.paramMap.get('id'));
   restaurant$: Observable<Restaurant> = this.rSvc.get(this.id).pipe(shareReplay({ bufferSize: 1, refCount: true }));
   menuCategories$: Observable<MenuCategoryGroup[]> = this.createMenuCategoriesStream();
+  private searchTerm$ = new BehaviorSubject<string>('');
+  searchTerm = '';
 
   defaultHeroBackground =
     'linear-gradient(135deg, color-mix(in srgb, var(--brand-green) 32%, transparent), color-mix(in srgb, var(--brand-green) 68%, black))';
@@ -743,6 +804,7 @@ export class RestaurantDetailPage implements OnDestroy {
     this.cartFlightTimeouts.clear();
     this.cartFlights.set([]);
     this.unlockBodyScroll();
+    this.searchTerm$.complete();
   }
 
   onPhotoSelection(files: FileList | null) {
@@ -784,10 +846,17 @@ export class RestaurantDetailPage implements OnDestroy {
     this.menuCategories$ = this.createMenuCategoriesStream();
   }
 
+  onSearchTermChange(value: string) {
+    const term = value ?? '';
+    this.searchTerm = term;
+    this.searchTerm$.next(term);
+  }
+
   private createMenuCategoriesStream(): Observable<MenuCategoryGroup[]> {
     return combineLatest([
       this.menuSvc.listByRestaurant(this.id).pipe(map(items => this.organizeMenu(items))),
       this.highlightMenuItemId$,
+      this.searchTerm$.pipe(map(term => term.trim().toLowerCase())),
     ]).pipe(
       tap(([, highlightId]) => {
         this.highlightMenuItemId = highlightId;
@@ -795,8 +864,31 @@ export class RestaurantDetailPage implements OnDestroy {
           this.scheduleHighlightScroll(highlightId);
         }
       }),
-      map(([categories]) => categories)
+      map(([categories, _highlightId, searchTerm]) => {
+        if (!searchTerm) {
+          return categories;
+        }
+
+        return categories
+          .map(category => ({
+            ...category,
+            items: category.items.filter(item => this.matchesSearchTerm(item, searchTerm)),
+          }))
+          .filter(category => category.items.length);
+      })
     );
+  }
+
+  private matchesSearchTerm(item: MenuItem, searchTerm: string): boolean {
+    if (!searchTerm) {
+      return true;
+    }
+
+    const values = [item.name, item.description]
+      .filter((value): value is string => typeof value === 'string' && value.length > 0)
+      .map(value => value.toLowerCase());
+
+    return values.some(value => value.includes(searchTerm));
   }
 
   hasDiscount(item: MenuItem): boolean {
