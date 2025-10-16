@@ -1250,7 +1250,22 @@ export class MenuOptionsManagerComponent implements OnChanges {
     return { cents: Math.round(parsed * 100), valid: true };
   }
 
-  private parsePercentage(value: string): { percentage: number | null; valid: boolean } {
+  private parsePercentage(value: string | number | null | undefined): {
+    percentage: number | null;
+    valid: boolean;
+  } {
+    if (value == null) {
+      return { percentage: null, valid: false };
+    }
+
+    if (typeof value === 'number') {
+      if (!Number.isFinite(value)) {
+        return { percentage: null, valid: false };
+      }
+
+      return { percentage: value, valid: true };
+    }
+
     const trimmed = value.trim();
     if (!trimmed) {
       return { percentage: null, valid: false };
