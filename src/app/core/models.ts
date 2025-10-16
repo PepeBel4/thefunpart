@@ -84,7 +84,11 @@ export interface MenuItem {
 }
 
 export interface AiSuggestedMenuItem {
-  menu_item: MenuItem;
+  id: number;
+  name: string;
+  price_cents: number;
+  discounted_price_cents?: number | null;
+  description?: string | null;
   reason?: string | null;
 }
 

@@ -181,13 +181,13 @@ import { TranslatePipe } from '../shared/translate.pipe';
         <div class="suggestion-grid" *ngIf="!isLoadingSuggestions">
           <article class="suggestion-card" *ngFor="let suggestion of aiSuggestions">
             <div class="suggestion-meta">
-              <h4>{{ suggestion.menu_item.name }}</h4>
+              <h4>{{ suggestion.name }}</h4>
               <span class="suggestion-price">
-                {{ ((suggestion.menu_item.discounted_price_cents ?? suggestion.menu_item.price_cents) / 100) | currency:'EUR' }}
+                {{ ((suggestion.discounted_price_cents ?? suggestion.price_cents) / 100) | currency:'EUR' }}
               </span>
             </div>
             <p class="suggestion-description" *ngIf="suggestion.reason as reason">{{ reason }}</p>
-            <p class="suggestion-description" *ngIf="!suggestion.reason && suggestion.menu_item.description as description">
+            <p class="suggestion-description" *ngIf="!suggestion.reason && suggestion.description as description">
               {{ description }}
             </p>
           </article>
