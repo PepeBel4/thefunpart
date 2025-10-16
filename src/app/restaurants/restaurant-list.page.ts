@@ -412,9 +412,13 @@ const CUISINE_ICON_PATHS = new Map<string, string>([
       display: flex;
       align-items: center;
       justify-content: center;
+      --logo-size: 3.1rem;
     }
 
-    .card-media img {
+    .card-media img,
+    .card-media .placeholder {
+      position: relative;
+      z-index: 0;
       width: 100%;
       height: 100%;
       object-fit: cover;
@@ -422,6 +426,9 @@ const CUISINE_ICON_PATHS = new Map<string, string>([
     }
 
     .card-media .placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 2rem;
       font-weight: 700;
       color: rgba(10, 10, 10, 0.6);
@@ -430,7 +437,61 @@ const CUISINE_ICON_PATHS = new Map<string, string>([
     .card-body {
       display: flex;
       flex-direction: column;
-      gap: 0.5rem;
+      gap: 0.75rem;
+    }
+
+    .card-header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .card-header h3 {
+      margin: 0;
+    }
+
+    .card-header p {
+      margin: 0;
+      color: var(--text-secondary);
+    }
+
+    .card-logo {
+      position: absolute;
+      left: 0.55rem;
+      bottom: 0.55rem;
+      width: calc(var(--logo-size));
+      height: calc(var(--logo-size));
+      padding: 0.35rem;
+      border-radius: 18px;
+      //background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: -1px 1px 20px 9px rgb(255, 255, 255);
+      z-index: 2;
+    }
+
+    .card-logo img,
+    .card-logo-initial {
+      width: var(--logo-size);
+      height: var(--logo-size);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card-logo img {
+      object-fit: cover;
+    }
+
+    .card-logo-initial {
+      background: rgba(10, 10, 10, 0.08);
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: rgba(10, 10, 10, 0.65);
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
     }
 
     .cuisine-tags {
@@ -581,12 +642,22 @@ const CUISINE_ICON_PATHS = new Map<string, string>([
           <ng-template #placeholder>
             <span class="placeholder">{{ getRestaurantInitial(r) }}</span>
           </ng-template>
+          <ng-container *ngIf="r.logo_url as logoUrl; else logoFallback">
+            <div class="card-logo">
+              <img [src]="logoUrl" [alt]="getRestaurantName(r) + ' logo'" loading="lazy" />
+            </div>
+          </ng-container>
+          <ng-template #logoFallback>
+            <div class="card-logo">
+              <div class="card-logo-initial">{{ getRestaurantInitial(r) }}</div>
+            </div>
+          </ng-template>
         </div>
           <div class="card-body">
-            <h3>{{ getRestaurantName(r) }}</h3>
-            <p>
-              {{ getRestaurantDescription(r) }}
-            </p>
+            <div class="card-header">
+              <h3>{{ getRestaurantName(r) }}</h3>
+              <p>{{ getRestaurantDescription(r) }}</p>
+            </div>
             <ul class="cuisine-tags" *ngIf="r.cuisines?.length">
               <li *ngFor="let cuisine of r.cuisines">{{ cuisine | titlecase }}</li>
             </ul>
