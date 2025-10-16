@@ -106,11 +106,13 @@ export class AppComponent {
   private shouldShowCart(url: string): boolean {
     const normalized = url.split('?')[0]?.split('#')[0] ?? '';
 
-    if (normalized === '' || normalized === '/') {
+    const suppressedExact = new Set(['', '/', '/orders', '/profile', '/admin']);
+    if (suppressedExact.has(normalized)) {
       return false;
     }
 
-    if (normalized.startsWith('/chains/')) {
+    const suppressedPrefixes = ['/chains/', '/orders/', '/admin/'];
+    if (suppressedPrefixes.some(prefix => normalized.startsWith(prefix))) {
       return false;
     }
 
