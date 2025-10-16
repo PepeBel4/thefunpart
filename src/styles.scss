@@ -80,28 +80,12 @@ button {
 
 @keyframes cart-flight {
   0% { transform:translate(var(--start-x),var(--start-y)) scale(.85); opacity:.2; }
-  40% {
-    transform: translate(
-        calc(var(--start-x) + var(--delta-x) * 0.4),
-        calc(var(--start-y) + var(--delta-y) * 0.4 - var(--arc-height))
-      )
-      scale(1.05);
-    opacity: 1;
-  }
-  75% {
-    transform: translate(
-        calc(var(--start-x) + var(--delta-x) * 0.75),
-        calc(var(--start-y) + var(--delta-y) * 0.75 - var(--arc-height) * 0.25)
-      )
-      scale(.9);
-    opacity: .75;
-  }
   100% {
     transform: translate(
         calc(var(--start-x) + var(--delta-x)),
         calc(var(--start-y) + var(--delta-y))
       )
       scale(.65);
-    opacity: 0;
+    opacity: 1;
   }
 }

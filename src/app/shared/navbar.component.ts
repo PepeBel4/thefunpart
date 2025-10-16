@@ -158,7 +158,7 @@ type LanguageOption = { code: string; label: string; flag: string };
       align-items: center;
       gap: 0.65rem;
       margin-left: auto;
-      padding-right: clamp(3.25rem, 7vw, 5.25rem);
+      padding-right: clamp(3.25rem, 8vw, 7.25rem);
     }
 
     .nav-actions > * {
