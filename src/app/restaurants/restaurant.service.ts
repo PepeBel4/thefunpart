@@ -8,12 +8,15 @@ export class RestaurantService {
   private api = inject(ApiService);
 
   private normalizeRestaurant(restaurant: RestaurantApiResponse): Restaurant {
-    const { chain, chains, ...rest } = restaurant;
+    const { chain, chains, logo, ...rest } = restaurant;
 
     const normalizedChain = chain ?? (Array.isArray(chains) ? chains.find(item => !!item) ?? null : null);
+    const normalizedLogoUrl = rest.logo_url ?? logo?.url ?? null;
 
     return {
       ...rest,
+      logo: logo ?? null,
+      logo_url: normalizedLogoUrl,
       chain: normalizedChain ?? null,
     };
   }
@@ -35,6 +38,20 @@ export class RestaurantService {
     files.forEach(file => formData.append('photos[]', file));
     return this.api
       .post<RestaurantApiResponse>(`/restaurants/${id}/photos`, formData)
+      .pipe(map(restaurant => this.normalizeRestaurant(restaurant)));
+  }
+
+  uploadLogo(id: number, file: File): Observable<Restaurant> {
+    const formData = new FormData();
+    formData.append('logo', file);
+    return this.api
+      .post<RestaurantApiResponse>(`/restaurants/${id}/logo`, formData)
+      .pipe(map(restaurant => this.normalizeRestaurant(restaurant)));
+  }
+
+  deleteLogo(id: number): Observable<Restaurant> {
+    return this.api
+      .delete<RestaurantApiResponse>(`/restaurants/${id}/logo`)
       .pipe(map(restaurant => this.normalizeRestaurant(restaurant)));
   }
 
