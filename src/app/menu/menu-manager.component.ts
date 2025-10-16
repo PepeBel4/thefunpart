@@ -938,7 +938,10 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
     try {
       const items = await firstValueFrom(this.menu.listByRestaurant(this.restaurantId));
       if (token === this.loadToken) {
-        this.menuItems = items;
+        const enriched = await this.enrichMenuItemsWithOptionAssignments(items ?? []);
+        if (token === this.loadToken) {
+          this.menuItems = enriched;
+        }
       }
     } catch (err) {
       console.error(err);
@@ -950,6 +953,33 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
         this.loading = false;
       }
     }
+  }
+
+  private async enrichMenuItemsWithOptionAssignments(items: MenuItem[]): Promise<MenuItem[]> {
+    if (!items.length) { return items; }
+
+    const requiresFetch = items.some(item => item.option_assignments === undefined);
+    if (!requiresFetch) { return items; }
+
+    const enriched = await Promise.all(
+      items.map(async (item) => {
+        if (item.option_assignments !== undefined) {
+          return item;
+        }
+
+        try {
+          const assignments = await firstValueFrom(
+            this.optionAssignments.list({ menu_item_id: item.id })
+          );
+          return { ...item, option_assignments: assignments ?? [] };
+        } catch (err) {
+          console.error(`Could not load option assignments for menu item ${item.id}`, err);
+          return { ...item, option_assignments: [] };
+        }
+      })
+    );
+
+    return enriched;
   }
 
   startEdit(item: MenuItem) {
