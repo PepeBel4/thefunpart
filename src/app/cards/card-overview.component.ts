@@ -85,13 +85,15 @@ interface CardOverviewState {
       flex-direction: column;
       gap: 0.85rem;
       padding: 1rem 1.1rem 1.25rem;
-      border-radius: calc(var(--radius-card) - 6px);
+      border-radius: calc(var(--radius-card) - 2px);
       background: var(--surface);
-      border: 1px solid rgba(10, 10, 10, 0.05);
+      border: 1px solid var(--surface-border);
       box-shadow: var(--shadow-soft);
       overflow: hidden;
       text-decoration: none;
       color: inherit;
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
     }
 
     .card::after {
@@ -232,7 +234,7 @@ interface CardOverviewState {
           <ng-container *ngFor="let card of state().cards">
             <a
               *ngIf="card.linkCommands; else staticCard"
-              class="card"
+              class="card glass-panel"
               [routerLink]="card.linkCommands"
               [attr.aria-label]="
                 card.type === 'chain' ? 'View ' + card.title + ' restaurants' : 'View ' + card.title
@@ -241,7 +243,7 @@ interface CardOverviewState {
               <ng-container *ngTemplateOutlet="cardContent; context: { $implicit: card }"></ng-container>
             </a>
             <ng-template #staticCard>
-              <article class="card">
+              <article class="card glass-panel">
                 <ng-container *ngTemplateOutlet="cardContent; context: { $implicit: card }"></ng-container>
               </article>
             </ng-template>

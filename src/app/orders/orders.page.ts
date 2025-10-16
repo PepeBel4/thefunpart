@@ -33,7 +33,7 @@ import { TranslatePipe } from '../shared/translate.pipe';
       border-radius: var(--radius-card);
       padding: 1.5rem;
       box-shadow: var(--shadow-soft);
-      border: 1px solid rgba(10, 10, 10, 0.05);
+      border: 1px solid var(--surface-border);
       display: flex;
       flex-direction: column;
       gap: 0.6rem;
@@ -82,7 +82,7 @@ import { TranslatePipe } from '../shared/translate.pipe';
       <p class="meta">{{ 'orders.subtitle' | translate: 'Track deliveries and revisit your favourite meals.' }}</p>
     </section>
     <div class="orders-list" *ngIf="orders$ | async as orders">
-      <div class="card" *ngFor="let o of orders">
+      <div class="card glass-panel" *ngFor="let o of orders">
         <header>
           <div>
             <strong>#{{ o.id }}</strong>

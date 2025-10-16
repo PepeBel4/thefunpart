@@ -48,7 +48,7 @@ interface LocationsViewState {
       border-radius: var(--radius-card);
       padding: 2rem clamp(1.5rem, 3vw, 2.5rem);
       box-shadow: var(--shadow-soft);
-      border: 1px solid rgba(10, 10, 10, 0.05);
+      border: 1px solid var(--surface-border);
       display: flex;
       flex-direction: column;
       gap: 1.5rem;
@@ -217,7 +217,7 @@ interface LocationsViewState {
     }
   `],
   template: `
-    <section class="card" *ngIf="selectedRestaurantId$ | async as restaurantId">
+    <section class="card glass-panel" *ngIf="selectedRestaurantId$ | async as restaurantId">
       <header>
         <h3>{{ 'admin.locations.heading' | translate: 'Locations' }}</h3>
         <p>

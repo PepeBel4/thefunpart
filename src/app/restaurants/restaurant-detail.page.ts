@@ -198,7 +198,7 @@ type PendingCartAddition = {
       border-radius: var(--radius-card);
       padding: 1.5rem;
       box-shadow: var(--shadow-soft);
-      border: 1px solid rgba(10, 10, 10, 0.05);
+      border: 1px solid var(--surface-border);
       display: flex;
       flex-direction: column;
       gap: 1rem;
@@ -472,7 +472,7 @@ type PendingCartAddition = {
           <h4>{{ category.name }}</h4>
           <div class="menu-grid">
             <div
-              class="card"
+              class="card glass-panel"
               *ngFor="let m of category.items"
               [attr.id]="getMenuItemAnchor(m)"
               [class.highlighted]="shouldHighlightMenuItem(m)"

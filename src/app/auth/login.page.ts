@@ -15,7 +15,7 @@ import { TranslatePipe } from '../shared/translate.pipe';
       background: var(--surface);
       border-radius: var(--radius-card);
       box-shadow: var(--shadow-soft);
-      border: 1px solid rgba(10, 10, 10, 0.05);
+      border: 1px solid var(--surface-border);
       display: flex;
       flex-direction: column;
       gap: 1.25rem;
@@ -63,7 +63,7 @@ import { TranslatePipe } from '../shared/translate.pipe';
     }
   `],
   template: `
-    <div class="card">
+    <div class="card glass-panel">
       <div>
         <h2>{{ 'login.title' | translate: 'Welcome back' }}</h2>
         <p>{{ 'login.subtitle' | translate: 'Sign in to keep your cravings satisfied.' }}</p>

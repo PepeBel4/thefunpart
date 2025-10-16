@@ -15,23 +15,27 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   imports: [RouterOutlet, NavbarComponent, CartSidebarComponent, CookieConsentComponent, CardSpotlightComponent, NgIf],
   styles: [`
     :host {
+      position: relative;
       display: grid;
       grid-template-rows: auto 1fr;
       min-height: 100vh;
-      background: radial-gradient(circle at top, rgba(var(--brand-green-rgb, 6, 193, 103), 0.05), transparent 60%),
-        var(--surface-elevated);
+      padding: clamp(1rem, 4vw, 2.5rem) clamp(1rem, 4vw, 3rem) 4rem;
+      gap: clamp(1.5rem, 4vw, 2rem);
     }
 
-    main {
+    .main {
       display: grid;
       grid-template-columns: minmax(0, 1fr);
-      gap: 2.5rem;
+      gap: clamp(2rem, 4vw, 2.75rem);
       width: min(1220px, 100%);
       margin: 0 auto;
-      padding: 2.5rem clamp(1.5rem, 3vw, 3rem) 3.5rem;
+      padding: clamp(2rem, 5vw, 3rem) clamp(1.25rem, 3vw, 2.75rem) clamp(2.5rem, 5vw, 3.5rem);
+      border-radius: clamp(24px, 4vw, 36px);
+      overflow: hidden;
+      isolation: isolate;
     }
 
-    main.has-sidebar {
+    .main.has-sidebar {
       grid-template-columns: minmax(0, 1fr) 360px;
     }
 
@@ -48,19 +52,22 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
     }
 
     @media (max-width: 1080px) {
-      main {
+      :host {
+        padding-inline: clamp(0.75rem, 4vw, 1.5rem);
+      }
+
+      .main {
         gap: 2rem;
-        padding-inline: clamp(1rem, 4vw, 2rem);
+        padding: clamp(1.75rem, 6vw, 2.5rem) clamp(1rem, 6vw, 2rem) clamp(2rem, 7vw, 3rem);
       }
     }
 
     @media (max-width: 980px) {
-      main {
+      .main {
         grid-template-columns: 1fr;
-        padding-bottom: 2.5rem;
       }
 
-      main.has-sidebar {
+      .main.has-sidebar {
         grid-template-columns: 1fr;
       }
 
@@ -71,7 +78,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   `],
   template: `
     <app-navbar />
-    <main [class.has-sidebar]="showSidebarShell()">
+    <main class="main glass-panel" [class.has-sidebar]="showSidebarShell()">
       <section class="page-shell">
         <router-outlet />
       </section>
