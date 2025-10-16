@@ -6,11 +6,12 @@ import { CartService } from '../cart/cart.service';
 import { TranslatePipe } from './translate.pipe';
 import { TranslationService } from '../core/translation.service';
 import { FormsModule } from '@angular/forms';
+import { UserMenuComponent } from './user-menu.component';
 
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [RouterLink, NgIf, NgFor, TranslatePipe, FormsModule],
+  imports: [RouterLink, NgIf, NgFor, TranslatePipe, FormsModule, UserMenuComponent],
   styles: [`
     nav {
       position: sticky;
@@ -172,37 +173,6 @@ import { FormsModule } from '@angular/forms';
       box-shadow: 0 16px 35px rgba(6, 193, 103, 0.32);
     }
 
-    button,
-    .login-link {
-      border: 0;
-      border-radius: 999px;
-      padding: 0.5rem 1.1rem;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      transition: transform 0.2s ease, background 0.2s ease;
-    }
-
-    button {
-      background: #fff;
-      color: var(--brand-black);
-      box-shadow: 0 10px 18px rgba(255, 255, 255, 0.16);
-    }
-
-    button:hover {
-      transform: translateY(-1px);
-    }
-
-    .login-link {
-      background: rgba(255, 255, 255, 0.1);
-      color: #fff;
-    }
-
-    .login-link:hover {
-      background: rgba(255, 255, 255, 0.18);
-      transform: translateY(-1px);
-    }
-
     @media (max-width: 900px) {
       nav {
         flex-wrap: wrap;
@@ -241,8 +211,7 @@ import { FormsModule } from '@angular/forms';
         text-align: center;
       }
 
-      button,
-      .login-link {
+      .user-menu {
         order: 7;
         width: 100%;
         text-align: center;
@@ -269,9 +238,9 @@ import { FormsModule } from '@angular/forms';
         <a routerLink="/">{{ 'nav.discover' | translate: 'Discover' }}</a>
         <a routerLink="/b2b">{{ 'nav.b2b' | translate: 'For restaurants' }}</a>
         <a routerLink="/orders">{{ 'nav.orders' | translate: 'Orders' }}</a>
-        <a *ngIf="auth.isLoggedIn()" routerLink="/profile">{{ 'nav.profile' | translate: 'Profile' }}</a>
         <a *ngIf="auth.isLoggedIn()" routerLink="/admin">{{ 'nav.manage' | translate: 'Manage' }}</a>
       </div>
+      <app-user-menu class="user-menu"></app-user-menu>
       <label class="language-select">
         <span class="sr-only">{{ 'nav.languageLabel' | translate: 'Language' }}</span>
         <select
@@ -289,12 +258,6 @@ import { FormsModule } from '@angular/forms';
           {{ 'nav.cart' | translate: 'Cart with {{count}} items': { count: cart.count() } }}
         </span>
       </a>
-      <button *ngIf="auth.isLoggedIn(); else login" (click)="auth.logout()">
-        {{ 'nav.logout' | translate: 'Logout' }}
-      </button>
-      <ng-template #login>
-        <a routerLink="/login" class="login-link">{{ 'nav.login' | translate: 'Log in' }}</a>
-      </ng-template>
     </nav>
   `
 })
