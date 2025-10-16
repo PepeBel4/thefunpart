@@ -33,6 +33,8 @@ export interface Location {
   locatable_id: number;
   name: string;
   location_type?: string | null;
+  telephone?: string | null;
+  email?: string | null;
   address_line1?: string | null;
   address_line2?: string | null;
   city?: string | null;
@@ -48,6 +50,8 @@ export interface Location {
 export interface LocationInput {
   name: string;
   location_type?: string | null;
+  telephone?: string | null;
+  email?: string | null;
   address_line1?: string | null;
   address_line2?: string | null;
   city?: string | null;

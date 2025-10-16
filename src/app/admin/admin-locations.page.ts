@@ -22,6 +22,8 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
 interface LocationFormState {
   name: string;
   location_type: string;
+  telephone: string;
+  email: string;
   address_line1: string;
   address_line2: string;
   city: string;
@@ -263,6 +265,25 @@ interface LocationsViewState {
 
                     <div class="form-grid two-column">
                       <label>
+                        {{ 'admin.locations.phoneLabel' | translate: 'Phone number' }}
+                        <input
+                          type="tel"
+                          [name]="'editTelephone' + location.id"
+                          [(ngModel)]="editForm.telephone"
+                        />
+                      </label>
+                      <label>
+                        {{ 'admin.locations.emailLabel' | translate: 'Email address' }}
+                        <input
+                          type="email"
+                          [name]="'editEmail' + location.id"
+                          [(ngModel)]="editForm.email"
+                        />
+                      </label>
+                    </div>
+
+                    <div class="form-grid two-column">
+                      <label>
                         {{ 'admin.locations.address1Label' | translate: 'Address line 1' }}
                         <input
                           type="text"
@@ -361,6 +382,16 @@ interface LocationsViewState {
                       <div *ngIf="location.address_line2">{{ location.address_line2 }}</div>
                     </div>
 
+                    <div *ngIf="location.telephone">
+                      <strong>{{ 'admin.locations.phoneLabel' | translate: 'Phone number' }}:</strong>
+                      <div>{{ location.telephone }}</div>
+                    </div>
+
+                    <div *ngIf="location.email">
+                      <strong>{{ 'admin.locations.emailLabel' | translate: 'Email address' }}:</strong>
+                      <div>{{ location.email }}</div>
+                    </div>
+
                     <div *ngIf="location.city || location.state || location.postal_code">
                       <strong>{{ 'admin.locations.cityStateLabel' | translate: 'City & region' }}:</strong>
                       <div>
@@ -440,6 +471,17 @@ interface LocationsViewState {
             <label>
               {{ 'admin.locations.typeLabel' | translate: 'Type' }}
               <input type="text" name="createType" [(ngModel)]="newLocationForm.location_type" />
+            </label>
+          </div>
+
+          <div class="form-grid two-column">
+            <label>
+              {{ 'admin.locations.phoneLabel' | translate: 'Phone number' }}
+              <input type="tel" name="createTelephone" [(ngModel)]="newLocationForm.telephone" />
+            </label>
+            <label>
+              {{ 'admin.locations.emailLabel' | translate: 'Email address' }}
+              <input type="email" name="createEmail" [(ngModel)]="newLocationForm.email" />
             </label>
           </div>
 
@@ -742,6 +784,8 @@ export class AdminLocationsPage {
     return {
       name: '',
       location_type: '',
+      telephone: '',
+      email: '',
       address_line1: '',
       address_line2: '',
       city: '',
@@ -757,6 +801,8 @@ export class AdminLocationsPage {
     return {
       name: location.name ?? '',
       location_type: location.location_type ?? '',
+      telephone: location.telephone ?? '',
+      email: location.email ?? '',
       address_line1: location.address_line1 ?? '',
       address_line2: location.address_line2 ?? '',
       city: location.city ?? '',
@@ -776,6 +822,8 @@ export class AdminLocationsPage {
     return {
       name: form.name.trim(),
       location_type: this.normalizeString(form.location_type),
+      telephone: this.normalizeString(form.telephone),
+      email: this.normalizeString(form.email),
       address_line1: this.normalizeString(form.address_line1),
       address_line2: this.normalizeString(form.address_line2),
       city: this.normalizeString(form.city),
