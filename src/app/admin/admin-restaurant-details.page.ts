@@ -257,7 +257,7 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
               </span>
             </h4>
             <textarea
-              [attr.name]="'description-' + language.code"
+              [name]="'description-' + language.code"
               [(ngModel)]="detailsForm.descriptions[language.code]"
               [attr.placeholder]="
                 'admin.details.descriptionPlaceholder'
