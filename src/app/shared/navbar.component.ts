@@ -144,15 +144,25 @@ type LanguageOption = { code: string; label: string; flag: string };
       color: #fff;
     }
 
+    .nav-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.65rem;
+      margin-left: auto;
+    }
+
+    .nav-actions > * {
+      flex-shrink: 0;
+    }
+
     .language-menu {
       display: inline-flex;
       align-items: center;
-      gap: 0.4rem;
-      padding: 0.35rem 0.6rem;
+      gap: 0.35rem;
+      padding: 0.3rem 0.55rem;
       border-radius: 999px;
       background: rgba(255, 255, 255, 0.12);
       color: rgba(255, 255, 255, 0.85);
-      margin-left: auto;
     }
 
     .language-menu button {
@@ -243,9 +253,9 @@ type LanguageOption = { code: string; label: string; flag: string };
         align-items: flex-start;
       }
 
-      .language-menu {
-        margin-left: 0;
-        order: 5;
+      .nav-actions {
+        order: 4;
+        margin-left: auto;
       }
     }
 
@@ -273,28 +283,20 @@ type LanguageOption = { code: string; label: string; flag: string };
         display: flex;
       }
 
-      .cart-pill {
-        order: 7;
-        width: 100%;
-        text-align: center;
-      }
-
-      .user-menu {
-        order: 8;
-        width: 100%;
-        text-align: center;
+      .nav-actions {
+        order: 4;
+        margin-left: auto;
+        gap: 0.45rem;
       }
 
       .language-menu {
-        order: 5;
-        width: 100%;
-        justify-content: center;
-        gap: 0.85rem;
         background: rgba(255, 255, 255, 0.08);
+        padding: 0.25rem 0.4rem;
+        gap: 0.45rem;
       }
 
       .language-menu button {
-        padding: 0.5rem;
+        padding: 0.45rem;
         border-radius: 999px;
       }
 
@@ -308,6 +310,15 @@ type LanguageOption = { code: string; label: string; flag: string };
         clip: rect(0, 0, 0, 0);
         white-space: nowrap;
         border: 0;
+      }
+
+      .user-menu {
+        order: 5;
+      }
+
+      .cart-pill {
+        order: 6;
+        padding: 0.5rem 0.85rem;
       }
 
       .nav-links a {
@@ -349,27 +360,29 @@ type LanguageOption = { code: string; label: string; flag: string };
         <a routerLink="/orders" (click)="closeMenu()">{{ 'nav.orders' | translate: 'Orders' }}</a>
         <a *ngIf="auth.isLoggedIn()" routerLink="/admin" (click)="closeMenu()">{{ 'nav.manage' | translate: 'Manage' }}</a>
       </div>
-      <div class="language-menu" role="group" aria-label="{{ 'nav.languageLabel' | translate: 'Language' }}">
-        <button
-          type="button"
-          *ngFor="let lang of languages"
-          (click)="onLanguageChange(lang.code)"
-          [class.active]="selectedLanguage() === lang.code"
-          [attr.aria-pressed]="selectedLanguage() === lang.code"
-          [attr.aria-label]="lang.label"
-        >
-          <span aria-hidden="true" class="flag">{{ lang.flag }}</span>
-          <span class="label">{{ lang.label }}</span>
-        </button>
+      <div class="nav-actions">
+        <div class="language-menu" role="group" aria-label="{{ 'nav.languageLabel' | translate: 'Language' }}">
+          <button
+            type="button"
+            *ngFor="let lang of languages"
+            (click)="onLanguageChange(lang.code)"
+            [class.active]="selectedLanguage() === lang.code"
+            [attr.aria-pressed]="selectedLanguage() === lang.code"
+            [attr.aria-label]="lang.label"
+          >
+            <span aria-hidden="true" class="flag">{{ lang.flag }}</span>
+            <span class="label">{{ lang.label }}</span>
+          </button>
+        </div>
+        <app-user-menu class="user-menu"></app-user-menu>
+        <a routerLink="/checkout" class="cart-pill">
+          <span aria-hidden="true" class="cart-icon">🛒</span>
+          <span class="cart-count">{{ cart.count() }}</span>
+          <span class="sr-only">
+            {{ 'nav.cart' | translate: 'Cart with {{count}} items': { count: cart.count() } }}
+          </span>
+        </a>
       </div>
-      <app-user-menu class="user-menu"></app-user-menu>
-      <a routerLink="/checkout" class="cart-pill">
-        <span aria-hidden="true" class="cart-icon">🛒</span>
-        <span class="cart-count">{{ cart.count() }}</span>
-        <span class="sr-only">
-          {{ 'nav.cart' | translate: 'Cart with {{count}} items': { count: cart.count() } }}
-        </span>
-      </a>
     </nav>
   `
 })

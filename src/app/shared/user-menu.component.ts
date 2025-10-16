@@ -16,6 +16,7 @@ import { TranslatePipe } from './translate.pipe';
         (click)="toggleMenu()"
         aria-haspopup="true"
         [attr.aria-expanded]="isOpen()"
+        [attr.aria-label]="'nav.account' | translate: 'Account'"
       >
         <span aria-hidden="true" class="user-icon">👤</span>
         <span class="user-label">
@@ -123,17 +124,20 @@ import { TranslatePipe } from './translate.pipe';
       }
 
       @media (max-width: 640px) {
-        :host {
-          width: 100%;
-        }
-
-        .user-menu-root {
-          width: 100%;
-        }
-
         .user-toggle {
-          width: 100%;
-          justify-content: center;
+          padding: 0.45rem 0.75rem;
+        }
+
+        .user-label {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border: 0;
         }
 
         .menu-panel {
