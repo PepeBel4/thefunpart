@@ -27,6 +27,7 @@ export class TranslationService {
     en: {
       'nav.deliveryChip': 'Deliver now • 15-25 min',
       'nav.discover': 'Discover',
+      'nav.b2b': 'For restaurants',
       'nav.orders': 'Orders',
       'nav.profile': 'Profile',
       'nav.manage': 'Manage',
@@ -276,6 +277,7 @@ export class TranslationService {
     nl: {
       'nav.deliveryChip': 'Nu bezorgen • 15-25 min',
       'nav.discover': 'Ontdek',
+      'nav.b2b': 'Voor restaurants',
       'nav.orders': 'Bestellingen',
       'nav.profile': 'Profiel',
       'nav.manage': 'Beheren',
@@ -526,6 +528,7 @@ export class TranslationService {
     fr: {
       'nav.deliveryChip': 'Livrer maintenant • 15-25 min',
       'nav.discover': 'Découvrir',
+      'nav.b2b': 'Pour les restaurants',
       'nav.orders': 'Commandes',
       'nav.profile': 'Profil',
       'nav.manage': 'Gérer',
@@ -776,6 +779,7 @@ export class TranslationService {
     de: {
       'nav.deliveryChip': 'Jetzt liefern • 15-25 Min',
       'nav.discover': 'Entdecken',
+      'nav.b2b': 'Für Restaurants',
       'nav.orders': 'Bestellungen',
       'nav.profile': 'Profil',
       'nav.manage': 'Verwalten',

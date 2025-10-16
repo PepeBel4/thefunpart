@@ -106,7 +106,7 @@ export class AppComponent {
   private shouldShowCart(url: string): boolean {
     const normalized = url.split('?')[0]?.split('#')[0] ?? '';
 
-    const suppressedExact = new Set(['', '/', '/orders', '/profile', '/admin']);
+    const suppressedExact = new Set(['', '/', '/orders', '/profile', '/admin', '/b2b']);
     if (suppressedExact.has(normalized)) {
       return false;
     }
