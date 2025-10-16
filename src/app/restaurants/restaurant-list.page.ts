@@ -1,25 +1,29 @@
 import { Component, effect, inject, signal } from '@angular/core';
 import { AsyncPipe, CurrencyPipe, NgFor, NgIf, TitleCasePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { combineLatest, map, shareReplay } from 'rxjs';
+import { BehaviorSubject, Observable, combineLatest, map, shareReplay } from 'rxjs';
 import { MenuItem, Restaurant, SessionUser, UserProfile } from '../core/models';
 import { RestaurantService } from './restaurant.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
 import { AuthService } from '../core/auth.service';
 import { ProfileService } from '../core/profile.service';
-import { normalizeRestaurantCuisines } from './cuisines';
+import { RESTAURANT_CUISINES, normalizeRestaurantCuisines } from './cuisines';
 import { MenuService } from '../menu/menu.service';
 import { CardOverviewComponent } from '../cards/card-overview.component';
 
 type DiscountHighlight = {
-  restaurant: Restaurant;
+  restaurant: RestaurantListItem;
   item: MenuItem;
   currentPriceCents: number;
   originalPriceCents: number;
   savingsCents: number;
   savingsPercent: number | null;
 };
+
+type RestaurantSortOption = 'recommended' | 'nameAsc' | 'nameDesc';
+
+type RestaurantListItem = Restaurant & { heroPhoto?: string | undefined };
 
 @Component({
   standalone: true,
@@ -41,6 +45,121 @@ type DiscountHighlight = {
     .subhead {
       color: var(--text-secondary);
       font-size: 1rem;
+    }
+
+    .filters-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1.4rem 1.6rem;
+      border-radius: var(--radius-card);
+      background: var(--surface);
+      border: 1px solid rgba(10, 10, 10, 0.05);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .filters-panel .filters-header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .filters-panel .filters-body {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .cuisine-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .filter-chip {
+      appearance: none;
+      border: 1px solid rgba(10, 10, 10, 0.1);
+      background: rgba(10, 10, 10, 0.02);
+      color: inherit;
+      padding: 0.45rem 0.9rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .filter-chip:hover {
+      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.4);
+    }
+
+    .filter-chip.active {
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.16);
+      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.5);
+      color: var(--brand-green);
+    }
+
+    .filters-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    .filters-actions button {
+      appearance: none;
+      border: none;
+      background: none;
+      color: var(--brand-green);
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .sort-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .sort-group select {
+      padding: 0.45rem 0.75rem;
+      border-radius: 999px;
+      border: 1px solid rgba(10, 10, 10, 0.12);
+      background: rgba(10, 10, 10, 0.02);
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    @media (min-width: 768px) {
+      .filters-panel {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .filters-panel .filters-body {
+        flex-direction: row;
+        align-items: center;
+      }
+
+      .filters-panel .filters-body > * {
+        flex: none;
+      }
+
+      .filters-panel .filters-body .cuisine-filters {
+        max-width: 600px;
+      }
+
+      .sort-group {
+        text-align: right;
+      }
     }
 
     .discounts-section {
@@ -350,6 +469,42 @@ type DiscountHighlight = {
       </div>
       <span class="cta">{{ 'profilePrompt.action' | translate: 'Finish profile' }}</span>
     </a>
+    <ng-container *ngIf="availableCuisines$ | async as cuisines">
+      <section class="filters-panel" *ngIf="cuisines.length">
+        <div class="filters-body">
+          <div class="filters-header">
+            <h3>{{ 'restaurants.filters.title' | translate: 'Filter restaurants' }}</h3>
+            <div class="filters-actions" *ngIf="hasActiveCuisineFilters()">
+              <span>{{ 'restaurants.filters.active' | translate: 'Filters applied' }}</span>
+              <button type="button" (click)="clearCuisineFilters()">
+                {{ 'restaurants.filters.clear' | translate: 'Clear cuisines' }}
+              </button>
+            </div>
+          </div>
+          <div class="cuisine-filters">
+            <button
+              type="button"
+              class="filter-chip"
+              [class.active]="isCuisineSelected(cuisine)"
+              (click)="toggleCuisine(cuisine)"
+              *ngFor="let cuisine of cuisines"
+            >
+              {{ cuisine | titlecase }}
+            </button>
+          </div>
+        </div>
+        <div class="sort-group">
+          <label for="restaurant-sort">{{ 'restaurants.sort.label' | translate: 'Sort by' }}</label>
+          <select id="restaurant-sort" [value]="getSortOrder()" (change)="onSortChange($any($event.target).value)">
+            <option value="recommended">
+              {{ 'restaurants.sort.recommended' | translate: 'Recommended' }}
+            </option>
+            <option value="nameAsc">{{ 'restaurants.sort.nameAsc' | translate: 'Name (A-Z)' }}</option>
+            <option value="nameDesc">{{ 'restaurants.sort.nameDesc' | translate: 'Name (Z-A)' }}</option>
+          </select>
+        </div>
+      </section>
+    </ng-container>
     <div class="grid" *ngIf="restaurants$ | async as restaurants">
       <a class="card" *ngFor="let r of restaurants" [routerLink]="['/restaurants', r.id]">
         <div class="card-media">
@@ -385,6 +540,8 @@ export class RestaurantListPage {
   private auth = inject(AuthService);
   private profile = inject(ProfileService);
   private heroPhotoCache = new Map<number, string>();
+  private selectedCuisinesSubject = new BehaviorSubject<string[]>([]);
+  private sortOrderSubject = new BehaviorSubject<RestaurantSortOption>('recommended');
   private profilePromptState = signal<{ loading: boolean; profile: UserProfile | null }>({
     loading: false,
     profile: null,
@@ -426,6 +583,93 @@ export class RestaurantListPage {
     return this.auth.isLoggedIn();
   }
 
+  toggleCuisine(cuisine: string): void {
+    const current = this.selectedCuisinesSubject.value;
+    const exists = current.includes(cuisine);
+    const next = exists ? current.filter(item => item !== cuisine) : [...current, cuisine];
+    this.selectedCuisinesSubject.next(next);
+  }
+
+  isCuisineSelected(cuisine: string): boolean {
+    return this.selectedCuisinesSubject.value.includes(cuisine);
+  }
+
+  hasActiveCuisineFilters(): boolean {
+    return this.selectedCuisinesSubject.value.length > 0;
+  }
+
+  clearCuisineFilters(): void {
+    this.selectedCuisinesSubject.next([]);
+  }
+
+  getSortOrder(): RestaurantSortOption {
+    return this.sortOrderSubject.value;
+  }
+
+  onSortChange(value: string): void {
+    if (this.isRestaurantSortOption(value)) {
+      this.sortOrderSubject.next(value);
+    }
+  }
+
+  private isRestaurantSortOption(value: string): value is RestaurantSortOption {
+    return value === 'recommended' || value === 'nameAsc' || value === 'nameDesc';
+  }
+
+  private computeAvailableCuisines(restaurants: RestaurantListItem[]): string[] {
+    const available = new Set<string>();
+
+    for (const restaurant of restaurants) {
+      for (const cuisine of restaurant.cuisines ?? []) {
+        if (cuisine) {
+          available.add(cuisine.toLowerCase());
+        }
+      }
+    }
+
+    const prioritized = RESTAURANT_CUISINES.filter(cuisine => available.has(cuisine));
+    const extras = Array.from(available).filter(cuisine => !RESTAURANT_CUISINES.includes(cuisine));
+
+    return [...prioritized, ...extras];
+  }
+
+  private filterByCuisine(
+    restaurants: RestaurantListItem[],
+    cuisines: string[],
+  ): RestaurantListItem[] {
+    if (!cuisines.length) {
+      return restaurants;
+    }
+
+    const selected = new Set(cuisines.map(cuisine => cuisine.toLowerCase()));
+
+    return restaurants.filter(restaurant => {
+      const restaurantCuisines = restaurant.cuisines ?? [];
+      return restaurantCuisines.some(cuisine => selected.has(cuisine.toLowerCase()));
+    });
+  }
+
+  private sortRestaurants(
+    restaurants: RestaurantListItem[],
+    sortOrder: RestaurantSortOption,
+  ): RestaurantListItem[] {
+    if (sortOrder === 'recommended') {
+      return restaurants;
+    }
+
+    const sorted = [...restaurants];
+
+    sorted.sort((a, b) => {
+      const comparison = this.getRestaurantName(a).localeCompare(this.getRestaurantName(b), undefined, {
+        sensitivity: 'base',
+      });
+
+      return sortOrder === 'nameAsc' ? comparison : -comparison;
+    });
+
+    return sorted;
+  }
+
   private ensureHeroPhoto(restaurant: Restaurant): string | undefined {
     const cached = this.heroPhotoCache.get(restaurant.id);
     if (cached) {
@@ -451,7 +695,10 @@ export class RestaurantListPage {
     return typeof discounted === 'number' && discounted >= 0 && discounted < item.price_cents;
   }
 
-  private toDiscountHighlight(restaurant: Restaurant, item: MenuItem): DiscountHighlight | null {
+  private toDiscountHighlight(
+    restaurant: RestaurantListItem,
+    item: MenuItem,
+  ): DiscountHighlight | null {
     if (!this.hasDiscount(item)) {
       return null;
     }
@@ -481,9 +728,9 @@ export class RestaurantListPage {
     };
   }
 
-  restaurants$ = this.svc.list().pipe(
-    map((restaurants) =>
-      restaurants.map((restaurant) => ({
+  private allRestaurants$: Observable<RestaurantListItem[]> = this.svc.list().pipe(
+    map(restaurants =>
+      restaurants.map(restaurant => ({
         ...restaurant,
         heroPhoto: this.ensureHeroPhoto(restaurant),
         cuisines: normalizeRestaurantCuisines(restaurant.cuisines),
@@ -492,8 +739,24 @@ export class RestaurantListPage {
     shareReplay({ bufferSize: 1, refCount: true })
   );
 
+  availableCuisines$: Observable<string[]> = this.allRestaurants$.pipe(
+    map(restaurants => this.computeAvailableCuisines(restaurants)),
+    shareReplay({ bufferSize: 1, refCount: true })
+  );
+
+  restaurants$: Observable<RestaurantListItem[]> = combineLatest([
+    this.allRestaurants$,
+    this.selectedCuisinesSubject.asObservable(),
+    this.sortOrderSubject.asObservable(),
+  ]).pipe(
+    map(([restaurants, selectedCuisines, sortOrder]) => {
+      const filtered = this.filterByCuisine(restaurants, selectedCuisines);
+      return this.sortRestaurants(filtered, sortOrder);
+    })
+  );
+
   discounts$ = combineLatest([
-    this.restaurants$,
+    this.allRestaurants$,
     this.menu.listDiscounted(),
   ]).pipe(
     map(([restaurants, items]) => {
