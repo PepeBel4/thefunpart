@@ -1,10 +1,13 @@
-import { Component } from '@angular/core';
+import { AsyncPipe, NgIf } from '@angular/common';
+import { Component, inject } from '@angular/core';
+import { MenuDiscountManagerComponent } from '../menu/menu-discount-manager.component';
 import { TranslatePipe } from '../shared/translate.pipe';
+import { AdminRestaurantContextService } from './admin-restaurant-context.service';
 
 @Component({
   standalone: true,
   selector: 'app-admin-discounts',
-  imports: [TranslatePipe],
+  imports: [AsyncPipe, NgIf, TranslatePipe, MenuDiscountManagerComponent],
   styles: [`
     section.card {
       background: var(--surface);
@@ -17,20 +20,13 @@ import { TranslatePipe } from '../shared/translate.pipe';
       gap: 1.25rem;
     }
 
-    ul {
-      margin: 0;
-      padding-left: 1.25rem;
-      display: grid;
-      gap: 0.5rem;
-    }
-
-    li {
+    .empty-state {
       color: var(--text-secondary);
-      line-height: 1.4;
+      font-style: italic;
     }
   `],
   template: `
-    <section class="card">
+    <section class="card" *ngIf="selectedRestaurantId$ | async as restaurantId">
       <header>
         <h3>{{ 'admin.discounts.heading' | translate: 'Manage discounts' }}</h3>
         <p>
@@ -42,19 +38,24 @@ import { TranslatePipe } from '../shared/translate.pipe';
         </p>
       </header>
 
-      <p>
-        {{
-          'admin.discounts.placeholder'
-            | translate:
-                'Discount tooling is coming soon. In the meantime, outline the offers you want to run so your team can schedule them.'
-        }}
-      </p>
-      <ul>
-        <li>{{ 'admin.discounts.todoOne' | translate: 'Note the discount name and duration.' }}</li>
-        <li>{{ 'admin.discounts.todoTwo' | translate: 'List which menu items or categories are included.' }}</li>
-        <li>{{ 'admin.discounts.todoThree' | translate: 'Share redemption rules with staff so guests get a consistent experience.' }}</li>
-      </ul>
+      <ng-container *ngIf="restaurantId !== null; else noRestaurantSelected">
+        <app-menu-discount-manager [restaurantId]="restaurantId"></app-menu-discount-manager>
+      </ng-container>
+
+      <ng-template #noRestaurantSelected>
+        <p class="empty-state">
+          {{
+            'admin.discounts.noRestaurant'
+              | translate:
+                  'Select a restaurant to configure its discounts.'
+          }}
+        </p>
+      </ng-template>
     </section>
   `,
 })
-export class AdminDiscountsPage {}
+export class AdminDiscountsPage {
+  private context = inject(AdminRestaurantContextService);
+
+  readonly selectedRestaurantId$ = this.context.selectedRestaurantId$;
+}
