@@ -1,13 +1,18 @@
-import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { NgIf } from '@angular/common';
+import { Component, computed, inject, signal } from '@angular/core';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { NavbarComponent } from './shared/navbar.component';
 import { CartSidebarComponent } from './cart/card-sidebar.component';
 import { CookieConsentComponent } from './shared/cookie-consent.component';
+import { CardSpotlightComponent } from './cards/card-spotlight.component';
+import { CardSpotlightService } from './cards/card-spotlight.service';
+import { filter } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NavbarComponent, CartSidebarComponent, CookieConsentComponent],
+  imports: [RouterOutlet, NavbarComponent, CartSidebarComponent, CookieConsentComponent, CardSpotlightComponent, NgIf],
   styles: [`
     :host {
       display: grid;
@@ -19,17 +24,27 @@ import { CookieConsentComponent } from './shared/cookie-consent.component';
 
     main {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 360px;
+      grid-template-columns: minmax(0, 1fr);
       gap: 2.5rem;
       width: min(1220px, 100%);
       margin: 0 auto;
       padding: 2.5rem clamp(1.5rem, 3vw, 3rem) 3.5rem;
     }
 
+    main.has-sidebar {
+      grid-template-columns: minmax(0, 1fr) 360px;
+    }
+
     .page-shell {
       display: flex;
       flex-direction: column;
       gap: 1.75rem;
+    }
+
+    .sidebar-shell {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
     }
 
     @media (max-width: 1080px) {
@@ -44,17 +59,63 @@ import { CookieConsentComponent } from './shared/cookie-consent.component';
         grid-template-columns: 1fr;
         padding-bottom: 2.5rem;
       }
+
+      main.has-sidebar {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar-shell {
+        gap: 1.25rem;
+      }
     }
   `],
   template: `
     <app-navbar />
-    <main>
+    <main [class.has-sidebar]="showSidebarShell()">
       <section class="page-shell">
         <router-outlet />
       </section>
-      <app-cart-sidebar />
+      <div class="sidebar-shell" *ngIf="showSidebarShell()">
+        <app-card-spotlight />
+        <app-cart-sidebar *ngIf="showCartSidebar()" />
+      </div>
     </main>
     <app-cookie-consent />
   `
 })
-export class AppComponent {}
+export class AppComponent {
+  private router = inject(Router);
+  private cardSpotlight = inject(CardSpotlightService);
+
+  readonly showCartSidebar = signal(this.shouldShowCart(this.router.url));
+  readonly showSidebarShell = computed(
+    () => this.showCartSidebar() || this.cardSpotlight.spotlight() !== null
+  );
+
+  constructor() {
+    this.router.events
+      .pipe(
+        takeUntilDestroyed(),
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd)
+      )
+      .subscribe(event => {
+        this.showCartSidebar.set(this.shouldShowCart(event.urlAfterRedirects));
+      });
+  }
+
+  private shouldShowCart(url: string): boolean {
+    const normalized = url.split('?')[0]?.split('#')[0] ?? '';
+
+    const suppressedExact = new Set(['', '/', '/orders', '/profile', '/admin']);
+    if (suppressedExact.has(normalized)) {
+      return false;
+    }
+
+    const suppressedPrefixes = ['/chains/', '/orders/', '/admin/'];
+    if (suppressedPrefixes.some(prefix => normalized.startsWith(prefix))) {
+      return false;
+    }
+
+    return true;
+  }
+}

@@ -3,13 +3,16 @@ import { ActivatedRoute } from '@angular/router';
 import { MenuService } from '../menu/menu.service';
 import { RestaurantService } from './restaurant.service';
 import { AsyncPipe, CurrencyPipe, NgIf, NgFor, NgStyle, DOCUMENT } from '@angular/common';
-import { Allergen, MenuItem, Restaurant } from '../core/models';
+import { Allergen, Card, MenuItem, Restaurant } from '../core/models';
 import { Observable, combineLatest, firstValueFrom, map, of, shareReplay, startWith, switchMap, tap, timer } from 'rxjs';
 import { CartCategorySelection, CartRestaurant, CartService } from '../cart/cart.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
 import { MenuItemPhotoSliderComponent } from './menu-item-photo-slider.component';
 import { AllergenIconComponent } from '../shared/allergen-icon.component';
+import { CardService } from '../cards/card.service';
+import { CardSpotlightEntry, CardSpotlightService } from '../cards/card-spotlight.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 type MenuCategoryGroup = {
   name: string;
@@ -553,6 +556,8 @@ export class RestaurantDetailPage implements OnDestroy {
   private cart = inject(CartService);
   private document = inject(DOCUMENT);
   private i18n = inject(TranslationService);
+  private cards = inject(CardService);
+  private cardSpotlight = inject(CardSpotlightService);
   private highlightMenuItemId$ = this.route.queryParamMap.pipe(
     map(params => this.parseHighlightParam(params.get('highlightItem'))),
     startWith(this.parseHighlightParam(this.route.snapshot.queryParamMap.get('highlightItem')))
@@ -592,6 +597,23 @@ export class RestaurantDetailPage implements OnDestroy {
   private itemQuantities = signal<Record<number, number>>({});
 
   constructor() {
+    this.restaurant$
+      .pipe(
+        takeUntilDestroyed(),
+        switchMap(restaurant =>
+          this.cards
+            .findForRestaurant(restaurant.id, restaurant.chain?.id ?? restaurant.chain_id ?? null)
+            .pipe(map(card => ({ restaurant, card })))
+        )
+      )
+      .subscribe(({ restaurant, card }) => {
+        if (card) {
+          this.cardSpotlight.set(this.presentSpotlightEntry(restaurant, card));
+        } else {
+          this.cardSpotlight.clear();
+        }
+      });
+
     let initial = true;
     effect(() => {
       this.i18n.languageSignal();
@@ -604,6 +626,7 @@ export class RestaurantDetailPage implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.cardSpotlight.clear();
     if (this.highlightScrollTimeout) {
       clearTimeout(this.highlightScrollTimeout);
       this.highlightScrollTimeout = null;
@@ -880,6 +903,80 @@ export class RestaurantDetailPage implements OnDestroy {
       resolved ||
       this.i18n.translate('restaurantDetail.descriptionFallback', 'Fresh meals, crafted for delivery.')
     );
+  }
+
+  private presentSpotlightEntry(restaurant: Restaurant, card: Card): CardSpotlightEntry {
+    const type: 'restaurant' | 'chain' = card.chain_id || card.chain ? 'chain' : 'restaurant';
+    const restaurantName = this.getRestaurantName(restaurant);
+    const preferredTitle =
+      (type === 'chain' ? card.chain?.name : card.restaurant?.name) ??
+      card.restaurant?.name ??
+      restaurantName ??
+      'Loyalty card';
+    const title = preferredTitle.trim() || 'Loyalty card';
+
+    return {
+      id: card.id,
+      type,
+      title,
+      subtitle: type === 'chain' ? restaurantName : null,
+      loyaltyPoints: card.loyalty_points,
+      creditCents: card.credit_cents,
+      heroPhoto: this.pickSpotlightHeroPhoto(restaurant),
+      placeholderInitial: this.buildSpotlightInitial(title),
+      linkCommands: this.buildSpotlightLinkCommands(type, card, restaurant),
+    };
+  }
+
+  private buildSpotlightLinkCommands(
+    type: 'restaurant' | 'chain',
+    card: Card,
+    restaurant: Restaurant
+  ): (string | number)[] | null {
+    const restaurantId = card.restaurant_id ?? card.restaurant?.id ?? restaurant.id ?? null;
+    const chainId = card.chain_id ?? card.chain?.id ?? restaurant.chain?.id ?? restaurant.chain_id ?? null;
+
+    if (type === 'chain' && chainId != null) {
+      return ['/chains', chainId];
+    }
+
+    if (restaurantId != null) {
+      return ['/restaurants', restaurantId];
+    }
+
+    if (chainId != null) {
+      return ['/chains', chainId];
+    }
+
+    return null;
+  }
+
+  private pickSpotlightHeroPhoto(restaurant: Restaurant): string | null {
+    const candidates: string[] = [];
+
+    if (restaurant.photos?.length) {
+      candidates.push(...restaurant.photos.map(photo => photo.url).filter((url): url is string => Boolean(url)));
+    }
+
+    if (restaurant.photo_urls?.length) {
+      candidates.push(...restaurant.photo_urls.filter((url): url is string => Boolean(url)));
+    }
+
+    if (!candidates.length) {
+      return null;
+    }
+
+    return candidates[0] ?? null;
+  }
+
+  private buildSpotlightInitial(title: string): string {
+    const trimmed = title.trim();
+    if (!trimmed) {
+      return '?';
+    }
+
+    const [firstWord] = trimmed.split(/\s+/);
+    return firstWord?.charAt(0).toUpperCase() ?? '?';
   }
 
   private organizeMenu(items: MenuItem[]): MenuCategoryGroup[] {
