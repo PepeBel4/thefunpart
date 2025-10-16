@@ -3,11 +3,13 @@ import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   BehaviorSubject,
+  catchError,
   combineLatest,
   firstValueFrom,
+  map,
   of,
-  catchError,
   shareReplay,
+  startWith,
   switchMap,
   tap,
 } from 'rxjs';
@@ -28,6 +30,12 @@ interface LocationFormState {
   country: string;
   latitude: string;
   longitude: string;
+}
+
+interface LocationsViewState {
+  locations: Location[];
+  loading: boolean;
+  loadError: string;
 }
 
 @Component({
@@ -221,198 +229,200 @@ interface LocationFormState {
       </header>
 
       <ng-container *ngIf="restaurantId !== null; else noRestaurantSelected">
-        <div *ngIf="loading" class="status-message">
-          {{ 'admin.locations.loading' | translate: 'Loading locations…' }}
-        </div>
+        <ng-container *ngIf="viewState$ | async as vm">
+          <div *ngIf="vm.loading" class="status-message">
+            {{ 'admin.locations.loading' | translate: 'Loading locations…' }}
+          </div>
 
-        <div *ngIf="loadError" class="status-message error">{{ loadError }}</div>
+          <div *ngIf="vm.loadError" class="status-message error">{{ vm.loadError }}</div>
 
-        <ng-container *ngIf="locations$ | async as locations">
-          <ul class="location-list" *ngIf="locations.length; else noLocations">
-            <li class="location-card" *ngFor="let location of locations; trackBy: trackByLocationId">
-              <ng-container *ngIf="editingLocationId === location.id; else viewMode">
-                <form class="location-form" (ngSubmit)="updateLocation(location.id)">
-                  <div class="form-grid">
-                    <label>
-                      {{ 'admin.locations.nameLabel' | translate: 'Location name' }}
-                      <input
-                        type="text"
-                        required
-                        [name]="'editName' + location.id"
-                        [(ngModel)]="editForm.name"
-                      />
-                    </label>
-                    <label>
-                      {{ 'admin.locations.typeLabel' | translate: 'Type' }}
-                      <input
-                        type="text"
-                        [name]="'editType' + location.id"
-                        [(ngModel)]="editForm.location_type"
-                      />
-                    </label>
-                  </div>
+          <ng-container *ngIf="vm.locations.length; else noLocations">
+            <ul class="location-list">
+              <li class="location-card" *ngFor="let location of vm.locations; trackBy: trackByLocationId">
+                <ng-container *ngIf="editingLocationId === location.id; else viewMode">
+                  <form class="location-form" (ngSubmit)="updateLocation(location.id)">
+                    <div class="form-grid">
+                      <label>
+                        {{ 'admin.locations.nameLabel' | translate: 'Location name' }}
+                        <input
+                          type="text"
+                          required
+                          [name]="'editName' + location.id"
+                          [(ngModel)]="editForm.name"
+                        />
+                      </label>
+                      <label>
+                        {{ 'admin.locations.typeLabel' | translate: 'Type' }}
+                        <input
+                          type="text"
+                          [name]="'editType' + location.id"
+                          [(ngModel)]="editForm.location_type"
+                        />
+                      </label>
+                    </div>
 
-                  <div class="form-grid two-column">
-                    <label>
-                      {{ 'admin.locations.address1Label' | translate: 'Address line 1' }}
-                      <input
-                        type="text"
-                        [name]="'editAddress1' + location.id"
-                        [(ngModel)]="editForm.address_line1"
-                      />
-                    </label>
-                    <label>
-                      {{ 'admin.locations.address2Label' | translate: 'Address line 2' }}
-                      <input
-                        type="text"
-                        [name]="'editAddress2' + location.id"
-                        [(ngModel)]="editForm.address_line2"
-                      />
-                    </label>
-                    <label>
-                      {{ 'admin.locations.cityLabel' | translate: 'City' }}
-                      <input
-                        type="text"
-                        [name]="'editCity' + location.id"
-                        [(ngModel)]="editForm.city"
-                      />
-                    </label>
-                    <label>
-                      {{ 'admin.locations.stateLabel' | translate: 'State / Province' }}
-                      <input
-                        type="text"
-                        [name]="'editState' + location.id"
-                        [(ngModel)]="editForm.state"
-                      />
-                    </label>
-                    <label>
-                      {{ 'admin.locations.postalCodeLabel' | translate: 'Postal code' }}
-                      <input
-                        type="text"
-                        [name]="'editPostal' + location.id"
-                        [(ngModel)]="editForm.postal_code"
-                      />
-                    </label>
-                    <label>
-                      {{ 'admin.locations.countryLabel' | translate: 'Country' }}
-                      <input
-                        type="text"
-                        [name]="'editCountry' + location.id"
-                        [(ngModel)]="editForm.country"
-                      />
-                    </label>
-                  </div>
+                    <div class="form-grid two-column">
+                      <label>
+                        {{ 'admin.locations.address1Label' | translate: 'Address line 1' }}
+                        <input
+                          type="text"
+                          [name]="'editAddress1' + location.id"
+                          [(ngModel)]="editForm.address_line1"
+                        />
+                      </label>
+                      <label>
+                        {{ 'admin.locations.address2Label' | translate: 'Address line 2' }}
+                        <input
+                          type="text"
+                          [name]="'editAddress2' + location.id"
+                          [(ngModel)]="editForm.address_line2"
+                        />
+                      </label>
+                      <label>
+                        {{ 'admin.locations.cityLabel' | translate: 'City' }}
+                        <input
+                          type="text"
+                          [name]="'editCity' + location.id"
+                          [(ngModel)]="editForm.city"
+                        />
+                      </label>
+                      <label>
+                        {{ 'admin.locations.stateLabel' | translate: 'State / Province' }}
+                        <input
+                          type="text"
+                          [name]="'editState' + location.id"
+                          [(ngModel)]="editForm.state"
+                        />
+                      </label>
+                      <label>
+                        {{ 'admin.locations.postalCodeLabel' | translate: 'Postal code' }}
+                        <input
+                          type="text"
+                          [name]="'editPostal' + location.id"
+                          [(ngModel)]="editForm.postal_code"
+                        />
+                      </label>
+                      <label>
+                        {{ 'admin.locations.countryLabel' | translate: 'Country' }}
+                        <input
+                          type="text"
+                          [name]="'editCountry' + location.id"
+                          [(ngModel)]="editForm.country"
+                        />
+                      </label>
+                    </div>
 
-                  <div class="form-grid two-column">
-                    <label>
-                      {{ 'admin.locations.latitudeLabel' | translate: 'Latitude' }}
-                      <input
-                        type="text"
-                        inputmode="decimal"
-                        [name]="'editLatitude' + location.id"
-                        [(ngModel)]="editForm.latitude"
-                      />
-                    </label>
-                    <label>
-                      {{ 'admin.locations.longitudeLabel' | translate: 'Longitude' }}
-                      <input
-                        type="text"
-                        inputmode="decimal"
-                        [name]="'editLongitude' + location.id"
-                        [(ngModel)]="editForm.longitude"
-                      />
-                    </label>
-                  </div>
+                    <div class="form-grid two-column">
+                      <label>
+                        {{ 'admin.locations.latitudeLabel' | translate: 'Latitude' }}
+                        <input
+                          type="text"
+                          inputmode="decimal"
+                          [name]="'editLatitude' + location.id"
+                          [(ngModel)]="editForm.latitude"
+                        />
+                      </label>
+                      <label>
+                        {{ 'admin.locations.longitudeLabel' | translate: 'Longitude' }}
+                        <input
+                          type="text"
+                          inputmode="decimal"
+                          [name]="'editLongitude' + location.id"
+                          [(ngModel)]="editForm.longitude"
+                        />
+                      </label>
+                    </div>
 
-                  <div class="form-actions">
-                    <button class="action primary" type="submit" [disabled]="updatingId === location.id">
-                      {{
-                        updatingId === location.id
-                          ? ('admin.locations.updating' | translate: 'Saving…')
-                          : ('admin.locations.update' | translate: 'Save changes')
-                      }}
-                    </button>
-                    <button class="action" type="button" (click)="cancelEdit()">
-                      {{ 'admin.locations.cancel' | translate: 'Cancel' }}
-                    </button>
-                  </div>
-                </form>
-              </ng-container>
-
-              <ng-template #viewMode>
-                <div class="location-header">
-                  <h4>{{ location.name }}</h4>
-                  <span class="badge" *ngIf="location.location_type">{{ location.location_type }}</span>
-                </div>
-
-                <div class="location-body">
-                  <div *ngIf="location.address_line1 || location.address_line2">
-                    <strong>{{ 'admin.locations.addressLabel' | translate: 'Address' }}:</strong>
-                    <div>{{ location.address_line1 }}</div>
-                    <div *ngIf="location.address_line2">{{ location.address_line2 }}</div>
-                  </div>
-
-                  <div *ngIf="location.city || location.state || location.postal_code">
-                    <strong>{{ 'admin.locations.cityStateLabel' | translate: 'City & region' }}:</strong>
-                    <div>
-                      {{ location.city }}
-                      <span *ngIf="location.state">
-                        <ng-container *ngIf="location.city">· </ng-container>{{ location.state }}
-                      </span>
-                      <span *ngIf="location.postal_code">
-                        <ng-container *ngIf="location.city || location.state">· </ng-container>{{
-                          location.postal_code
+                    <div class="form-actions">
+                      <button class="action primary" type="submit" [disabled]="updatingId === location.id">
+                        {{
+                          updatingId === location.id
+                            ? ('admin.locations.updating' | translate: 'Saving…')
+                            : ('admin.locations.update' | translate: 'Save changes')
                         }}
-                      </span>
+                      </button>
+                      <button class="action" type="button" (click)="cancelEdit()">
+                        {{ 'admin.locations.cancel' | translate: 'Cancel' }}
+                      </button>
+                    </div>
+                  </form>
+                </ng-container>
+
+                <ng-template #viewMode>
+                  <div class="location-header">
+                    <h4>{{ location.name }}</h4>
+                    <span class="badge" *ngIf="location.location_type">{{ location.location_type }}</span>
+                  </div>
+
+                  <div class="location-body">
+                    <div *ngIf="location.address_line1 || location.address_line2">
+                      <strong>{{ 'admin.locations.addressLabel' | translate: 'Address' }}:</strong>
+                      <div>{{ location.address_line1 }}</div>
+                      <div *ngIf="location.address_line2">{{ location.address_line2 }}</div>
+                    </div>
+
+                    <div *ngIf="location.city || location.state || location.postal_code">
+                      <strong>{{ 'admin.locations.cityStateLabel' | translate: 'City & region' }}:</strong>
+                      <div>
+                        {{ location.city }}
+                        <span *ngIf="location.state">
+                          <ng-container *ngIf="location.city">· </ng-container>{{ location.state }}
+                        </span>
+                        <span *ngIf="location.postal_code">
+                          <ng-container *ngIf="location.city || location.state">· </ng-container>{{
+                            location.postal_code
+                          }}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div *ngIf="location.country">
+                      <strong>{{ 'admin.locations.countryLabel' | translate: 'Country' }}:</strong>
+                      <div>{{ location.country }}</div>
+                    </div>
+
+                    <div *ngIf="location.latitude !== null && location.latitude !== undefined">
+                      <strong>{{ 'admin.locations.latitudeLabel' | translate: 'Latitude' }}:</strong>
+                      <div>{{ location.latitude }}</div>
+                    </div>
+
+                    <div *ngIf="location.longitude !== null && location.longitude !== undefined">
+                      <strong>{{ 'admin.locations.longitudeLabel' | translate: 'Longitude' }}:</strong>
+                      <div>{{ location.longitude }}</div>
                     </div>
                   </div>
 
-                  <div *ngIf="location.country">
-                    <strong>{{ 'admin.locations.countryLabel' | translate: 'Country' }}:</strong>
-                    <div>{{ location.country }}</div>
+                  <div class="location-actions">
+                    <button class="action" type="button" (click)="startEdit(location)">
+                      {{ 'admin.locations.edit' | translate: 'Edit' }}
+                    </button>
+                    <button
+                      class="action danger"
+                      type="button"
+                      (click)="deleteLocation(location)"
+                      [disabled]="deletingId === location.id"
+                    >
+                      {{
+                        deletingId === location.id
+                          ? ('admin.locations.deleting' | translate: 'Removing…')
+                          : ('admin.locations.delete' | translate: 'Delete')
+                      }}
+                    </button>
                   </div>
+                </ng-template>
+              </li>
+            </ul>
+          </ng-container>
 
-                  <div *ngIf="location.latitude !== null && location.latitude !== undefined">
-                    <strong>{{ 'admin.locations.latitudeLabel' | translate: 'Latitude' }}:</strong>
-                    <div>{{ location.latitude }}</div>
-                  </div>
-
-                  <div *ngIf="location.longitude !== null && location.longitude !== undefined">
-                    <strong>{{ 'admin.locations.longitudeLabel' | translate: 'Longitude' }}:</strong>
-                    <div>{{ location.longitude }}</div>
-                  </div>
-                </div>
-
-                <div class="location-actions">
-                  <button class="action" type="button" (click)="startEdit(location)">
-                    {{ 'admin.locations.edit' | translate: 'Edit' }}
-                  </button>
-                  <button
-                    class="action danger"
-                    type="button"
-                    (click)="deleteLocation(location)"
-                    [disabled]="deletingId === location.id"
-                  >
-                    {{
-                      deletingId === location.id
-                        ? ('admin.locations.deleting' | translate: 'Removing…')
-                        : ('admin.locations.delete' | translate: 'Delete')
-                    }}
-                  </button>
-                </div>
-              </ng-template>
-            </li>
-          </ul>
+          <ng-template #noLocations>
+            <p class="empty-state" *ngIf="!vm.loading && !vm.loadError">
+              {{
+                'admin.locations.empty'
+                  | translate: 'No locations yet. Add your first location using the form below.'
+              }}
+            </p>
+          </ng-template>
         </ng-container>
-
-        <ng-template #noLocations>
-          <p class="empty-state" *ngIf="!loading && !loadError">
-            {{
-              'admin.locations.empty'
-                | translate: 'No locations yet. Add your first location using the form below.'
-            }}
-          </p>
-        </ng-template>
 
         <form class="location-form" (ngSubmit)="createLocation()">
           <h4>{{ 'admin.locations.createHeading' | translate: 'Add a new location' }}</h4>
@@ -537,39 +547,46 @@ export class AdminLocationsPage {
 
   private reloadLocations$ = new BehaviorSubject<void>(undefined);
   private currentRestaurantId: number | null = null;
+  private lastLocations: Location[] = [];
 
-  readonly locations$ = combineLatest([this.selectedRestaurantId$, this.reloadLocations$]).pipe(
+  readonly viewState$ = combineLatest([this.selectedRestaurantId$, this.reloadLocations$]).pipe(
     switchMap(([restaurantId]) => {
       if (restaurantId !== this.currentRestaurantId) {
         this.currentRestaurantId = restaurantId;
         this.clearStatus();
         this.cancelEdit();
         this.resetNewLocationForm();
+        this.lastLocations = [];
       }
 
-      this.loadError = '';
-      this.loading = true;
-
       if (restaurantId === null) {
-        this.loading = false;
-        return of([] as Location[]);
+        this.lastLocations = [];
+        return of<LocationsViewState>({ locations: [], loading: false, loadError: '' });
       }
 
       return this.locations.listForRestaurant(restaurantId).pipe(
         tap(locations => {
-          this.loading = false;
           if (!locations.some(location => location.id === this.editingLocationId)) {
             this.cancelEdit();
           }
+          this.lastLocations = locations;
         }),
+        map(locations => ({ locations, loading: false, loadError: '' })),
         catchError(error => {
           console.error('Failed to load locations', error);
-          this.loading = false;
-          this.loadError = this.i18n.translate(
-            'admin.locations.loadError',
-            'Unable to load locations. Please try again.'
-          );
-          return of([] as Location[]);
+          return of<LocationsViewState>({
+            locations: this.lastLocations,
+            loading: false,
+            loadError: this.i18n.translate(
+              'admin.locations.loadError',
+              'Unable to load locations. Please try again.'
+            ),
+          });
+        }),
+        startWith<LocationsViewState>({
+          locations: this.lastLocations,
+          loading: true,
+          loadError: '',
         })
       );
     }),
@@ -580,8 +597,6 @@ export class AdminLocationsPage {
   editForm: LocationFormState = this.createEmptyForm();
   editingLocationId: number | null = null;
 
-  loading = false;
-  loadError = '';
   creating = false;
   updatingId: number | null = null;
   deletingId: number | null = null;
