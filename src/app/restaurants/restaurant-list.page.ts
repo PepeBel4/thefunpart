@@ -239,8 +239,11 @@ type DiscountHighlight = {
       bottom: 0;
       width: calc(var(--logo-size) + 1.8rem);
       height: calc(var(--logo-size) + 1.8rem);
-      background: var(--surface);
+      background: #fff;
+      border-top-left-radius: calc(var(--radius-card) - 6px);
+      border-bottom-left-radius: calc(var(--radius-card) - 6px);
       border-top-right-radius: calc(var(--radius-card) - 6px);
+      border-bottom-right-radius: calc(var(--radius-card) - 6px);
       z-index: 1;
       pointer-events: none;
     }
@@ -287,13 +290,13 @@ type DiscountHighlight = {
 
     .card-logo {
       position: absolute;
-      left: 0.85rem;
-      bottom: 0.85rem;
+      left: 0.55rem;
+      bottom: 0.55rem;
       width: calc(var(--logo-size) + 0.7rem);
       height: calc(var(--logo-size) + 0.7rem);
       padding: 0.35rem;
       border-radius: 18px;
-      background: var(--surface);
+      background: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
