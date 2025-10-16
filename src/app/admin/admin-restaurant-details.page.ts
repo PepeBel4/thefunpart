@@ -7,6 +7,7 @@ import { coerceHexColor, DEFAULT_BRAND_COLOR, normalizeHexColor } from '../core/
 import { Chain, Restaurant, RestaurantUpdateInput } from '../core/models';
 import { TranslationService } from '../core/translation.service';
 import { RESTAURANT_CUISINES } from '../restaurants/cuisines';
+import { RestaurantAiDescriptionService } from '../restaurants/restaurant-ai-description.service';
 import { RestaurantService } from '../restaurants/restaurant.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { AdminRestaurantContextService } from './admin-restaurant-context.service';
@@ -106,6 +107,108 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
     .language-card h4 {
       margin: 0;
       font-size: 1.05rem;
+    }
+
+    .language-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .language-actions {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .language-actions button.ai-trigger {
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.12);
+      color: rgba(var(--brand-green-rgb, 6, 193, 103), 1);
+      box-shadow: none;
+      padding: 0.35rem 0.9rem;
+      font-size: 0.85rem;
+    }
+
+    .language-actions button.ai-trigger:hover {
+      box-shadow: 0 8px 18px rgba(var(--brand-green-rgb, 6, 193, 103), 0.22);
+    }
+
+    .language-actions button.ai-trigger[disabled] {
+      background: rgba(10, 10, 10, 0.06);
+      color: rgba(10, 10, 10, 0.45);
+    }
+
+    .ai-dropdown {
+      position: absolute;
+      top: calc(100% + 0.5rem);
+      right: 0;
+      min-width: 220px;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(10, 10, 10, 0.08);
+      background: rgba(255, 255, 255, 0.98);
+      padding: 0.75rem;
+      display: grid;
+      gap: 0.5rem;
+      box-shadow: 0 18px 36px rgba(15, 18, 23, 0.18);
+      z-index: 1;
+    }
+
+    .ai-dropdown p {
+      margin: 0;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .ai-dropdown-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 0.35rem;
+    }
+
+    .ai-dropdown-list button {
+      background: rgba(10, 10, 10, 0.04);
+      color: inherit;
+      box-shadow: none;
+      padding: 0.4rem 0.75rem;
+      border-radius: 0.65rem;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+
+    .ai-dropdown-list button:hover {
+      transform: none;
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.12);
+    }
+
+    .ai-dropdown button.close-dropdown {
+      justify-self: flex-start;
+      background: transparent;
+      color: rgba(10, 10, 10, 0.6);
+      box-shadow: none;
+      padding: 0;
+    }
+
+    .ai-dropdown button.close-dropdown:hover {
+      transform: none;
+      color: rgba(10, 10, 10, 0.8);
+    }
+
+    .ai-status {
+      margin: 0;
+      font-size: 0.85rem;
+      color: rgba(10, 10, 10, 0.7);
+    }
+
+    .ai-status.error {
+      color: #d14343;
+    }
+
+    .ai-status.success {
+      color: var(--brand-green);
     }
 
     .cuisine-selector {
@@ -316,12 +419,44 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
 
         <div class="language-fields">
           <div class="language-card" *ngFor="let language of languages">
-            <h4>
-              {{ language.label }}
-              <span *ngIf="language.code === primaryLanguageCode">
-                ({{ 'admin.details.primaryLanguage' | translate: 'Primary language' }})
-              </span>
-            </h4>
+            <div class="language-card-header">
+              <h4>
+                {{ language.label }}
+                <span *ngIf="language.code === primaryLanguageCode">
+                  ({{ 'admin.details.primaryLanguage' | translate: 'Primary language' }})
+                </span>
+              </h4>
+              <div class="language-actions">
+                <button
+                  type="button"
+                  class="ai-trigger"
+                  (click)="onAiButtonClick(language.code)"
+                  [disabled]="isAiButtonDisabled(language.code)"
+                >
+                  <ng-container *ngIf="isAiTranslating(language.code); else aiLabel">
+                    {{ 'admin.details.aiTranslating' | translate: 'Translating…' }}
+                  </ng-container>
+                  <ng-template #aiLabel>
+                    {{ 'admin.details.aiTranslate' | translate: 'AI translate' }}
+                  </ng-template>
+                </button>
+                <div class="ai-dropdown" *ngIf="aiDropdownForLanguage === language.code">
+                  <p>{{ 'admin.details.aiTranslateFrom' | translate: 'Translate from' }}</p>
+                  <div class="ai-dropdown-list">
+                    <button
+                      type="button"
+                      *ngFor="let source of getAiSourceLanguages(language.code)"
+                      (click)="requestAiTranslation(language.code, source.code)"
+                    >
+                      {{ source.label }}
+                    </button>
+                  </div>
+                  <button type="button" class="close-dropdown" (click)="closeAiDropdown()">
+                    {{ 'admin.details.aiCancel' | translate: 'Cancel' }}
+                  </button>
+                </div>
+              </div>
+            </div>
             <textarea
               [name]="'description-' + language.code"
               [(ngModel)]="detailsForm.descriptions[language.code]"
@@ -330,6 +465,14 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
                   | translate: 'Describe the atmosphere, specialties, and what guests can expect.'
               "
             ></textarea>
+            <p
+              *ngIf="aiTranslationState[language.code]?.message as message"
+              class="ai-status"
+              [class.error]="aiTranslationState[language.code]?.status === 'error'"
+              [class.success]="aiTranslationState[language.code]?.status === 'success'"
+            >
+              {{ message }}
+            </p>
           </div>
         </div>
 
@@ -371,6 +514,7 @@ export class AdminRestaurantDetailsPage {
   private context = inject(AdminRestaurantContextService);
   private restaurantService = inject(RestaurantService);
   private chainService = inject(ChainService);
+  private aiDescriptions = inject(RestaurantAiDescriptionService);
   private i18n = inject(TranslationService);
 
   readonly cuisines = [...RESTAURANT_CUISINES];
@@ -381,6 +525,7 @@ export class AdminRestaurantDetailsPage {
     tap(restaurant => {
       this.currentRestaurant = restaurant;
       this.populateDetailsForm(restaurant);
+      this.resetAiTranslationState();
       this.setRestaurantChain(restaurant);
       this.resetDetailsStatus();
       this.resetChainStatus();
@@ -395,6 +540,9 @@ export class AdminRestaurantDetailsPage {
   chainMessage = '';
   chainMessageType: 'success' | 'error' | '' = '';
   readonly createChainOptionValue = '__create__';
+
+  aiDropdownForLanguage: string | null = null;
+  aiTranslationState: Record<string, { status: 'idle' | 'loading' | 'success' | 'error'; message?: string }> = {};
 
   detailsForm: {
     name: string;
@@ -463,6 +611,96 @@ export class AdminRestaurantDetailsPage {
 
   isCuisineSelected(cuisine: string): boolean {
     return this.detailsForm.cuisines.includes(cuisine);
+  }
+
+  onAiButtonClick(languageCode: string) {
+    if (this.isAiButtonDisabled(languageCode)) {
+      return;
+    }
+
+    this.aiDropdownForLanguage =
+      this.aiDropdownForLanguage === languageCode ? null : languageCode;
+  }
+
+  isAiButtonDisabled(languageCode: string): boolean {
+    return this.isAiTranslating(languageCode) || !this.getAiSourceLanguages(languageCode).length;
+  }
+
+  isAiTranslating(languageCode: string): boolean {
+    return this.aiTranslationState[languageCode]?.status === 'loading';
+  }
+
+  getAiSourceLanguages(targetLanguageCode: string) {
+    return this.languages.filter(
+      language => language.code !== targetLanguageCode && this.hasDescriptionValue(language.code)
+    );
+  }
+
+  closeAiDropdown() {
+    this.aiDropdownForLanguage = null;
+  }
+
+  async requestAiTranslation(targetLanguageCode: string, sourceLanguageCode: string) {
+    const restaurantId = this.context.selectedRestaurantId;
+    if (restaurantId === null || this.isAiTranslating(targetLanguageCode)) {
+      return;
+    }
+
+    const sourceText = this.detailsForm.descriptions[sourceLanguageCode]?.trim();
+    if (!sourceText) {
+      return;
+    }
+
+    this.aiDropdownForLanguage = null;
+    this.setAiTranslationState(targetLanguageCode, { status: 'loading' });
+
+    try {
+      const translation = (await firstValueFrom(
+        this.aiDescriptions.translate(restaurantId, {
+          sourceLanguageCode,
+          targetLanguageCode,
+          text: sourceText,
+        })
+      ))?.trim();
+
+      if (!translation) {
+        this.setAiTranslationState(targetLanguageCode, {
+          status: 'error',
+          message: this.i18n.translate(
+            'admin.details.aiTranslationError',
+            'Unable to translate right now. Please try again.'
+          ),
+        });
+        return;
+      }
+
+      const updatedDescriptions = {
+        ...this.detailsForm.descriptions,
+        [targetLanguageCode]: translation,
+      };
+
+      this.detailsForm = {
+        ...this.detailsForm,
+        descriptions: updatedDescriptions,
+      };
+
+      this.setAiTranslationState(targetLanguageCode, {
+        status: 'success',
+        message: this.i18n.translate(
+          'admin.details.aiTranslationApplied',
+          'AI translation added. Feel free to review and tweak the copy.'
+        ),
+      });
+    } catch (error) {
+      console.error('Failed to translate description', error);
+      this.setAiTranslationState(targetLanguageCode, {
+        status: 'error',
+        message: this.i18n.translate(
+          'admin.details.aiTranslationError',
+          'Unable to translate right now. Please try again.'
+        ),
+      });
+    }
   }
 
   onCuisineToggle(cuisine: string, checked: boolean) {
@@ -539,6 +777,25 @@ export class AdminRestaurantDetailsPage {
     if (primaryDescription) {
       this.detailsForm.descriptions[this.primaryLanguageCode] = primaryDescription;
     }
+  }
+
+  private hasDescriptionValue(languageCode: string): boolean {
+    return Boolean(this.detailsForm.descriptions[languageCode]?.trim());
+  }
+
+  private resetAiTranslationState() {
+    this.aiDropdownForLanguage = null;
+    this.aiTranslationState = {};
+  }
+
+  private setAiTranslationState(
+    languageCode: string,
+    state: { status: 'idle' | 'loading' | 'success' | 'error'; message?: string }
+  ) {
+    this.aiTranslationState = {
+      ...this.aiTranslationState,
+      [languageCode]: state,
+    };
   }
 
   private buildUpdatePayload(trimmedName: string): RestaurantUpdateInput {
