@@ -53,7 +53,12 @@ export class CartService {
   requiresTargetTime = computed(() => this._targetTimeType() === 'scheduled');
   hasValidTargetTime = computed(() => !this.requiresTargetTime() || this.targetTime() !== null);
 
-  add(item: MenuItem, category?: CartCategorySelection | null, restaurant?: CartRestaurant | null) {
+  add(
+    item: MenuItem,
+    category?: CartCategorySelection | null,
+    restaurant?: CartRestaurant | null,
+    quantity = 1
+  ) {
     const lines = [...this._lines()];
     const normalized = this.normalizeCategory(category);
     const normalizedRestaurant = this.normalizeRestaurant(restaurant, item.restaurant_id);
@@ -75,13 +80,15 @@ export class CartService {
         (l.category?.id ?? null) === (normalized?.id ?? null)
     );
 
+    const qtyToAdd = Number.isFinite(quantity) && quantity > 0 ? Math.floor(quantity) : 1;
+
     if (found) {
-      found.quantity += 1;
+      found.quantity += qtyToAdd;
       if (normalized?.label && !found.category?.label) {
         found.category = { id: normalized.id, label: normalized.label };
       }
     } else {
-      lines.push({ item, quantity: 1, category: normalized ?? undefined });
+      lines.push({ item, quantity: qtyToAdd, category: normalized ?? undefined });
     }
 
     this._lines.set(lines);

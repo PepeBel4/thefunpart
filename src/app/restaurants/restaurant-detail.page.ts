@@ -24,6 +24,7 @@ type PendingCartAddition = {
   incomingRestaurant: CartRestaurant;
   currentRestaurantName: string;
   incomingRestaurantName: string;
+  quantity: number;
 };
 
 @Component({
@@ -258,6 +259,56 @@ type PendingCartAddition = {
       border-radius: 999px;
     }
 
+    .quantity-controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border-soft);
+      border-radius: 999px;
+      background: rgba(6, 193, 103, 0.08);
+      color: var(--text-primary);
+      font-weight: 600;
+      width: fit-content;
+    }
+
+    .quantity-controls .quantity-button {
+      background: transparent;
+      border: 0;
+      color: inherit;
+      font-size: 1.25rem;
+      font-weight: 600;
+      cursor: pointer;
+      width: 1.75rem;
+      height: 1.75rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background 0.2s ease;
+    }
+
+    .quantity-controls .quantity-button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .quantity-controls .quantity-button:not(:disabled):hover,
+    .quantity-controls .quantity-button:not(:disabled):focus {
+      background: rgba(6, 193, 103, 0.18);
+      outline: none;
+    }
+
+    .quantity-controls .quantity-button:focus-visible {
+      outline: 2px solid var(--brand-green);
+      outline-offset: 2px;
+    }
+
+    .quantity-controls .quantity-display {
+      min-width: 1.5rem;
+      text-align: center;
+    }
+
     .card button {
       align-self: flex-start;
       background: var(--brand-green);
@@ -431,7 +482,27 @@ type PendingCartAddition = {
                   </ng-container>
                 </ng-container>
               </div>
-              <button (click)="addToCart(m, category.cartCategory, r)">
+              <div class="quantity-controls" role="group" aria-label="{{ 'cart.quantity' | translate: 'Quantity' }}">
+                <button
+                  type="button"
+                  class="quantity-button"
+                  (click)="changeQuantity(m.id, -1)"
+                  [disabled]="getQuantity(m.id) === 1"
+                  [attr.aria-label]="'cart.decrease' | translate: 'Decrease quantity'"
+                >
+                  −
+                </button>
+                <span class="quantity-display" aria-live="polite">{{ getQuantity(m.id) }}</span>
+                <button
+                  type="button"
+                  class="quantity-button"
+                  (click)="changeQuantity(m.id, 1)"
+                  [attr.aria-label]="'cart.increase' | translate: 'Increase quantity'"
+                >
+                  +
+                </button>
+              </div>
+              <button type="button" (click)="addToCart(m, category.cartCategory, r, getQuantity(m.id))">
                 {{ 'restaurantDetail.addToCart' | translate: 'Add to cart' }}
               </button>
             </div>
@@ -518,6 +589,7 @@ export class RestaurantDetailPage implements OnDestroy {
   private restaurantMismatchContext = signal<PendingCartAddition | null>(null);
   restaurantMismatchState = computed(() => this.restaurantMismatchContext());
   private bodyOverflowBackup: string | null = null;
+  private itemQuantities = signal<Record<number, number>>({});
 
   constructor() {
     let initial = true;
@@ -611,7 +683,47 @@ export class RestaurantDetailPage implements OnDestroy {
     return item.price_cents;
   }
 
-  addToCart(item: MenuItem, category: CartCategorySelection | null, restaurant: Restaurant) {
+  getQuantity(itemId: number): number {
+    return this.itemQuantities()[itemId] ?? 1;
+  }
+
+  changeQuantity(itemId: number, delta: number) {
+    if (!Number.isFinite(delta) || delta === 0) {
+      return;
+    }
+
+    this.itemQuantities.update(current => {
+      const next = { ...current };
+      const existing = next[itemId] ?? 1;
+      const updated = Math.max(1, existing + Math.trunc(delta));
+
+      if (updated === 1) {
+        delete next[itemId];
+      } else {
+        next[itemId] = updated;
+      }
+
+      return next;
+    });
+  }
+
+  private resetQuantity(itemId: number) {
+    this.itemQuantities.update(current => {
+      if (!(itemId in current)) {
+        return current;
+      }
+
+      const { [itemId]: _removed, ...rest } = current;
+      return rest;
+    });
+  }
+
+  addToCart(
+    item: MenuItem,
+    category: CartCategorySelection | null,
+    restaurant: Restaurant,
+    quantity: number
+  ) {
     const cartRestaurant = this.cart.restaurant();
     const incomingRestaurantName = this.getRestaurantName(restaurant);
     const incomingRestaurant: CartRestaurant = { id: restaurant.id, name: incomingRestaurantName };
@@ -626,12 +738,14 @@ export class RestaurantDetailPage implements OnDestroy {
         incomingRestaurant,
         currentRestaurantName: currentName,
         incomingRestaurantName,
+        quantity,
       });
 
       return;
     }
 
-    this.cart.add(item, category, incomingRestaurant);
+    this.cart.add(item, category, incomingRestaurant, quantity);
+    this.resetQuantity(item.id);
   }
 
   confirmRestaurantMismatch() {
@@ -641,7 +755,13 @@ export class RestaurantDetailPage implements OnDestroy {
     }
 
     this.cart.clear();
-    this.cart.add(pending.item, pending.category, pending.incomingRestaurant);
+    this.cart.add(
+      pending.item,
+      pending.category,
+      pending.incomingRestaurant,
+      pending.quantity
+    );
+    this.resetQuantity(pending.item.id);
     this.closeRestaurantMismatchModal();
   }
 
