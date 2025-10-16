@@ -1,10 +1,19 @@
-import { CurrencyPipe, NgFor, NgIf, NgSwitch, NgSwitchCase, NgSwitchDefault } from '@angular/common';
+import {
+  CurrencyPipe,
+  NgFor,
+  NgIf,
+  NgSwitch,
+  NgSwitchCase,
+  NgSwitchDefault,
+  NgTemplateOutlet,
+} from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EMPTY, catchError, map, switchMap, tap } from 'rxjs';
 import { Card, Restaurant } from '../core/models';
 import { CardService } from './card.service';
 import { RestaurantService } from '../restaurants/restaurant.service';
+import { RouterLink } from '@angular/router';
 
 interface CardOverviewEntry {
   id: number;
@@ -16,6 +25,7 @@ interface CardOverviewEntry {
   creditEuros: number;
   heroPhoto: string | null;
   placeholderInitial: string;
+  linkCommands: (string | number)[] | null;
 }
 
 interface CardOverviewState {
@@ -26,7 +36,7 @@ interface CardOverviewState {
 @Component({
   selector: 'app-card-overview',
   standalone: true,
-  imports: [NgIf, NgFor, CurrencyPipe, NgSwitch, NgSwitchCase, NgSwitchDefault],
+  imports: [NgIf, NgFor, CurrencyPipe, NgSwitch, NgSwitchCase, NgSwitchDefault, NgTemplateOutlet, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [`
     :host {
@@ -69,7 +79,7 @@ interface CardOverviewState {
       gap: 1rem;
     }
 
-    article.card {
+    .card {
       position: relative;
       display: flex;
       flex-direction: column;
@@ -80,9 +90,11 @@ interface CardOverviewState {
       border: 1px solid rgba(10, 10, 10, 0.05);
       box-shadow: var(--shadow-soft);
       overflow: hidden;
+      text-decoration: none;
+      color: inherit;
     }
 
-    article.card::after {
+    .card::after {
       content: '';
       position: absolute;
       inset: 0;
@@ -92,7 +104,7 @@ interface CardOverviewState {
       pointer-events: none;
     }
 
-    article.card:hover::after {
+    .card:hover::after {
       opacity: 1;
     }
 
@@ -204,7 +216,7 @@ interface CardOverviewState {
         padding: 1.25rem 1.35rem;
       }
 
-      article.card {
+      .card {
         padding: 0.9rem 1rem 1.1rem;
       }
     }
@@ -217,7 +229,24 @@ interface CardOverviewState {
           <p>Track your points and credit across your favourite spots.</p>
         </div>
         <div class="cards-grid">
-          <article class="card" *ngFor="let card of state().cards">
+          <ng-container *ngFor="let card of state().cards">
+            <a
+              *ngIf="card.linkCommands; else staticCard"
+              class="card"
+              [routerLink]="card.linkCommands"
+              [attr.aria-label]="
+                card.type === 'chain' ? 'View ' + card.title + ' restaurants' : 'View ' + card.title
+              "
+            >
+              <ng-container *ngTemplateOutlet="cardContent; context: { $implicit: card }"></ng-container>
+            </a>
+            <ng-template #staticCard>
+              <article class="card">
+                <ng-container *ngTemplateOutlet="cardContent; context: { $implicit: card }"></ng-container>
+              </article>
+            </ng-template>
+          </ng-container>
+          <ng-template #cardContent let-card>
             <div class="card-media">
               <ng-container *ngIf="card.heroPhoto; else fallback">
                 <img [src]="card.heroPhoto!" [alt]="card.title" loading="lazy" />
@@ -241,7 +270,7 @@ interface CardOverviewState {
                 </div>
               </div>
             </div>
-          </article>
+          </ng-template>
         </div>
       </section>
       <section class="state-card" *ngSwitchCase="'loading'">
@@ -322,6 +351,7 @@ export class CardOverviewComponent {
       creditEuros: card.credit_cents / 100,
       heroPhoto,
       placeholderInitial: this.buildInitial(title),
+      linkCommands: this.buildLinkCommands(type, card, associatedRestaurant),
     };
   }
 
@@ -338,10 +368,10 @@ export class CardOverviewComponent {
 
     const chainId = card.chain_id ?? card.chain?.id ?? null;
     if (chainId != null) {
-    const chainRestaurants = restaurants.filter(restaurant => {
-      const fromChain = restaurant.chain?.id ?? restaurant.chain_id ?? null;
-      return fromChain === chainId;
-    });
+      const chainRestaurants = restaurants.filter(restaurant => {
+        const fromChain = restaurant.chain?.id ?? restaurant.chain_id ?? null;
+        return fromChain === chainId;
+      });
 
       if (chainRestaurants.length) {
         const randomIndex = Math.floor(Math.random() * chainRestaurants.length);
@@ -396,5 +426,28 @@ export class CardOverviewComponent {
 
     const [firstWord] = trimmed.split(/\s+/);
     return firstWord?.charAt(0).toUpperCase() ?? '?';
+  }
+
+  private buildLinkCommands(
+    type: 'restaurant' | 'chain',
+    card: Card,
+    associatedRestaurant: Restaurant | undefined
+  ): (string | number)[] | null {
+    const restaurantId = card.restaurant_id ?? card.restaurant?.id ?? associatedRestaurant?.id ?? null;
+    const chainId = card.chain_id ?? card.chain?.id ?? null;
+
+    if (type === 'chain' && chainId != null) {
+      return ['/chains', chainId];
+    }
+
+    if (type === 'restaurant' && restaurantId != null) {
+      return ['/restaurants', restaurantId];
+    }
+
+    if (restaurantId != null) {
+      return ['/restaurants', restaurantId];
+    }
+
+    return null;
   }
 }
