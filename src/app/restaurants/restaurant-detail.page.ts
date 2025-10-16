@@ -24,6 +24,15 @@ type MenuCategoryGroup = {
   cartCategoriesByItemId?: Record<number, CartCategorySelection | null>;
 };
 
+type CartFlightAnimation = {
+  id: number;
+  quantity: number;
+  startX: number;
+  startY: number;
+  deltaX: number;
+  deltaY: number;
+};
+
 type PendingCartAddition = {
   item: MenuItem;
   category: CartCategorySelection | null;
@@ -452,6 +461,61 @@ type PendingCartAddition = {
       background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.1);
     }
 
+    .cart-flight-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2000;
+    }
+
+    .cart-flight {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform: translate(var(--start-x), var(--start-y)) scale(0.85);
+      animation: cart-flight 0.65s cubic-bezier(0.22, 0.68, 0, 1) forwards;
+      will-change: transform, opacity;
+    }
+
+    .cart-flight-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      background: var(--brand-green);
+      color: #fff;
+      font-weight: 700;
+      box-shadow: 0 16px 30px rgba(4, 24, 16, 0.28);
+      border: 2px solid rgba(255, 255, 255, 0.7);
+    }
+
+    @keyframes cart-flight {
+      0% {
+        transform: translate(var(--start-x), var(--start-y)) scale(0.85);
+        opacity: 0.9;
+      }
+
+      70% {
+        transform: translate(
+            calc(var(--start-x) + var(--delta-x) * 0.7),
+            calc(var(--start-y) + var(--delta-y) * 0.7)
+          )
+          scale(1);
+        opacity: 1;
+      }
+
+      100% {
+        transform: translate(
+            calc(var(--start-x) + var(--delta-x)),
+            calc(var(--start-y) + var(--delta-y))
+          )
+          scale(0.6);
+        opacity: 0;
+      }
+    }
+
     @media (max-width: 720px) {
       .hero {
         padding: 2rem 1.5rem;
@@ -576,7 +640,7 @@ type PendingCartAddition = {
               </div>
               <button
                 type="button"
-                (click)="addToCart(m, resolveCartCategory(category, m), r, getQuantity(m.id))"
+                (click)="addToCart(m, resolveCartCategory(category, m), r, getQuantity(m.id), $event)"
               >
                 {{ 'restaurantDetail.addToCart' | translate: 'Add to cart' }}
               </button>
@@ -586,6 +650,19 @@ type PendingCartAddition = {
       </ng-container>
 
     </ng-container>
+
+    <div class="cart-flight-layer" aria-hidden="true">
+      <div
+        class="cart-flight"
+        *ngFor="let flight of cartFlights()"
+        [style.--start-x]="flight.startX + 'px'"
+        [style.--start-y]="flight.startY + 'px'"
+        [style.--delta-x]="flight.deltaX + 'px'"
+        [style.--delta-y]="flight.deltaY + 'px'"
+      >
+        <span class="cart-flight-badge">+{{ flight.quantity }}</span>
+      </div>
+    </div>
 
     <ng-container *ngIf="restaurantMismatchState() as mismatch">
       <div class="modal-backdrop" (click)="dismissRestaurantMismatch()">
@@ -638,6 +715,8 @@ export class RestaurantDetailPage implements OnDestroy {
   private highlightMenuItemId: number | null = null;
   private highlightScrollTimeout: ReturnType<typeof setTimeout> | null = null;
   private highlightRetryTimeout: ReturnType<typeof setTimeout> | null = null;
+  private nextCartFlightId = 0;
+  private cartFlightTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
 
   id = Number(this.route.snapshot.paramMap.get('id'));
   restaurant$: Observable<Restaurant> = this.rSvc.get(this.id).pipe(shareReplay({ bufferSize: 1, refCount: true }));
@@ -669,6 +748,7 @@ export class RestaurantDetailPage implements OnDestroy {
   restaurantMismatchState = computed(() => this.restaurantMismatchContext());
   private bodyOverflowBackup: string | null = null;
   private itemQuantities = signal<Record<number, number>>({});
+  cartFlights = signal<CartFlightAnimation[]>([]);
 
   constructor() {
     this.restaurant$
@@ -712,6 +792,9 @@ export class RestaurantDetailPage implements OnDestroy {
       clearTimeout(this.highlightRetryTimeout);
       this.highlightRetryTimeout = null;
     }
+    this.cartFlightTimeouts.forEach(timeout => clearTimeout(timeout));
+    this.cartFlightTimeouts.clear();
+    this.cartFlights.set([]);
     this.unlockBodyScroll();
   }
 
@@ -822,8 +905,10 @@ export class RestaurantDetailPage implements OnDestroy {
     item: MenuItem,
     category: CartCategorySelection | null,
     restaurant: Restaurant,
-    quantity: number
+    quantity: number,
+    event?: Event
   ) {
+    const triggerRect = this.resolveTriggerRect(event);
     const cartRestaurant = this.cart.restaurant();
     const incomingRestaurantName = this.getRestaurantName(restaurant);
     const incomingRestaurant: CartRestaurant = {
@@ -850,6 +935,9 @@ export class RestaurantDetailPage implements OnDestroy {
 
     this.cart.add(item, category, incomingRestaurant, quantity);
     this.resetQuantity(item.id);
+    if (triggerRect) {
+      this.launchCartFlight(quantity, triggerRect);
+    }
   }
 
   confirmRestaurantMismatch() {
@@ -871,6 +959,66 @@ export class RestaurantDetailPage implements OnDestroy {
 
   dismissRestaurantMismatch() {
     this.closeRestaurantMismatchModal();
+  }
+
+  private resolveTriggerRect(event?: Event): DOMRect | null {
+    if (!event) {
+      return null;
+    }
+
+    const target = event.currentTarget;
+    if (target instanceof Element) {
+      return target.getBoundingClientRect();
+    }
+
+    return null;
+  }
+
+  private launchCartFlight(quantity: number, triggerRect: DOMRect) {
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      return;
+    }
+
+    const targetRect = this.getCartTargetRect();
+    if (!targetRect) {
+      return;
+    }
+
+    const badgeSize = 36;
+    const startX = triggerRect.left + triggerRect.width / 2 - badgeSize / 2;
+    const startY = triggerRect.top + triggerRect.height / 2 - badgeSize / 2;
+    const endX = targetRect.left + targetRect.width / 2 - badgeSize / 2;
+    const endY = targetRect.top + targetRect.height / 2 - badgeSize / 2;
+    const id = ++this.nextCartFlightId;
+    const flight: CartFlightAnimation = {
+      id,
+      quantity,
+      startX,
+      startY,
+      deltaX: endX - startX,
+      deltaY: endY - startY,
+    };
+
+    this.cartFlights.update(current => [...current, flight]);
+
+    const timeout = setTimeout(() => {
+      this.cartFlights.update(current => current.filter(entry => entry.id !== id));
+      this.cartFlightTimeouts.delete(id);
+    }, 650);
+
+    this.cartFlightTimeouts.set(id, timeout);
+  }
+
+  private getCartTargetRect(): DOMRect | null {
+    const cartElement = this.document.querySelector('.cart-pill');
+    if (cartElement instanceof HTMLElement) {
+      const rect = cartElement.getBoundingClientRect();
+      if (rect.width || rect.height) {
+        return rect;
+      }
+    }
+
+    return null;
   }
 
   private openRestaurantMismatchModal(context: PendingCartAddition) {
