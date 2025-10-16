@@ -24,6 +24,16 @@ type MenuCategoryGroup = {
   cartCategoriesByItemId?: Record<number, CartCategorySelection | null>;
 };
 
+type CartFlightAnimation = {
+  id: number;
+  quantity: number;
+  startX: number;
+  startY: number;
+  deltaX: number;
+  deltaY: number;
+  arcHeight: number;
+};
+
 type PendingCartAddition = {
   item: MenuItem;
   category: CartCategorySelection | null;
@@ -576,7 +586,7 @@ type PendingCartAddition = {
               </div>
               <button
                 type="button"
-                (click)="addToCart(m, resolveCartCategory(category, m), r, getQuantity(m.id))"
+                (click)="addToCart(m, resolveCartCategory(category, m), r, getQuantity(m.id), $event)"
               >
                 {{ 'restaurantDetail.addToCart' | translate: 'Add to cart' }}
               </button>
@@ -586,6 +596,20 @@ type PendingCartAddition = {
       </ng-container>
 
     </ng-container>
+
+    <div class="cart-flight-layer" aria-hidden="true">
+      <div
+        class="cart-flight"
+        *ngFor="let flight of cartFlights()"
+        [style.--start-x]="flight.startX + 'px'"
+        [style.--start-y]="flight.startY + 'px'"
+        [style.--delta-x]="flight.deltaX + 'px'"
+        [style.--delta-y]="flight.deltaY + 'px'"
+        [style.--arc-height]="flight.arcHeight + 'px'"
+      >
+        <span class="cart-flight-badge">+{{ flight.quantity }}</span>
+      </div>
+    </div>
 
     <ng-container *ngIf="restaurantMismatchState() as mismatch">
       <div class="modal-backdrop" (click)="dismissRestaurantMismatch()">
@@ -638,6 +662,8 @@ export class RestaurantDetailPage implements OnDestroy {
   private highlightMenuItemId: number | null = null;
   private highlightScrollTimeout: ReturnType<typeof setTimeout> | null = null;
   private highlightRetryTimeout: ReturnType<typeof setTimeout> | null = null;
+  private nextCartFlightId = 0;
+  private cartFlightTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
 
   id = Number(this.route.snapshot.paramMap.get('id'));
   restaurant$: Observable<Restaurant> = this.rSvc.get(this.id).pipe(shareReplay({ bufferSize: 1, refCount: true }));
@@ -669,6 +695,7 @@ export class RestaurantDetailPage implements OnDestroy {
   restaurantMismatchState = computed(() => this.restaurantMismatchContext());
   private bodyOverflowBackup: string | null = null;
   private itemQuantities = signal<Record<number, number>>({});
+  cartFlights = signal<CartFlightAnimation[]>([]);
 
   constructor() {
     this.restaurant$
@@ -712,6 +739,9 @@ export class RestaurantDetailPage implements OnDestroy {
       clearTimeout(this.highlightRetryTimeout);
       this.highlightRetryTimeout = null;
     }
+    this.cartFlightTimeouts.forEach(timeout => clearTimeout(timeout));
+    this.cartFlightTimeouts.clear();
+    this.cartFlights.set([]);
     this.unlockBodyScroll();
   }
 
@@ -822,8 +852,10 @@ export class RestaurantDetailPage implements OnDestroy {
     item: MenuItem,
     category: CartCategorySelection | null,
     restaurant: Restaurant,
-    quantity: number
+    quantity: number,
+    event?: Event
   ) {
+    const triggerRect = this.resolveTriggerRect(event);
     const cartRestaurant = this.cart.restaurant();
     const incomingRestaurantName = this.getRestaurantName(restaurant);
     const incomingRestaurant: CartRestaurant = {
@@ -850,6 +882,9 @@ export class RestaurantDetailPage implements OnDestroy {
 
     this.cart.add(item, category, incomingRestaurant, quantity);
     this.resetQuantity(item.id);
+    if (triggerRect) {
+      this.launchCartFlight(quantity, triggerRect);
+    }
   }
 
   confirmRestaurantMismatch() {
@@ -871,6 +906,72 @@ export class RestaurantDetailPage implements OnDestroy {
 
   dismissRestaurantMismatch() {
     this.closeRestaurantMismatchModal();
+  }
+
+  private resolveTriggerRect(event?: Event): DOMRect | null {
+    if (!event) {
+      return null;
+    }
+
+    const target = event.currentTarget;
+    if (target instanceof Element) {
+      return target.getBoundingClientRect();
+    }
+
+    return null;
+  }
+
+  private launchCartFlight(quantity: number, triggerRect: DOMRect) {
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      return;
+    }
+
+    const targetRect = this.getCartTargetRect();
+    if (!targetRect) {
+      return;
+    }
+
+    const badgeSize = 36;
+    const startX = triggerRect.left + triggerRect.width / 2 - badgeSize / 2;
+    const startY = triggerRect.top + triggerRect.height / 2 - badgeSize / 2;
+    const endX = targetRect.left + targetRect.width / 2 - badgeSize / 2;
+    const endY = targetRect.top + targetRect.height / 2 - badgeSize / 2;
+    const id = ++this.nextCartFlightId;
+    const deltaX = endX - startX;
+    const deltaY = endY - startY;
+    const distance = Math.hypot(deltaX, deltaY);
+    const arcHeight = Math.min(280, Math.max(110, distance * 0.42));
+
+    const flight: CartFlightAnimation = {
+      id,
+      quantity,
+      startX,
+      startY,
+      deltaX,
+      deltaY,
+      arcHeight,
+    };
+
+    this.cartFlights.update(current => [...current, flight]);
+
+    const timeout = setTimeout(() => {
+      this.cartFlights.update(current => current.filter(entry => entry.id !== id));
+      this.cartFlightTimeouts.delete(id);
+    }, 1150);
+
+    this.cartFlightTimeouts.set(id, timeout);
+  }
+
+  private getCartTargetRect(): DOMRect | null {
+    const cartElement = this.document.querySelector('.cart-pill');
+    if (cartElement instanceof HTMLElement) {
+      const rect = cartElement.getBoundingClientRect();
+      if (rect.width || rect.height) {
+        return rect;
+      }
+    }
+
+    return null;
   }
 
   private openRestaurantMismatchModal(context: PendingCartAddition) {
