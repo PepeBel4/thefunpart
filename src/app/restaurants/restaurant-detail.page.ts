@@ -83,9 +83,12 @@ type PendingCartAddition = {
       display: flex;
       align-items: center;
       gap: 1rem;
+      flex-wrap: wrap;
+      row-gap: 0.65rem;
     }
 
     .hero-logo {
+      flex: 0 0 auto;
       width: clamp(64px, 10vw, 96px);
       aspect-ratio: 1;
       border-radius: 22%;
@@ -97,10 +100,14 @@ type PendingCartAddition = {
     }
 
     .hero-title {
-      font-size: clamp(2.5rem, 5vw, 3.75rem);
+      font-size: clamp(2.25rem, 4.8vw, 3.6rem);
       font-weight: 700;
       letter-spacing: -0.045em;
       margin: 0;
+      flex: 1 1 16rem;
+      min-width: 0;
+      line-height: 1.05;
+      word-break: break-word;
     }
 
     .hero-content p {
