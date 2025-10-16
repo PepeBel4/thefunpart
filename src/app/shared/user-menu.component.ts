@@ -1,4 +1,11 @@
-import { Component, ElementRef, HostListener, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  HostListener,
+  ViewChild,
+  inject,
+  signal
+} from '@angular/core';
 import { NgIf } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
@@ -9,20 +16,28 @@ import { TranslatePipe } from './translate.pipe';
   standalone: true,
   imports: [NgIf, RouterLink, TranslatePipe],
   template: `
-    <div class="user-menu-root">
+    <div class="user-menu-root" [class.open]="isOpen()">
       <button
         type="button"
         class="user-toggle"
         (click)="toggleMenu()"
-        aria-haspopup="true"
+        aria-haspopup="menu"
         [attr.aria-expanded]="isOpen()"
+        [attr.aria-controls]="isOpen() ? panelId : null"
+        [attr.aria-label]="'nav.account' | translate: 'Account'"
       >
         <span aria-hidden="true" class="user-icon">👤</span>
-        <span class="user-label">
-          {{ 'nav.account' | translate: 'Account' }}
-        </span>
+        <span class="user-label">{{ 'nav.account' | translate: 'Account' }}</span>
+        <span aria-hidden="true" class="chevron">▾</span>
       </button>
-      <div *ngIf="isOpen()" class="menu-panel" role="menu">
+      <div
+        *ngIf="isOpen()"
+        #panel
+        class="menu-panel"
+        role="menu"
+        [attr.id]="panelId"
+        [attr.aria-label]="'nav.accountMenu' | translate: 'Account menu'"
+      >
         <ng-container *ngIf="auth.isLoggedIn(); else loggedOutMenu">
           <a routerLink="/profile" role="menuitem" (click)="closeMenu()">
             {{ 'nav.profile' | translate: 'Profile' }}
@@ -54,32 +69,46 @@ import { TranslatePipe } from './translate.pipe';
       .user-menu-root {
         position: relative;
         display: inline-flex;
+        align-items: center;
       }
 
       .user-toggle {
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
-        padding: 0.5rem 1rem;
+        padding: 0.45rem 0.85rem;
         border-radius: 999px;
         border: 0;
         cursor: pointer;
         background: rgba(255, 255, 255, 0.12);
         color: rgba(255, 255, 255, 0.92);
         font-weight: 600;
-        transition: background 0.2s ease, transform 0.2s ease;
+        transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
       }
 
       .user-toggle:hover,
       .user-toggle:focus-visible {
         background: rgba(255, 255, 255, 0.18);
-        transform: translateY(-1px);
+        color: #fff;
         outline: none;
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.14);
+      }
+
+      .user-menu-root.open .user-toggle {
+        background: rgba(255, 255, 255, 0.16);
+        color: #fff;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
       }
 
       .user-icon {
         font-size: 1.1rem;
         line-height: 1;
+      }
+
+      .chevron {
+        font-size: 0.75rem;
+        line-height: 1;
+        margin-left: -0.2rem;
       }
 
       .menu-panel {
@@ -123,24 +152,28 @@ import { TranslatePipe } from './translate.pipe';
       }
 
       @media (max-width: 640px) {
-        :host {
-          width: 100%;
-        }
-
-        .user-menu-root {
-          width: 100%;
-        }
-
         .user-toggle {
-          width: 100%;
-          justify-content: center;
+          padding: 0.4rem 0.6rem;
+        }
+
+        .user-label {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border: 0;
+        }
+
+        .chevron {
+          display: none;
         }
 
         .menu-panel {
-          position: static;
-          margin-top: 0.75rem;
-          width: 100%;
-          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
+          min-width: 160px;
         }
       }
     `,
@@ -149,14 +182,24 @@ import { TranslatePipe } from './translate.pipe';
 export class UserMenuComponent {
   protected auth = inject(AuthService);
   protected isOpen = signal(false);
-  private host = inject(ElementRef<HTMLElement>);
+  protected panelId = `user-menu-${Math.random().toString(36).slice(2, 9)}`;
+  protected host = inject(ElementRef<HTMLElement>);
+  @ViewChild('panel') private panel?: ElementRef<HTMLElement>;
+  private alignmentFrame?: number;
 
   toggleMenu() {
-    this.isOpen.update((open) => !open);
+    const next = !this.isOpen();
+    this.isOpen.set(next);
+    if (next) {
+      this.schedulePanelRealign();
+    } else {
+      this.resetPanelTransform();
+    }
   }
 
   closeMenu() {
     this.isOpen.set(false);
+    this.resetPanelTransform();
   }
 
   async handleLogout() {
@@ -174,5 +217,66 @@ export class UserMenuComponent {
   @HostListener('document:keydown.escape')
   onEscape() {
     this.closeMenu();
+  }
+
+  @HostListener('window:resize')
+  onResize() {
+    if (this.isOpen()) {
+      this.schedulePanelRealign();
+    }
+  }
+
+  private schedulePanelRealign() {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (this.alignmentFrame) {
+      cancelAnimationFrame(this.alignmentFrame);
+    }
+
+    this.alignmentFrame = requestAnimationFrame(() => {
+      this.alignmentFrame = undefined;
+      this.realignPanel();
+    });
+  }
+
+  private realignPanel() {
+    const panel = this.panel?.nativeElement;
+    if (!panel) {
+      return;
+    }
+
+    panel.style.transform = '';
+
+    const rect = panel.getBoundingClientRect();
+    const viewportPadding = 8;
+    const viewportWidth = window.innerWidth;
+    let shift = 0;
+
+    if (rect.left < viewportPadding) {
+      shift = viewportPadding - rect.left;
+    }
+
+    const rightOverflow = rect.right - (viewportWidth - viewportPadding);
+    if (rightOverflow > 0) {
+      shift -= rightOverflow;
+    }
+
+    if (shift !== 0) {
+      panel.style.transform = `translateX(${shift}px)`;
+    }
+  }
+
+  private resetPanelTransform() {
+    if (this.alignmentFrame) {
+      cancelAnimationFrame(this.alignmentFrame);
+      this.alignmentFrame = undefined;
+    }
+
+    const panel = this.panel?.nativeElement;
+    if (panel) {
+      panel.style.transform = '';
+    }
   }
 }
