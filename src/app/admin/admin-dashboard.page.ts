@@ -232,6 +232,9 @@ import { TranslatePipe } from '../shared/translate.pipe';
           <a routerLink="menu" routerLinkActive="active">
             {{ 'admin.sections.menu' | translate: 'Manage menu' }}
           </a>
+          <a routerLink="options" routerLinkActive="active">
+            {{ 'admin.sections.options' | translate: 'Menu options' }}
+          </a>
           <a routerLink="discounts" routerLinkActive="active">
             {{ 'admin.sections.discounts' | translate: 'Manage discounts' }}
           </a>

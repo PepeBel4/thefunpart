@@ -111,7 +111,7 @@ export interface MenuItemCategory {
   name_translations?: Record<string, string>;
 }
 
-export interface MenuItem {
+export interface MenuItem { 
   id: number;
   restaurant_id: number;
   name: string;
@@ -122,6 +122,55 @@ export interface MenuItem {
   categories?: MenuItemCategory[];
   allergens?: Allergen[];
   photos?: RestaurantPhoto[];
+}
+
+export interface MenuOptionCategory {
+  id: number;
+  restaurant_id: number;
+  name_translations: Record<string, string>;
+}
+
+export interface MenuOptionMenuItem {
+  id: number;
+  restaurant_id: number;
+  name: string;
+  price_cents: number;
+  is_available: boolean;
+}
+
+export interface MenuOptionAssignment {
+  id: number;
+  menu_item_option_id: number;
+  menu_item_id: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MenuOptionItem {
+  id: number;
+  menu_item_option_id: number;
+  menu_item_id: number;
+  price_modifier_type: string | null;
+  price_modifier_amount_cents: number | null;
+  price_modifier_percentage: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MenuOption {
+  id: number;
+  category_id: number | null;
+  title: string;
+  min_selections: number;
+  max_selections: number;
+  created_at: string;
+  updated_at: string;
+  menu_item_ids: number[];
+  menu_items?: MenuOptionMenuItem[];
+  option_items?: MenuOptionItem[];
+  option_assignments?: MenuOptionAssignment[];
+  available_menu_items?: MenuOptionMenuItem[];
+  category?: MenuOptionCategory | null;
 }
 
 export interface AiSuggestedMenuItem {
