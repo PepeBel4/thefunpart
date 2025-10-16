@@ -96,11 +96,32 @@ export class AdminRecentOrdersPage {
   readonly orders$ = this.context.selectedRestaurant$.pipe(
     switchMap(restaurant =>
       this.orderService.list().pipe(
-        map(orders =>
-          orders
-            .filter(order => order.restaurant?.id === restaurant.id)
-            .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
-        )
+        map(orders => {
+          const restaurantId = restaurant.id;
+
+          const filtered = (orders ?? []).filter(order => {
+            const candidate =
+              order.restaurant?.id ??
+              (order as { restaurant_id?: number | string }).restaurant_id ??
+              (order as { restaurantId?: number | string }).restaurantId ??
+              null;
+
+            if (candidate === null || candidate === undefined) {
+              return false;
+            }
+
+            const normalized =
+              typeof candidate === 'string' ? Number(candidate) : candidate;
+
+            if (typeof normalized !== 'number' || Number.isNaN(normalized)) {
+              return false;
+            }
+
+            return normalized === restaurantId;
+          });
+
+          return filtered.sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
+        })
       )
     )
   );
