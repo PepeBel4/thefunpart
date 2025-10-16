@@ -8,7 +8,7 @@ import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
 import { AuthService } from '../core/auth.service';
 import { ProfileService } from '../core/profile.service';
-import { RESTAURANT_CUISINES } from './cuisines';
+import { normalizeRestaurantCuisines } from './cuisines';
 import { MenuService } from '../menu/menu.service';
 import { CardOverviewComponent } from '../cards/card-overview.component';
 
@@ -379,7 +379,6 @@ export class RestaurantListPage {
   private auth = inject(AuthService);
   private profile = inject(ProfileService);
   private heroPhotoCache = new Map<number, string>();
-  private readonly cuisineOrder = RESTAURANT_CUISINES;
   private profilePromptState = signal<{ loading: boolean; profile: UserProfile | null }>({
     loading: false,
     profile: null,
@@ -441,28 +440,6 @@ export class RestaurantListPage {
     return choice;
   }
 
-  private normalizeCuisines(cuisines: string[] | undefined): string[] | undefined {
-    if (!cuisines?.length) {
-      return undefined;
-    }
-
-    const sanitized = cuisines
-      .map(cuisine => cuisine?.trim())
-      .filter((cuisine): cuisine is string => Boolean(cuisine))
-      .map(cuisine => cuisine.toLowerCase());
-
-    if (!sanitized.length) {
-      return undefined;
-    }
-
-    const unique = Array.from(new Set(sanitized));
-    const ordered = this.cuisineOrder.filter(cuisine => unique.includes(cuisine));
-    const extras = unique.filter(cuisine => !this.cuisineOrder.includes(cuisine));
-    const combined = [...ordered, ...extras];
-
-    return combined.length ? combined : undefined;
-  }
-
   private hasDiscount(item: MenuItem): boolean {
     const discounted = item.discounted_price_cents;
     return typeof discounted === 'number' && discounted >= 0 && discounted < item.price_cents;
@@ -503,7 +480,7 @@ export class RestaurantListPage {
       restaurants.map((restaurant) => ({
         ...restaurant,
         heroPhoto: this.ensureHeroPhoto(restaurant),
-        cuisines: this.normalizeCuisines(restaurant.cuisines),
+        cuisines: normalizeRestaurantCuisines(restaurant.cuisines),
       })),
     ),
     shareReplay({ bufferSize: 1, refCount: true })

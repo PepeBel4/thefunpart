@@ -2,7 +2,7 @@ import { Component, HostListener, OnDestroy, effect, inject, signal, computed } 
 import { ActivatedRoute } from '@angular/router';
 import { MenuService } from '../menu/menu.service';
 import { RestaurantService } from './restaurant.service';
-import { AsyncPipe, CurrencyPipe, NgIf, NgFor, NgStyle, DOCUMENT } from '@angular/common';
+import { AsyncPipe, CurrencyPipe, NgIf, NgFor, NgStyle, DOCUMENT, TitleCasePipe } from '@angular/common';
 import { Allergen, Card, MenuItem, Restaurant } from '../core/models';
 import { Observable, combineLatest, firstValueFrom, map, of, shareReplay, startWith, switchMap, tap, timer } from 'rxjs';
 import { CartCategorySelection, CartRestaurant, CartService } from '../cart/cart.service';
@@ -13,6 +13,7 @@ import { AllergenIconComponent } from '../shared/allergen-icon.component';
 import { CardService } from '../cards/card.service';
 import { CardSpotlightEntry, CardSpotlightService } from '../cards/card-spotlight.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { normalizeRestaurantCuisines } from './cuisines';
 
 type MenuCategoryGroup = {
   name: string;
@@ -34,7 +35,7 @@ type PendingCartAddition = {
 @Component({
   standalone: true,
   selector: 'app-restaurant-detail',
-  imports: [AsyncPipe, CurrencyPipe, NgFor, NgIf, TranslatePipe, NgStyle, MenuItemPhotoSliderComponent, AllergenIconComponent],
+  imports: [AsyncPipe, CurrencyPipe, NgFor, NgIf, TranslatePipe, NgStyle, MenuItemPhotoSliderComponent, AllergenIconComponent, TitleCasePipe],
   styles: [`
     :host {
       display: block;
@@ -88,6 +89,28 @@ type PendingCartAddition = {
       margin: 0;
       line-height: 1.6;
       color: rgba(255, 255, 255, 0.88);
+    }
+
+    .hero-cuisines {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .hero-cuisines li {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      backdrop-filter: blur(6px);
+      color: #fff;
+      font-weight: 500;
+      letter-spacing: 0.01em;
     }
 
     .hero-meta {
@@ -426,6 +449,9 @@ type PendingCartAddition = {
           <p>
             {{ getRestaurantDescription(r) }}
           </p>
+          <ul class="hero-cuisines" *ngIf="getRestaurantCuisines(r) as cuisines">
+            <li *ngFor="let cuisine of cuisines">{{ cuisine | titlecase }}</li>
+          </ul>
           <div class="hero-meta">
             <span class="tag">{{ 'restaurantDetail.tagPopular' | translate: 'Popular' }}</span>
             <span>⭐ 4.8</span>
@@ -914,6 +940,10 @@ export class RestaurantDetailPage implements OnDestroy {
 
   getRestaurantName(restaurant: Restaurant): string {
     return this.resolveRestaurantField(restaurant.name, restaurant.name_translations) || restaurant.name;
+  }
+
+  getRestaurantCuisines(restaurant: Restaurant): string[] | undefined {
+    return normalizeRestaurantCuisines(restaurant.cuisines);
   }
 
   getRestaurantDescription(restaurant: Restaurant): string {
