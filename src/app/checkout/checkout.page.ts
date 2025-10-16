@@ -118,6 +118,20 @@ import { TranslatePipe } from '../shared/translate.pipe';
       gap: 0.75rem;
     }
 
+    .suggestion-photo {
+      margin: 0;
+      border-radius: 12px;
+      overflow: hidden;
+      background: rgba(10, 10, 10, 0.04);
+    }
+
+    .suggestion-photo img {
+      width: 100%;
+      display: block;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+    }
+
     .suggestion-card h4 {
       margin: 0;
       font-size: 1.05rem;
@@ -180,6 +194,9 @@ import { TranslatePipe } from '../shared/translate.pipe';
         </p>
         <div class="suggestion-grid" *ngIf="!isLoadingSuggestions">
           <article class="suggestion-card" *ngFor="let suggestion of aiSuggestions">
+            <figure class="suggestion-photo" *ngIf="suggestion.photo_url as photoUrl">
+              <img [src]="photoUrl" [alt]="suggestion.name" loading="lazy" />
+            </figure>
             <div class="suggestion-meta">
               <h4>{{ suggestion.name }}</h4>
               <span class="suggestion-price">

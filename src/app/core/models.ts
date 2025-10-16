@@ -180,6 +180,7 @@ export interface AiSuggestedMenuItem {
   discounted_price_cents?: number | null;
   description?: string | null;
   reason?: string | null;
+  photo_url?: string | null;
 }
 
 export interface MenuItemInput {

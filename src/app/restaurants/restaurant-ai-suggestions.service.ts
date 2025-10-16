@@ -15,12 +15,18 @@ type AiSuggestionApiItem = {
   discounted_price_cents?: number | null;
   description?: string | null;
   reason?: string | null;
+  photo_url?: string | null;
+  photo_urls?: (string | null | undefined)[] | null;
+  photos?: { url?: string | null }[] | null;
   menu_item?: {
     id?: number;
     name?: string;
     price_cents?: number;
     discounted_price_cents?: number | null;
     description?: string | null;
+    photo_url?: string | null;
+    photo_urls?: (string | null | undefined)[] | null;
+    photos?: { url?: string | null }[] | null;
   } | null;
 };
 
@@ -62,6 +68,8 @@ export class RestaurantAiSuggestionsService {
       return null;
     }
 
+    const fallbackPhotoUrl = this.extractPhotoUrl(item.photos, item.photo_urls, item.photo_url);
+
     if ('menu_item' in item && item.menu_item) {
       const menuItem = item.menu_item;
 
@@ -70,6 +78,10 @@ export class RestaurantAiSuggestionsService {
         typeof menuItem?.name === 'string' &&
         typeof menuItem?.price_cents === 'number'
       ) {
+        const photoUrl =
+          this.extractPhotoUrl(menuItem.photos, menuItem.photo_urls, menuItem.photo_url) ??
+          fallbackPhotoUrl;
+
         return {
           id: menuItem.id,
           name: menuItem.name,
@@ -77,6 +89,7 @@ export class RestaurantAiSuggestionsService {
           discounted_price_cents: menuItem.discounted_price_cents ?? null,
           description: menuItem.description ?? null,
           reason: item.reason ?? null,
+          photo_url: photoUrl,
         };
       }
 
@@ -88,6 +101,8 @@ export class RestaurantAiSuggestionsService {
       typeof item.name === 'string' &&
       typeof item.price_cents === 'number'
     ) {
+      const photoUrl = fallbackPhotoUrl;
+
       return {
         id: item.id,
         name: item.name,
@@ -95,7 +110,36 @@ export class RestaurantAiSuggestionsService {
         discounted_price_cents: item.discounted_price_cents ?? null,
         description: item.description ?? null,
         reason: item.reason ?? null,
+        photo_url: photoUrl,
       };
+    }
+
+    return null;
+  }
+
+  private extractPhotoUrl(
+    photos?: ReadonlyArray<{ url?: string | null }> | null,
+    photoUrls?: ReadonlyArray<string | null | undefined> | null,
+    directPhotoUrl?: string | null | undefined
+  ): string | null {
+    if (photos?.length) {
+      for (const photo of photos) {
+        if (typeof photo?.url === 'string' && photo.url.trim()) {
+          return photo.url;
+        }
+      }
+    }
+
+    if (photoUrls?.length) {
+      for (const url of photoUrls) {
+        if (typeof url === 'string' && url.trim()) {
+          return url;
+        }
+      }
+    }
+
+    if (typeof directPhotoUrl === 'string' && directPhotoUrl.trim()) {
+      return directPhotoUrl;
     }
 
     return null;
