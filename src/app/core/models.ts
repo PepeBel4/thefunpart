@@ -65,6 +65,57 @@ export interface MenuItemInput {
   allergen_ids?: number[];
 }
 
+export interface MenuItemDiscountMenuItem {
+  id: number;
+  name: string;
+  restaurant_id: number;
+}
+
+export interface MenuItemDiscount {
+  id: number;
+  discount_type: string;
+  amount_cents?: number | null;
+  percentage_value?: number | null;
+  duration_type?: string | null;
+  applies_to?: string | null;
+  day_of_week?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  start_at?: string | null;
+  end_at?: string | null;
+  active?: boolean | null;
+  menu_item_ids: number[];
+  menu_items: MenuItemDiscountMenuItem[];
+}
+
+export interface MenuItemDiscountInput {
+  discount_type: string;
+  amount_cents?: number | null;
+  percentage_value?: number | null;
+  duration_type?: string | null;
+  applies_to?: string | null;
+  day_of_week?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  start_at?: string | null;
+  end_at?: string | null;
+  active?: boolean | null;
+  menu_item_ids?: number[];
+}
+
+export interface MenuItemDiscountAssignment {
+  id: number;
+  menu_item_id: number;
+  menu_item_discount_id: number;
+  menu_item: MenuItemDiscountMenuItem;
+  menu_item_discount: Pick<MenuItemDiscount, 'id' | 'discount_type' | 'duration_type' | 'applies_to'>;
+}
+
+export interface MenuItemDiscountAssignmentInput {
+  menu_item_id: number;
+  menu_item_discount_id: number;
+}
+
 export interface OrderItemInput {
   menu_item_id: number;
   quantity: number;
