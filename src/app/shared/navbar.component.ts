@@ -283,12 +283,6 @@ type LanguageOption = { code: string; label: string; flag: string };
         display: flex;
       }
 
-      .nav-actions {
-        order: 4;
-        margin-left: auto;
-        gap: 0.45rem;
-      }
-
       .language-menu {
         background: rgba(255, 255, 255, 0.08);
         padding: 0.25rem 0.4rem;
@@ -321,6 +315,18 @@ type LanguageOption = { code: string; label: string; flag: string };
         padding: 0.5rem 0.85rem;
       }
 
+      .nav-actions {
+        order: 3;
+        margin-left: 0;
+        gap: 0.45rem;
+      }
+
+      .menu-toggle {
+        display: inline-flex;
+        order: 4;
+        margin-left: auto;
+      }
+
       .nav-links a {
         width: 100%;
         text-align: left;
@@ -334,7 +340,6 @@ type LanguageOption = { code: string; label: string; flag: string };
 
       .menu-toggle {
         display: inline-flex;
-        order: 3;
       }
     }
   `],
