@@ -1,4 +1,11 @@
-import { Component, ElementRef, HostListener, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  HostListener,
+  ViewChild,
+  inject,
+  signal
+} from '@angular/core';
 import { NgIf } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
@@ -25,6 +32,7 @@ import { TranslatePipe } from './translate.pipe';
       </button>
       <div
         *ngIf="isOpen()"
+        #panel
         class="menu-panel"
         role="menu"
         [attr.id]="panelId"
@@ -176,13 +184,22 @@ export class UserMenuComponent {
   protected isOpen = signal(false);
   protected panelId = `user-menu-${Math.random().toString(36).slice(2, 9)}`;
   protected host = inject(ElementRef<HTMLElement>);
+  @ViewChild('panel') private panel?: ElementRef<HTMLElement>;
+  private alignmentFrame?: number;
 
   toggleMenu() {
-    this.isOpen.update((open) => !open);
+    const next = !this.isOpen();
+    this.isOpen.set(next);
+    if (next) {
+      this.schedulePanelRealign();
+    } else {
+      this.resetPanelTransform();
+    }
   }
 
   closeMenu() {
     this.isOpen.set(false);
+    this.resetPanelTransform();
   }
 
   async handleLogout() {
@@ -200,5 +217,66 @@ export class UserMenuComponent {
   @HostListener('document:keydown.escape')
   onEscape() {
     this.closeMenu();
+  }
+
+  @HostListener('window:resize')
+  onResize() {
+    if (this.isOpen()) {
+      this.schedulePanelRealign();
+    }
+  }
+
+  private schedulePanelRealign() {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (this.alignmentFrame) {
+      cancelAnimationFrame(this.alignmentFrame);
+    }
+
+    this.alignmentFrame = requestAnimationFrame(() => {
+      this.alignmentFrame = undefined;
+      this.realignPanel();
+    });
+  }
+
+  private realignPanel() {
+    const panel = this.panel?.nativeElement;
+    if (!panel) {
+      return;
+    }
+
+    panel.style.transform = '';
+
+    const rect = panel.getBoundingClientRect();
+    const viewportPadding = 8;
+    const viewportWidth = window.innerWidth;
+    let shift = 0;
+
+    if (rect.left < viewportPadding) {
+      shift = viewportPadding - rect.left;
+    }
+
+    const rightOverflow = rect.right - (viewportWidth - viewportPadding);
+    if (rightOverflow > 0) {
+      shift -= rightOverflow;
+    }
+
+    if (shift !== 0) {
+      panel.style.transform = `translateX(${shift}px)`;
+    }
+  }
+
+  private resetPanelTransform() {
+    if (this.alignmentFrame) {
+      cancelAnimationFrame(this.alignmentFrame);
+      this.alignmentFrame = undefined;
+    }
+
+    const panel = this.panel?.nativeElement;
+    if (panel) {
+      panel.style.transform = '';
+    }
   }
 }
