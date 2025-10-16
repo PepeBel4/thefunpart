@@ -210,7 +210,7 @@ type PendingCartAddition = {
       left: 1.1rem;
       width: 1.1rem;
       height: 1.1rem;
-      color: rgba(16, 24, 18, 0.45);
+      color: rgba(16, 24, 18, 0.7);
       pointer-events: none;
     }
 
@@ -238,11 +238,11 @@ type PendingCartAddition = {
 
     .category-nav-surface {
       width: min(980px, 100%);
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.48));
+      background: rgba(255, 255, 255, 0.82);
       backdrop-filter: blur(18px) saturate(130%);
       border-radius: 22px;
-      border: 1px solid rgba(255, 255, 255, 0.6);
-      box-shadow: 0 12px 40px rgba(12, 32, 22, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.75);
+      box-shadow: 0 12px 36px rgba(12, 32, 22, 0.12);
       padding: clamp(0.85rem, 1.6vw, 1.25rem);
       display: flex;
       flex-direction: column;
@@ -592,14 +592,14 @@ type PendingCartAddition = {
           <div class="category-nav-surface">
             <div class="menu-search">
               <svg class="menu-search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+                <circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="2"></circle>
                 <line
                   x1="16"
                   y1="16"
                   x2="20.5"
                   y2="20.5"
                   stroke="currentColor"
-                  stroke-width="1.5"
+                  stroke-width="2"
                   stroke-linecap="round"
                 ></line>
               </svg>
