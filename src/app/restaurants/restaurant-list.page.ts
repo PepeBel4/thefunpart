@@ -1,8 +1,8 @@
 import { Component, effect, inject, signal } from '@angular/core';
-import { AsyncPipe, CurrencyPipe, NgFor, NgIf, TitleCasePipe } from '@angular/common';
+import { AsyncPipe, CurrencyPipe, DecimalPipe, NgFor, NgIf, TitleCasePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { BehaviorSubject, Observable, combineLatest, map, shareReplay } from 'rxjs';
-import { MenuItem, Restaurant, SessionUser, UserProfile } from '../core/models';
+import { Location, MenuItem, Restaurant, SessionUser, UserProfile } from '../core/models';
 import { RestaurantService } from './restaurant.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
@@ -21,9 +21,22 @@ type DiscountHighlight = {
   savingsPercent: number | null;
 };
 
-type RestaurantSortOption = 'recommended' | 'nameAsc' | 'nameDesc';
+type RestaurantSortOption = 'recommended' | 'nameAsc' | 'nameDesc' | 'distance';
 
-type RestaurantListItem = Restaurant & { heroPhoto?: string | undefined };
+type RestaurantListItem = Restaurant & { heroPhoto?: string | undefined; distanceKm?: number | null };
+
+type UserLocation = {
+  latitude: number;
+  longitude: number;
+  accuracy?: number | null;
+};
+
+type GeolocationStatus = 'idle' | 'requesting' | 'granted' | 'denied' | 'unsupported' | 'error';
+
+type GeolocationState = {
+  status: GeolocationStatus;
+  message: string | null;
+};
 
 const ICON_DEFAULT_PLATE = 'M12 2a10 10 0 1 0 0 20a10 10 0 0 0 0-20zm0 4a6 6 0 1 1 0 12a6 6 0 0 1 0-12z';
 const ICON_PIZZA = 'M12 3l8 18H4L12 3zm0 5.5c-1.933 0-3.5 1.567-3.5 3.5S10.067 15.5 12 15.5s3.5-1.567 3.5-3.5S13.933 8.5 12 8.5zm0 2c.828 0 1.5.672 1.5 1.5s-.672 1.5-1.5 1.5-1.5-.672-1.5-1.5.672-1.5 1.5-1.5z';
@@ -84,7 +97,7 @@ const CUISINE_ICON_PATHS = new Map<string, string>([
 @Component({
   standalone: true,
   selector: 'app-restaurant-list',
-  imports: [AsyncPipe, RouterLink, NgFor, NgIf, TitleCasePipe, TranslatePipe, CurrencyPipe, CardOverviewComponent],
+  imports: [AsyncPipe, RouterLink, NgFor, NgIf, TitleCasePipe, TranslatePipe, CurrencyPipe, DecimalPipe, CardOverviewComponent],
   styles: [`
     :host {
       display: flex;
@@ -199,6 +212,17 @@ const CUISINE_ICON_PATHS = new Map<string, string>([
       background: rgba(10, 10, 10, 0.02);
       font-weight: 600;
       letter-spacing: 0.02em;
+    }
+
+    .sort-group .distance-hint {
+      margin-top: 0.35rem;
+      font-size: 0.8rem;
+      line-height: 1.4;
+      color: var(--text-secondary);
+    }
+
+    .sort-group .distance-hint.error {
+      color: var(--status-danger, #d14343);
     }
 
     @media (min-width: 768px) {
@@ -629,7 +653,11 @@ const CUISINE_ICON_PATHS = new Map<string, string>([
             </option>
             <option value="nameAsc">{{ 'restaurants.sort.nameAsc' | translate: 'Name (A-Z)' }}</option>
             <option value="nameDesc">{{ 'restaurants.sort.nameDesc' | translate: 'Name (Z-A)' }}</option>
+            <option value="distance">{{ 'restaurants.sort.distance' | translate: 'Distance' }}</option>
           </select>
+          <div class="distance-hint" *ngIf="shouldShowDistanceHint()" [class.error]="isDistanceHintError()">
+            {{ getDistanceHintMessage() }}
+          </div>
         </div>
       </section>
     </ng-container>
@@ -665,6 +693,9 @@ const CUISINE_ICON_PATHS = new Map<string, string>([
               <span class="pill">{{ 'restaurants.express' | translate: 'Express' }}</span>
               <span>{{ 'restaurants.duration' | translate: '20-30 min' }}</span>
               <span>€€</span>
+              <span *ngIf="r.distanceKm !== null && r.distanceKm !== undefined">
+                {{ r.distanceKm | number:'1.0-1' }} {{ 'restaurants.sort.distanceSuffix' | translate: 'km away' }}
+              </span>
             </div>
         </div>
       </a>
@@ -681,6 +712,9 @@ export class RestaurantListPage {
   private readonly defaultCuisineIconPath = ICON_DEFAULT_PLATE;
   private selectedCuisinesSubject = new BehaviorSubject<string[]>([]);
   private sortOrderSubject = new BehaviorSubject<RestaurantSortOption>('recommended');
+  private userLocationSubject = new BehaviorSubject<UserLocation | null>(null);
+  private geolocationState = signal<GeolocationState>({ status: 'idle', message: null });
+  private hasDeniedGeolocation = false;
   private profilePromptState = signal<{ loading: boolean; profile: UserProfile | null }>({
     loading: false,
     profile: null,
@@ -755,13 +789,144 @@ export class RestaurantListPage {
   }
 
   onSortChange(value: string): void {
-    if (this.isRestaurantSortOption(value)) {
-      this.sortOrderSubject.next(value);
+    if (!this.isRestaurantSortOption(value)) {
+      return;
+    }
+
+    this.sortOrderSubject.next(value);
+
+    if (value === 'distance') {
+      this.ensureUserLocationRequested();
     }
   }
 
+  shouldShowDistanceHint(): boolean {
+    return this.getSortOrder() === 'distance';
+  }
+
+  getDistanceHintMessage(): string {
+    const state = this.geolocationState();
+
+    if (state.status === 'idle' || !state.message) {
+      return this.i18n.translate(
+        'restaurants.sort.distanceExplainer',
+        'We use your location to show nearby restaurants first.',
+      );
+    }
+
+    return state.message;
+  }
+
+  isDistanceHintError(): boolean {
+    const status = this.geolocationState().status;
+    return status === 'denied' || status === 'unsupported' || status === 'error';
+  }
+
   private isRestaurantSortOption(value: string): value is RestaurantSortOption {
-    return value === 'recommended' || value === 'nameAsc' || value === 'nameDesc';
+    return value === 'recommended' || value === 'nameAsc' || value === 'nameDesc' || value === 'distance';
+  }
+
+  private ensureUserLocationRequested(): void {
+    const currentState = this.geolocationState();
+    if (currentState.status === 'requesting') {
+      return;
+    }
+
+    if (this.userLocationSubject.value) {
+      this.geolocationState.set({
+        status: 'granted',
+        message: this.i18n.translate(
+          'restaurants.sort.distanceActive',
+          'Showing nearest restaurants first.',
+        ),
+      });
+      return;
+    }
+
+    if (this.hasDeniedGeolocation) {
+      this.geolocationState.set({
+        status: 'denied',
+        message: this.i18n.translate(
+          'restaurants.sort.distanceDenied',
+          'Location access is blocked. Update your browser settings to enable it.',
+        ),
+      });
+      return;
+    }
+
+    if (!this.canUseGeolocation()) {
+      this.geolocationState.set({
+        status: 'unsupported',
+        message: this.i18n.translate(
+          'restaurants.sort.distanceUnsupported',
+          'Location access is not supported in this browser.',
+        ),
+      });
+      return;
+    }
+
+    this.geolocationState.set({
+      status: 'requesting',
+      message: this.i18n.translate('restaurants.sort.distanceRequesting', 'Fetching your location…'),
+    });
+
+    navigator.geolocation.getCurrentPosition(
+      position => this.handleGeolocationSuccess(position),
+      error => this.handleGeolocationError(error),
+      { enableHighAccuracy: false, maximumAge: 300000, timeout: 15000 },
+    );
+  }
+
+  private handleGeolocationSuccess(position: GeolocationPosition): void {
+    const coords = position.coords;
+    const location: UserLocation = {
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      accuracy: typeof coords.accuracy === 'number' ? coords.accuracy : null,
+    };
+
+    this.hasDeniedGeolocation = false;
+    this.userLocationSubject.next(location);
+    this.geolocationState.set({
+      status: 'granted',
+      message: this.i18n.translate(
+        'restaurants.sort.distanceActive',
+        'Showing nearest restaurants first.',
+      ),
+    });
+  }
+
+  private handleGeolocationError(error: GeolocationPositionError): void {
+    let status: GeolocationStatus = 'error';
+    let message = this.i18n.translate(
+      'restaurants.sort.distanceUnavailable',
+      'We could not access your location. Showing recommended order instead.',
+    );
+
+    if (error.code === error.PERMISSION_DENIED) {
+      status = 'denied';
+      this.hasDeniedGeolocation = true;
+      message = this.i18n.translate(
+        'restaurants.sort.distanceDenied',
+        'Location access is blocked. Update your browser settings to enable it.',
+      );
+    } else if (error.code === error.POSITION_UNAVAILABLE) {
+      message = this.i18n.translate(
+        'restaurants.sort.distanceUnavailable',
+        'We could not access your location. Showing recommended order instead.',
+      );
+    } else if (error.code === error.TIMEOUT) {
+      message = this.i18n.translate(
+        'restaurants.sort.distanceTimeout',
+        'Getting your location took too long. Please try again.',
+      );
+    }
+
+    this.geolocationState.set({ status, message });
+  }
+
+  private canUseGeolocation(): boolean {
+    return typeof navigator !== 'undefined' && typeof navigator.geolocation !== 'undefined';
   }
 
   private computeAvailableCuisines(restaurants: RestaurantListItem[]): string[] {
@@ -800,14 +965,41 @@ export class RestaurantListPage {
   private sortRestaurants(
     restaurants: RestaurantListItem[],
     sortOrder: RestaurantSortOption,
+    userLocation: UserLocation | null,
   ): RestaurantListItem[] {
-    if (sortOrder === 'recommended') {
-      return restaurants;
+    if (sortOrder === 'distance') {
+      if (!userLocation) {
+        return restaurants.map(restaurant => ({ ...restaurant, distanceKm: null }));
+      }
+
+      const annotated = restaurants.map(restaurant => ({
+        ...restaurant,
+        distanceKm: this.computeDistanceToRestaurant(restaurant, userLocation),
+      }));
+
+      annotated.sort((a, b) => {
+        const aDistance = typeof a.distanceKm === 'number' ? a.distanceKm : Number.POSITIVE_INFINITY;
+        const bDistance = typeof b.distanceKm === 'number' ? b.distanceKm : Number.POSITIVE_INFINITY;
+
+        if (aDistance === bDistance) {
+          return this.getRestaurantName(a).localeCompare(this.getRestaurantName(b), undefined, {
+            sensitivity: 'base',
+          });
+        }
+
+        return aDistance - bDistance;
+      });
+
+      return annotated;
     }
 
-    const sorted = [...restaurants];
+    const sanitized = restaurants.map(restaurant => ({ ...restaurant, distanceKm: null }));
 
-    sorted.sort((a, b) => {
+    if (sortOrder === 'recommended') {
+      return sanitized;
+    }
+
+    sanitized.sort((a, b) => {
       const comparison = this.getRestaurantName(a).localeCompare(this.getRestaurantName(b), undefined, {
         sensitivity: 'base',
       });
@@ -815,7 +1007,64 @@ export class RestaurantListPage {
       return sortOrder === 'nameAsc' ? comparison : -comparison;
     });
 
-    return sorted;
+    return sanitized;
+  }
+
+  private computeDistanceToRestaurant(restaurant: RestaurantListItem, origin: UserLocation): number | null {
+    const locations = this.getRestaurantLocations(restaurant);
+    let closest: number | null = null;
+
+    for (const location of locations) {
+      const latitude = this.normalizeCoordinate(location.latitude);
+      const longitude = this.normalizeCoordinate(location.longitude);
+
+      if (latitude === null || longitude === null) {
+        continue;
+      }
+
+      const distance = this.haversineDistance(origin.latitude, origin.longitude, latitude, longitude);
+
+      if (closest === null || distance < closest) {
+        closest = distance;
+      }
+    }
+
+    return closest;
+  }
+
+  private getRestaurantLocations(restaurant: RestaurantListItem): Location[] {
+    return Array.isArray(restaurant.locations) ? restaurant.locations : [];
+  }
+
+  private normalizeCoordinate(value: number | string | null | undefined): number | null {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const parsed = parseFloat(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    return null;
+  }
+
+  private haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const earthRadiusKm = 6371;
+    const dLat = this.toRadians(lat2 - lat1);
+    const dLon = this.toRadians(lon2 - lon1);
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRadians(lat1)) * Math.cos(this.toRadians(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return earthRadiusKm * c;
+  }
+
+  private toRadians(value: number): number {
+    return (value * Math.PI) / 180;
   }
 
   private ensureHeroPhoto(restaurant: Restaurant): string | undefined {
@@ -896,10 +1145,11 @@ export class RestaurantListPage {
     this.allRestaurants$,
     this.selectedCuisinesSubject.asObservable(),
     this.sortOrderSubject.asObservable(),
+    this.userLocationSubject.asObservable(),
   ]).pipe(
-    map(([restaurants, selectedCuisines, sortOrder]) => {
+    map(([restaurants, selectedCuisines, sortOrder, userLocation]) => {
       const filtered = this.filterByCuisine(restaurants, selectedCuisines);
-      return this.sortRestaurants(filtered, sortOrder);
+      return this.sortRestaurants(filtered, sortOrder, userLocation);
     })
   );
 
