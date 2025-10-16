@@ -25,6 +25,62 @@ type RestaurantSortOption = 'recommended' | 'nameAsc' | 'nameDesc';
 
 type RestaurantListItem = Restaurant & { heroPhoto?: string | undefined };
 
+const ICON_DEFAULT_PLATE = 'M12 2a10 10 0 1 0 0 20a10 10 0 0 0 0-20zm0 4a6 6 0 1 1 0 12a6 6 0 0 1 0-12z';
+const ICON_PIZZA = 'M12 3l8 18H4L12 3zm0 5.5c-1.933 0-3.5 1.567-3.5 3.5S10.067 15.5 12 15.5s3.5-1.567 3.5-3.5S13.933 8.5 12 8.5zm0 2c.828 0 1.5.672 1.5 1.5s-.672 1.5-1.5 1.5-1.5-.672-1.5-1.5.672-1.5 1.5-1.5z';
+const ICON_BURGER = 'M4 6a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2H4V6zm-1 6c0-1.105.895-2 2-2h14c1.105 0 2 .895 2 2v2H3v-2zm1 5v-2h16v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z';
+const ICON_SUSHI = 'M12 4c4.418 0 8 2.239 8 5s-3.582 5-8 5-8-2.239-8-5 3.582-5 8-5zm0 2c-2.761 0-5 1.343-5 3s2.239 3 5 3 5-1.343 5-3-2.239-3-5-3zm-7 9h14v2H5v-2z';
+const ICON_TACO = 'M4 12c0-4.418 3.582-8 8-8s8 3.582 8 8v5H4v-5zm2 0v3h12v-3c0-3.314-2.686-6-6-6s-6 2.686-6 6z';
+const ICON_BOWL = 'M4 6h16v2a8 8 0 0 1-16 0V6zm0 11h16v2H4v-2z';
+const ICON_LEAF = 'M12 2c3.866 0 7 3.134 7 7 0 5.523-4.477 10-10 10H5v-2c3.866 0 7-3.134 7-7V2z';
+const ICON_FISH = 'M3 12c2.5-4 6.5-6 11-6 1.657 0 3 1.343 3 3 2.761 0 5 1.791 5 4s-2.239 4-5 4c0 1.657-1.343 3-3 3-4.5 0-8.5-2-11-6zm11-2c-.828 0-1.5.672-1.5 1.5S13.172 13 14 13s1.5-.672 1.5-1.5S14.828 10 14 10z';
+const ICON_FLAME = 'M12 2c2.761 3.495 5 6.504 5 9.5 0 3.038-2.462 5.5-5.5 5.5S6 14.538 6 11.5c0-2.27 1.5-4.5 4-6.5-.057 2.094.833 3.785 2 5 0-2.5 0-4.5 0-8z';
+const ICON_DRUM = 'M5 9a7 7 0 0 1 14 0c0 3.866-3.134 7-7 7-.69 0-1.36-.098-2-.28L9 21H7l-1-6V9z';
+const ICON_CUP = 'M6 4h12v6a6 6 0 0 1-6 6h-2v2h6v2H8v-4a4 4 0 0 1-4-4V4h2zm2 2v6a2 2 0 0 0 4 0V6H8z';
+const ICON_CAKE = 'M5 21V10h14v11H5zm7-17a3 3 0 0 1 3 3v1H9V7a3 3 0 0 1 3-3zm0-4 2 3h-4l2-3z';
+const ICON_ICECREAM = 'M12 2a4 4 0 0 1 4 4c0 .35-.045.69-.13 1.014A3 3 0 0 1 17 10c0 1.657-1.343 3-3 3h-4c-1.657 0-3-1.343-3-3 0-1.08.57-2.027 1.43-2.586A3.99 3.99 0 0 1 8 6a4 4 0 0 1 4-4zm-2 13h4l-2 7-2-7z';
+const ICON_SANDWICH = 'M3 7 12 2l9 5v10l-9 5-9-5V7zm9 11 5-2.778V9.778L12 7 7 9.778v5.444L12 18z';
+const ICON_BASKET = 'M6 9 9 3h6l3 6h4v2h-1.181l-1.636 9.818A3 3 0 0 1 16.228 24H7.772a3 3 0 0 1-2.955-2.182L3.181 11H2V9h4zm2.118 0h7.764L13.5 5h-3l-2.382 4zM6.2 11l1.5 9h8.6l1.5-9H6.2z';
+
+const CUISINE_ICON_PATHS = new Map<string, string>([
+  ['pizza', ICON_PIZZA],
+  ['italian', ICON_PIZZA],
+  ['burgers', ICON_BURGER],
+  ['fast food', ICON_BURGER],
+  ['america', ICON_BURGER],
+  ['sushi', ICON_SUSHI],
+  ['japanase', ICON_SUSHI],
+  ['poke', ICON_SUSHI],
+  ['seafood', ICON_FISH],
+  ['hawaiian', ICON_FISH],
+  ['caribbean', ICON_FISH],
+  ['mexican', ICON_TACO],
+  ['wings', ICON_DRUM],
+  ['bbq', ICON_FLAME],
+  ['street food', ICON_FLAME],
+  ['asian', ICON_BOWL],
+  ['thai', ICON_BOWL],
+  ['korean', ICON_BOWL],
+  ['chinese', ICON_BOWL],
+  ['indian', ICON_BOWL],
+  ['vietnamese', ICON_BOWL],
+  ['comfort food', ICON_BOWL],
+  ['soul food', ICON_BOWL],
+  ['soup', ICON_BOWL],
+  ['desserts', ICON_CAKE],
+  ['bakery', ICON_CAKE],
+  ['ice cream', ICON_ICECREAM],
+  ['breakfast', ICON_CAKE],
+  ['coffee', ICON_CUP],
+  ['bubble tea', ICON_CUP],
+  ['smoothies', ICON_CUP],
+  ['healthy', ICON_LEAF],
+  ['vegan', ICON_LEAF],
+  ['halal', ICON_LEAF],
+  ['kosher', ICON_LEAF],
+  ['sandwich', ICON_SANDWICH],
+  ['grocery', ICON_BASKET],
+]);
+
 @Component({
   standalone: true,
   selector: 'app-restaurant-list',
@@ -89,6 +145,9 @@ type RestaurantListItem = Restaurant & { heroPhoto?: string | undefined };
       letter-spacing: 0.04em;
       cursor: pointer;
       transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
     }
 
     .filter-chip:hover {
@@ -99,6 +158,11 @@ type RestaurantListItem = Restaurant & { heroPhoto?: string | undefined };
       background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.16);
       border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.5);
       color: var(--brand-green);
+    }
+
+    .filter-chip svg {
+      width: 1rem;
+      height: 1rem;
     }
 
     .filters-actions {
@@ -489,7 +553,10 @@ type RestaurantListItem = Restaurant & { heroPhoto?: string | undefined };
               (click)="toggleCuisine(cuisine)"
               *ngFor="let cuisine of cuisines"
             >
-              {{ cuisine | titlecase }}
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path [attr.d]="getCuisineIconPath(cuisine)" fill="currentColor" />
+              </svg>
+              <span>{{ cuisine | titlecase }}</span>
             </button>
           </div>
         </div>
@@ -540,6 +607,7 @@ export class RestaurantListPage {
   private auth = inject(AuthService);
   private profile = inject(ProfileService);
   private heroPhotoCache = new Map<number, string>();
+  private readonly defaultCuisineIconPath = ICON_DEFAULT_PLATE;
   private selectedCuisinesSubject = new BehaviorSubject<string[]>([]);
   private sortOrderSubject = new BehaviorSubject<RestaurantSortOption>('recommended');
   private profilePromptState = signal<{ loading: boolean; profile: UserProfile | null }>({
@@ -600,6 +668,15 @@ export class RestaurantListPage {
 
   clearCuisineFilters(): void {
     this.selectedCuisinesSubject.next([]);
+  }
+
+  getCuisineIconPath(cuisine: string): string {
+    const key = (cuisine ?? '').trim().toLowerCase();
+    if (!key) {
+      return this.defaultCuisineIconPath;
+    }
+
+    return CUISINE_ICON_PATHS.get(key) ?? this.defaultCuisineIconPath;
   }
 
   getSortOrder(): RestaurantSortOption {
