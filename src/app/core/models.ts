@@ -93,12 +93,43 @@ export interface MenuItem {
   photos?: RestaurantPhoto[];
 }
 
-export interface MenuOption {
+export interface MenuOptionCategory {
+  id: number;
+  restaurant_id: number;
+  name_translations: Record<string, string>;
+}
+
+export interface MenuOptionMenuItem {
   id: number;
   restaurant_id: number;
   name: string;
+  price_cents: number;
+  is_available: boolean;
+}
+
+export interface MenuOptionItem {
+  id: number;
+  title: string;
+  name?: string;
+  price_cents?: number | null;
+  max_quantity?: number | null;
+}
+
+export interface MenuOption {
+  id: number;
+  title: string;
+  category_id?: number | null;
+  min_selections?: number | null;
+  max_selections?: number | null;
+  menu_item_ids?: number[];
+  menu_items?: MenuOptionMenuItem[];
+  option_items?: MenuOptionItem[];
+  available_menu_items?: MenuOptionMenuItem[];
+  category?: MenuOptionCategory | null;
   description?: string | null;
   price_cents?: number | null;
+  name?: string;
+  restaurant_id?: number | null;
 }
 
 export interface AiSuggestedMenuItem {

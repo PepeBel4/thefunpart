@@ -8,7 +8,7 @@ import { TranslatePipe } from '../shared/translate.pipe';
 import { MenuOptionInput, MenuOptionsService } from './menu-options.service';
 
 interface OptionFormModel {
-  name: string;
+  title: string;
   price: string;
   description: string;
 }
@@ -194,8 +194,8 @@ interface OptionFormModel {
         <label>
           {{ 'menu.options.form.nameLabel' | translate: 'Option name' }}
           <input
-            name="optionName"
-            [(ngModel)]="newOption.name"
+            name="optionTitle"
+            [(ngModel)]="newOption.title"
             required
             placeholder="{{ 'menu.options.form.nameLabel' | translate: 'Option name' }}"
           />
@@ -230,7 +230,7 @@ interface OptionFormModel {
         </p>
 
         <div class="actions">
-          <button class="primary" type="submit" [disabled]="creating || !newOption.name.trim()">
+          <button class="primary" type="submit" [disabled]="creating || !newOption.title.trim()">
             {{
               creating
                 ? ('menu.options.form.saving' | translate: 'Saving…')
@@ -257,8 +257,8 @@ interface OptionFormModel {
               <label>
                 {{ 'menu.options.form.nameLabel' | translate: 'Option name' }}
                 <input
-                  [(ngModel)]="editModel!.name"
-                  name="editName-{{ option.id }}"
+                  [(ngModel)]="editModel!.title"
+                  name="editTitle-{{ option.id }}"
                   [ngModelOptions]="{ standalone: true }"
                 />
               </label>
@@ -306,7 +306,7 @@ interface OptionFormModel {
                   class="primary"
                   type="button"
                   (click)="saveEdit(option)"
-                  [disabled]="updating || !editModel!.name.trim()"
+                  [disabled]="updating || !editModel!.title.trim()"
                 >
                   {{
                     updating
@@ -321,7 +321,7 @@ interface OptionFormModel {
           <ng-template #viewOption>
             <div class="option-header">
               <div>
-                <h4>{{ option.name }}</h4>
+                <h4>{{ option.title || option.name }}</h4>
                 <p *ngIf="option.description">{{ option.description }}</p>
               </div>
               <span class="option-price" *ngIf="option.price_cents != null">
@@ -390,7 +390,7 @@ export class MenuOptionsManagerComponent implements OnChanges {
   }
 
   private createEmptyForm(): OptionFormModel {
-    return { name: '', price: '', description: '' };
+    return { title: '', price: '', description: '' };
   }
 
   private normalizeDescription(value: string): string | null {
@@ -438,8 +438,8 @@ export class MenuOptionsManagerComponent implements OnChanges {
   }
 
   async createOption(): Promise<void> {
-    const name = this.newOption.name.trim();
-    if (!name || this.creating) {
+    const title = this.newOption.title.trim();
+    if (!title || this.creating) {
       return;
     }
 
@@ -451,7 +451,8 @@ export class MenuOptionsManagerComponent implements OnChanges {
 
     this.createPriceInvalid = false;
     const payload: MenuOptionInput = {
-      name,
+      title,
+      name: title,
       description: this.normalizeDescription(this.newOption.description),
       price_cents: cents,
     };
@@ -474,7 +475,7 @@ export class MenuOptionsManagerComponent implements OnChanges {
   startEdit(option: MenuOption): void {
     this.editingId = option.id;
     this.editModel = {
-      name: option.name,
+      title: option.title ?? option.name ?? '',
       price: this.formatPriceInput(option.price_cents),
       description: option.description ?? '',
     };
@@ -494,8 +495,8 @@ export class MenuOptionsManagerComponent implements OnChanges {
       return;
     }
 
-    const name = this.editModel.name.trim();
-    if (!name) {
+    const title = this.editModel.title.trim();
+    if (!title) {
       return;
     }
 
@@ -508,7 +509,8 @@ export class MenuOptionsManagerComponent implements OnChanges {
     this.editPriceInvalid = false;
 
     const payload: MenuOptionInput = {
-      name,
+      title,
+      name: title,
       description: this.normalizeDescription(this.editModel.description),
       price_cents: cents,
     };
