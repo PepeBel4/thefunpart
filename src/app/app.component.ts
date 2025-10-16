@@ -1,8 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { NavbarComponent } from './shared/navbar.component';
 import { CartSidebarComponent } from './cart/card-sidebar.component';
 import { CookieConsentComponent } from './shared/cookie-consent.component';
+import { OrderEventsListenerService } from './core/order-events-listener.service';
 
 @Component({
   selector: 'app-root',
@@ -57,4 +58,6 @@ import { CookieConsentComponent } from './shared/cookie-consent.component';
     <app-cookie-consent />
   `
 })
-export class AppComponent {}
+export class AppComponent {
+  private readonly orderEventsListener = inject(OrderEventsListenerService);
+}
