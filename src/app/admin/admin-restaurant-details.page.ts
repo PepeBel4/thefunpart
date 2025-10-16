@@ -55,6 +55,30 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
       resize: vertical;
     }
 
+    .details-form select {
+      width: 100%;
+      padding: 0.65rem 0.75rem;
+      padding-right: 2.75rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(10, 10, 10, 0.12);
+      background: rgba(255, 255, 255, 0.95);
+      font: inherit;
+      cursor: pointer;
+      appearance: none;
+    }
+
+    .details-form select:focus {
+      border-color: rgba(6, 193, 103, 0.45);
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(6, 193, 103, 0.16);
+    }
+
+    .details-form select:disabled {
+      cursor: not-allowed;
+      opacity: 0.7;
+      background: rgba(245, 245, 245, 0.9);
+    }
+
     .language-fields {
       display: grid;
       gap: 1rem;
@@ -129,7 +153,26 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
     }
 
     .chain-select {
+      display: flex;
+      flex-direction: column;
       gap: 0.35rem;
+    }
+
+    .chain-select-control {
+      position: relative;
+    }
+
+    .chain-select-control::after {
+      content: '';
+      position: absolute;
+      right: 1.15rem;
+      top: 50%;
+      pointer-events: none;
+      width: 10px;
+      height: 10px;
+      border-right: 2px solid rgba(10, 10, 10, 0.45);
+      border-bottom: 2px solid rgba(10, 10, 10, 0.45);
+      transform: translateY(-50%) rotate(45deg);
     }
 
     .chain-label-heading {
@@ -228,20 +271,22 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
             <span class="chain-label-description">
               {{ 'admin.chains.description' | translate: 'Choose the chain this restaurant belongs to.' }}
             </span>
-            <select
-              name="chainSelection"
-              [(ngModel)]="chainSelection"
-              (ngModelChange)="onChainSelectionChange($event)"
-              [disabled]="chainSaving"
-            >
-              <option value="">
-                {{ 'admin.chains.noneOption' | translate: 'Not part of a chain' }}
-              </option>
-              <option *ngFor="let chain of chains" [value]="chain.id">{{ chain.name }}</option>
-              <option [value]="createChainOptionValue">
-                {{ 'admin.chains.createOption' | translate: 'Create new chain…' }}
-              </option>
-            </select>
+            <div class="chain-select-control">
+              <select
+                name="chainSelection"
+                [(ngModel)]="chainSelection"
+                (ngModelChange)="onChainSelectionChange($event)"
+                [disabled]="chainSaving"
+              >
+                <option value="">
+                  {{ 'admin.chains.noneOption' | translate: 'Not part of a chain' }}
+                </option>
+                <option *ngFor="let chain of chains" [value]="chain.id">{{ chain.name }}</option>
+                <option [value]="createChainOptionValue">
+                  {{ 'admin.chains.createOption' | translate: 'Create new chain…' }}
+                </option>
+              </select>
+            </div>
           </label>
           <p *ngIf="chainMessage" class="status" [class.error]="chainMessageType === 'error'" [class.success]="chainMessageType === 'success'">
             {{ chainMessage }}
