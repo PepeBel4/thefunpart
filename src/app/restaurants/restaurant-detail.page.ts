@@ -156,8 +156,8 @@ type CounterLocationViewModel = {
       cursor: pointer;
       transition: background 0.2s ease, transform 0.2s ease;
       position: absolute;
-      top: clamp(2rem, 5vw, 3.5rem);
-      right: clamp(2rem, 5vw, 3.5rem);
+      top: 1rem;
+      right: 1rem;
       z-index: 2;
     }
 
@@ -554,6 +554,17 @@ type CounterLocationViewModel = {
         class="hero"
         [ngStyle]="{ 'background-image': (heroBackground$ | async) || defaultHeroBackground }"
       >
+
+        <button
+              type="button"
+              class="hero-info-button"
+              (click)="openInfoModal()"
+              aria-haspopup="dialog"
+              [attr.aria-label]="getInfoButtonLabel(r)"
+            >
+              <span aria-hidden="true">i</span>
+            </button>
+
         <div class="hero-content">
           <div class="hero-header">
             <div class="hero-identity">
@@ -566,15 +577,6 @@ type CounterLocationViewModel = {
               />
               <h2 class="hero-title">{{ getRestaurantName(r) }}</h2>
             </div>
-            <button
-              type="button"
-              class="hero-info-button"
-              (click)="openInfoModal()"
-              aria-haspopup="dialog"
-              [attr.aria-label]="getInfoButtonLabel(r)"
-            >
-              <span aria-hidden="true">i</span>
-            </button>
           </div>
           <p class="hero-description">
             {{ getRestaurantSummary(r) }}
