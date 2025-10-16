@@ -106,9 +106,18 @@ type CounterLocationViewModel = {
     .hero-header {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 1rem;
       flex-wrap: wrap;
       row-gap: 0.65rem;
+    }
+
+    .hero-identity {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex: 1 1 auto;
+      min-width: 0;
     }
 
     .hero-logo {
@@ -134,7 +143,38 @@ type CounterLocationViewModel = {
       word-break: break-word;
     }
 
-    .hero-content p {
+    .hero-info-button {
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.18);
+      color: rgba(255, 255, 255, 0.92);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    .hero-info-button:hover,
+    .hero-info-button:focus {
+      background: rgba(255, 255, 255, 0.28);
+      transform: translateY(-1px);
+    }
+
+    .hero-info-button:focus-visible {
+      outline: 2px solid rgba(255, 255, 255, 0.9);
+      outline-offset: 2px;
+    }
+
+    .hero-info-button span {
+      font-weight: 700;
+      font-size: 1.25rem;
+      line-height: 1;
+    }
+
+    .hero-description {
       margin: 0;
       line-height: 1.6;
       color: rgba(255, 255, 255, 0.88);
@@ -490,6 +530,11 @@ type CounterLocationViewModel = {
         width: 56px;
       }
 
+      .hero-info-button {
+        width: 40px;
+        height: 40px;
+      }
+
       .menu-grid {
         grid-template-columns: 1fr;
       }
@@ -503,17 +548,28 @@ type CounterLocationViewModel = {
       >
         <div class="hero-content">
           <div class="hero-header">
-            <img
-              *ngIf="r.logo?.url as logoUrl"
-              class="hero-logo"
-              [src]="logoUrl"
-              [alt]="getRestaurantName(r) + ' logo'"
-              loading="lazy"
-            />
-            <h2 class="hero-title">{{ getRestaurantName(r) }}</h2>
+            <div class="hero-identity">
+              <img
+                *ngIf="r.logo?.url as logoUrl"
+                class="hero-logo"
+                [src]="logoUrl"
+                [alt]="getRestaurantName(r) + ' logo'"
+                loading="lazy"
+              />
+              <h2 class="hero-title">{{ getRestaurantName(r) }}</h2>
+            </div>
+            <button
+              type="button"
+              class="hero-info-button"
+              (click)="openInfoModal()"
+              aria-haspopup="dialog"
+              [attr.aria-label]="getInfoButtonLabel(r)"
+            >
+              <span aria-hidden="true">i</span>
+            </button>
           </div>
-          <p>
-            {{ getRestaurantDescription(r) }}
+          <p class="hero-description">
+            {{ getRestaurantSummary(r) }}
           </p>
           <ul class="hero-cuisines" *ngIf="getRestaurantCuisines(r) as cuisines">
             <li *ngFor="let cuisine of cuisines">{{ cuisine | titlecase }}</li>
@@ -523,76 +579,6 @@ type CounterLocationViewModel = {
             <span>⭐ 4.8</span>
             <span>{{ 'restaurants.duration' | translate: '20-30 min' }}</span>
             <span>{{ 'restaurants.freeDelivery' | translate: 'Free delivery over €15' }}</span>
-          </div>
-          <div class="hero-location restaurant-location-card" *ngIf="counterLocationVm$ | async as counterLocation">
-            <button
-              type="button"
-              class="location-toggle"
-              (click)="toggleLocationDetails()"
-              [attr.aria-expanded]="locationDetailsExpanded()"
-              aria-controls="counter-location-panel"
-              [disabled]="!counterLocation.hasDetails"
-            >
-              <div class="location-toggle-text">
-                <span class="location-title">
-                  {{ 'restaurantDetail.counterLocationTitle' | translate: 'Counter location' }}
-                </span>
-                <span class="location-name">{{ counterLocation.location.name || getRestaurantName(r) }}</span>
-                <span class="location-toggle-hint" *ngIf="counterLocation.hasDetails">
-                  {{
-                    locationDetailsExpanded()
-                      ? ('restaurantDetail.counterLocationToggleHide' | translate: 'Hide details')
-                      : ('restaurantDetail.counterLocationToggleShow' | translate: 'Show details')
-                  }}
-                </span>
-              </div>
-              <span *ngIf="counterLocation.hasDetails" class="location-toggle-icon" aria-hidden="true">
-                {{ locationDetailsExpanded() ? '▲' : '▼' }}
-              </span>
-            </button>
-            <div
-              *ngIf="counterLocation.hasDetails && locationDetailsExpanded()"
-              class="location-panel"
-              id="counter-location-panel"
-            >
-              <dl class="location-details">
-                <div *ngIf="counterLocation.telephone as telephone">
-                  <dt>{{ 'restaurantDetail.counterLocationPhone' | translate: 'Telephone' }}</dt>
-                  <dd><a [href]="buildTelephoneLink(telephone)">{{ telephone }}</a></dd>
-                </div>
-                <div *ngIf="counterLocation.email as email">
-                  <dt>{{ 'restaurantDetail.counterLocationEmail' | translate: 'Email' }}</dt>
-                  <dd><a [href]="buildEmailLink(email)">{{ email }}</a></dd>
-                </div>
-                <div *ngIf="counterLocation.addressLines.length">
-                  <dt>{{ 'restaurantDetail.counterLocationAddress' | translate: 'Address' }}</dt>
-                  <dd>
-                    <div *ngFor="let line of counterLocation.addressLines">{{ line }}</div>
-                  </dd>
-                </div>
-                <div *ngIf="counterLocation.mapUrl as mapUrl">
-                  <dt>{{ 'restaurantDetail.counterLocationMapLabel' | translate: 'Map view' }}</dt>
-                  <dd>
-                    <div class="location-map">
-                      <iframe
-                        [src]="mapUrl"
-                        loading="lazy"
-                        referrerpolicy="no-referrer-when-downgrade"
-                        title="{{ 'restaurantDetail.counterLocationTitle' | translate: 'Counter location' }}"
-                      ></iframe>
-                      <a
-                        class="map-link"
-                        [href]="buildMapLink(counterLocation.location)"
-                        target="_blank"
-                        rel="noopener"
-                      >
-                        {{ 'restaurantDetail.counterLocationDirections' | translate: 'Open in OpenStreetMap' }}
-                      </a>
-                    </div>
-                  </dd>
-                </div>
-              </dl>
-            </div>
           </div>
         </div>
       </section>
@@ -679,6 +665,85 @@ type CounterLocationViewModel = {
         </section>
       </ng-container>
 
+      <ng-container *ngIf="infoModalOpen()">
+        <div class="modal-backdrop" (click)="closeInfoModal()">
+          <div
+            class="modal info-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="restaurant-info-modal-title"
+            aria-describedby="restaurant-info-modal-description"
+            (click)="$event.stopPropagation()"
+          >
+            <h3 id="restaurant-info-modal-title">{{ getRestaurantName(r) }}</h3>
+            <p id="restaurant-info-modal-description" class="info-modal-description">
+              {{ getRestaurantDescription(r) }}
+            </p>
+            <section class="info-modal-section">
+              <h4>{{ 'restaurantDetail.counterLocationTitle' | translate: 'Counter location' }}</h4>
+              <ng-container *ngIf="counterLocationVm$ | async as counterLocation; else counterLocationEmpty">
+                <p class="info-location-name">
+                  {{ getCounterLocationDisplayName(counterLocation, r) }}
+                </p>
+                <ng-container *ngIf="counterLocation.hasDetails; else counterLocationEmpty">
+                  <dl class="info-location-details">
+                    <div *ngIf="counterLocation.telephone as telephone">
+                      <dt>{{ 'restaurantDetail.counterLocationPhone' | translate: 'Telephone' }}</dt>
+                      <dd><a [href]="buildTelephoneLink(telephone)">{{ telephone }}</a></dd>
+                    </div>
+                    <div *ngIf="counterLocation.email as email">
+                      <dt>{{ 'restaurantDetail.counterLocationEmail' | translate: 'Email' }}</dt>
+                      <dd><a [href]="buildEmailLink(email)">{{ email }}</a></dd>
+                    </div>
+                    <div *ngIf="counterLocation.addressLines.length">
+                      <dt>{{ 'restaurantDetail.counterLocationAddress' | translate: 'Address' }}</dt>
+                      <dd>
+                        <div *ngFor="let line of counterLocation.addressLines">{{ line }}</div>
+                      </dd>
+                    </div>
+                    <div *ngIf="counterLocation.mapUrl as mapUrl">
+                      <dt>{{ 'restaurantDetail.counterLocationMapLabel' | translate: 'Map view' }}</dt>
+                      <dd>
+                        <div class="info-location-map">
+                          <iframe
+                            [src]="mapUrl"
+                            loading="lazy"
+                            referrerpolicy="no-referrer-when-downgrade"
+                            title="{{ 'restaurantDetail.counterLocationTitle' | translate: 'Counter location' }}"
+                          ></iframe>
+                          <a
+                            class="map-link"
+                            [href]="buildMapLink(counterLocation.location)"
+                            target="_blank"
+                            rel="noopener"
+                          >
+                            {{ 'restaurantDetail.counterLocationDirections' | translate: 'Open in OpenStreetMap' }}
+                          </a>
+                        </div>
+                      </dd>
+                    </div>
+                  </dl>
+                </ng-container>
+              </ng-container>
+            </section>
+            <div class="modal-actions">
+              <button type="button" class="modal-button primary" (click)="closeInfoModal()">
+                {{ 'restaurantDetail.infoModalClose' | translate: 'Close' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-template #counterLocationEmpty>
+        <p class="info-modal-empty">
+          {{
+            'restaurantDetail.counterLocationUnavailable'
+              | translate: 'Counter location details are not available.'
+          }}
+        </p>
+      </ng-template>
+
     </ng-container>
 
     <ng-container *ngIf="restaurantMismatchState() as mismatch">
@@ -727,7 +792,6 @@ export class RestaurantDetailPage implements OnDestroy {
   private brandColor = inject(BrandColorService);
   private locations = inject(LocationService);
   private sanitizer = inject(DomSanitizer);
-  private lastCounterLocationId: number | null = null;
   private highlightMenuItemId$ = this.route.queryParamMap.pipe(
     map(params => this.parseHighlightParam(params.get('highlightItem'))),
     startWith(this.parseHighlightParam(this.route.snapshot.queryParamMap.get('highlightItem')))
@@ -739,23 +803,11 @@ export class RestaurantDetailPage implements OnDestroy {
   id = Number(this.route.snapshot.paramMap.get('id'));
   restaurant$: Observable<Restaurant> = this.rSvc.get(this.id).pipe(shareReplay({ bufferSize: 1, refCount: true }));
   menuCategories$: Observable<MenuCategoryGroup[]> = this.createMenuCategoriesStream();
-  locationDetailsExpanded = signal(false);
+  infoModalOpen = signal(false);
   counterLocationVm$: Observable<CounterLocationViewModel | null> = this.locations.listForRestaurant(this.id).pipe(
     map(locations => this.pickCounterLocation(locations)),
     map(location => (location ? this.buildCounterLocationVm(location) : null)),
-    tap(vm => {
-      const nextId = vm?.location.id ?? null;
-      if (nextId !== this.lastCounterLocationId) {
-        this.locationDetailsExpanded.set(false);
-        this.lastCounterLocationId = nextId;
-      }
-      if (nextId === null) {
-        this.lastCounterLocationId = null;
-      }
-    }),
     catchError(() => {
-      this.locationDetailsExpanded.set(false);
-      this.lastCounterLocationId = null;
       return of(null);
     }),
     shareReplay({ bufferSize: 1, refCount: true })
@@ -778,6 +830,7 @@ export class RestaurantDetailPage implements OnDestroy {
     startWith(this.defaultHeroBackground)
   );
 
+  private readonly restaurantSummaryLength = 160;
   selectedPhotos: File[] = [];
   uploading = false;
   statusMessage = '';
@@ -786,6 +839,7 @@ export class RestaurantDetailPage implements OnDestroy {
   private restaurantMismatchContext = signal<PendingCartAddition | null>(null);
   restaurantMismatchState = computed(() => this.restaurantMismatchContext());
   private bodyOverflowBackup: string | null = null;
+  private modalLockCount = 0;
   private itemQuantities = signal<Record<number, number>>({});
 
   constructor() {
@@ -830,7 +884,15 @@ export class RestaurantDetailPage implements OnDestroy {
       clearTimeout(this.highlightRetryTimeout);
       this.highlightRetryTimeout = null;
     }
-    this.unlockBodyScroll();
+    if (this.infoModalOpen()) {
+      this.closeInfoModal();
+    }
+    if (this.restaurantMismatchContext()) {
+      this.closeRestaurantMismatchModal();
+    }
+    while (this.modalLockCount > 0) {
+      this.unlockBodyScroll();
+    }
   }
 
   onPhotoSelection(files: FileList | null) {
@@ -1004,16 +1066,24 @@ export class RestaurantDetailPage implements OnDestroy {
   }
 
   private lockBodyScroll() {
-    if (this.bodyOverflowBackup === null) {
+    if (this.modalLockCount === 0) {
       const currentOverflow = this.document.body.style.overflow;
       this.bodyOverflowBackup = currentOverflow ?? '';
       this.document.body.style.overflow = 'hidden';
     }
+
+    this.modalLockCount++;
   }
 
   private unlockBodyScroll() {
-    if (this.bodyOverflowBackup !== null) {
-      if (this.bodyOverflowBackup.length) {
+    if (this.modalLockCount === 0) {
+      return;
+    }
+
+    this.modalLockCount--;
+
+    if (this.modalLockCount === 0) {
+      if (this.bodyOverflowBackup && this.bodyOverflowBackup.length) {
         this.document.body.style.overflow = this.bodyOverflowBackup;
       } else {
         this.document.body.style.removeProperty('overflow');
@@ -1024,10 +1094,34 @@ export class RestaurantDetailPage implements OnDestroy {
 
   @HostListener('document:keydown.escape', ['$event'])
   onEscape(event: Event) {
+    if (this.infoModalOpen()) {
+      event.preventDefault();
+      this.closeInfoModal();
+      return;
+    }
+
     if (this.restaurantMismatchContext()) {
       event.preventDefault();
       this.dismissRestaurantMismatch();
     }
+  }
+
+  openInfoModal() {
+    if (this.infoModalOpen()) {
+      return;
+    }
+
+    this.infoModalOpen.set(true);
+    this.lockBodyScroll();
+  }
+
+  closeInfoModal() {
+    if (!this.infoModalOpen()) {
+      return;
+    }
+
+    this.infoModalOpen.set(false);
+    this.unlockBodyScroll();
   }
 
   scrollTo(anchor: string) {
@@ -1121,6 +1215,34 @@ export class RestaurantDetailPage implements OnDestroy {
       resolved ||
       this.i18n.translate('restaurantDetail.descriptionFallback', 'Fresh meals, crafted for delivery.')
     );
+  }
+
+  getRestaurantSummary(restaurant: Restaurant): string {
+    const description = this.getRestaurantDescription(restaurant).trim();
+
+    if (description.length <= this.restaurantSummaryLength) {
+      return description;
+    }
+
+    const truncated = description.slice(0, this.restaurantSummaryLength);
+    const lastWhitespace = truncated.lastIndexOf(' ');
+    const base = lastWhitespace > 60 ? truncated.slice(0, lastWhitespace) : truncated;
+    const sanitized = base.replace(/[\s,.;:!\-]+$/u, '').trimEnd();
+
+    return `${sanitized.length ? sanitized : truncated.trimEnd()}…`;
+  }
+
+  getInfoButtonLabel(restaurant: Restaurant): string {
+    return this.i18n.translate(
+      'restaurantDetail.infoButtonLabel',
+      'More information about {{name}}',
+      { name: this.getRestaurantName(restaurant) }
+    );
+  }
+
+  getCounterLocationDisplayName(counterLocation: CounterLocationViewModel, restaurant: Restaurant): string {
+    const name = counterLocation.location.name?.trim();
+    return name && name.length ? name : this.getRestaurantName(restaurant);
   }
 
   private presentSpotlightEntry(restaurant: Restaurant, card: Card): CardSpotlightEntry {
@@ -1449,10 +1571,6 @@ export class RestaurantDetailPage implements OnDestroy {
     }
 
     return null;
-  }
-
-  toggleLocationDetails() {
-    this.locationDetailsExpanded.update(expanded => !expanded);
   }
 
   buildTelephoneLink(telephone: string): string {
