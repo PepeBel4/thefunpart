@@ -7,7 +7,35 @@ export const appRoutes: Routes = [
   { path: 'restaurants/:id', loadComponent: () => import('./restaurants/restaurant-detail.page').then(m => m.RestaurantDetailPage) },
   { path: 'chains/:id', loadComponent: () => import('./chains/chain-detail.page').then(m => m.ChainDetailPage) },
   { path: 'profile', canActivate: [authGuard], loadComponent: () => import('./profile/profile.page').then(m => m.ProfilePage) },
-  { path: 'admin', canActivate: [authGuard], loadComponent: () => import('./admin/admin-dashboard.page').then(m => m.AdminDashboardPage) },
+  {
+    path: 'admin',
+    canActivate: [authGuard],
+    loadComponent: () => import('./admin/admin-dashboard.page').then(m => m.AdminDashboardPage),
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'details' },
+      {
+        path: 'details',
+        loadComponent: () =>
+          import('./admin/admin-restaurant-details.page').then(m => m.AdminRestaurantDetailsPage),
+      },
+      {
+        path: 'orders',
+        loadComponent: () => import('./admin/admin-recent-orders.page').then(m => m.AdminRecentOrdersPage),
+      },
+      {
+        path: 'photos',
+        loadComponent: () => import('./admin/admin-restaurant-photos.page').then(m => m.AdminRestaurantPhotosPage),
+      },
+      {
+        path: 'menu',
+        loadComponent: () => import('./admin/admin-menu.page').then(m => m.AdminMenuPage),
+      },
+      {
+        path: 'discounts',
+        loadComponent: () => import('./admin/admin-discounts.page').then(m => m.AdminDiscountsPage),
+      },
+    ],
+  },
   { path: 'checkout', canActivate: [authGuard], loadComponent: () => import('./checkout/checkout.page').then(m => m.CheckoutPage) },
   { path: 'orders', canActivate: [authGuard], loadComponent: () => import('./orders/orders.page').then(m => m.OrdersPage) },
   { path: 'orders/:id', canActivate: [authGuard], loadComponent: () => import('./orders/order-detail.page').then(m => m.OrderDetailPage) },

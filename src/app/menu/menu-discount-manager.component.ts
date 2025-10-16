@@ -632,12 +632,14 @@ export class MenuDiscountManagerComponent implements OnDestroy {
   loadError = '';
 
   @Input()
-  set restaurantId(value: number | null) {
-    if (value === this.restaurantIdValue) {
+  set restaurantId(value: number | string | null) {
+    const nextValue = this.parseNumber(value);
+
+    if (nextValue === this.restaurantIdValue) {
       return;
     }
 
-    this.restaurantIdValue = value ?? null;
+    this.restaurantIdValue = nextValue;
 
     if (this.restaurantIdValue === null) {
       this.cancelPendingRequests();
@@ -646,7 +648,10 @@ export class MenuDiscountManagerComponent implements OnDestroy {
     }
 
     this.cancelPendingRequests();
-    void this.initialize(this.restaurantIdValue);
+    const restaurantId = this.restaurantIdValue;
+    if (restaurantId !== null) {
+      void this.initialize(restaurantId);
+    }
   }
 
   get restaurantId(): number | null {
@@ -663,9 +668,21 @@ export class MenuDiscountManagerComponent implements OnDestroy {
       return [];
     }
 
-    return this.discounts.filter(discount =>
-      discount.menu_items.some(item => item.restaurant_id === restaurantId)
-    );
+    const menuItems = this.menuItems;
+
+    return this.discounts.filter(discount => {
+      if (discount.menu_items.some(item => item.restaurant_id === restaurantId)) {
+        return true;
+      }
+
+      if (!discount.menu_item_ids.length) {
+        return false;
+      }
+
+      return discount.menu_item_ids.some(id =>
+        menuItems.some(item => item.id === id && item.restaurant_id === restaurantId)
+      );
+    });
   }
 
   async createDiscount() {
@@ -967,7 +984,9 @@ export class MenuDiscountManagerComponent implements OnDestroy {
         return;
       }
 
-      this.menuItems = items;
+      this.menuItems = items
+        .map(item => this.normalizeMenuItem(item))
+        .filter((item): item is MenuItem => item !== null);
       this.replaceDiscounts(discounts);
       this.replaceAssignments(assignments);
       this.loading = false;
@@ -1065,10 +1084,42 @@ export class MenuDiscountManagerComponent implements OnDestroy {
           .filter((item): item is typeof item & { restaurant_id: number } => item !== null)
       : [];
 
+    const knownMenuItemsById = new Map(this.menuItems.map(item => [item.id, item]));
+    const mergedMenuItems = [...menuItems];
+
+    for (const id of menuItemIds) {
+      if (mergedMenuItems.some(item => item.id === id)) {
+        continue;
+      }
+
+      const known = knownMenuItemsById.get(id);
+      if (!known) {
+        continue;
+      }
+
+      mergedMenuItems.push({
+        id: known.id,
+        name: known.name,
+        restaurant_id: known.restaurant_id,
+      });
+    }
+
     return {
       ...discount,
       menu_item_ids: menuItemIds,
-      menu_items: menuItems.map(item => ({ ...item })),
+      menu_items: mergedMenuItems.map(item => ({ ...item })),
+    };
+  }
+
+  private normalizeMenuItem(item: MenuItem): MenuItem | null {
+    const restaurantId = this.parseNumber(item.restaurant_id);
+    if (restaurantId === null) {
+      return null;
+    }
+
+    return {
+      ...item,
+      restaurant_id: restaurantId,
     };
   }
 
