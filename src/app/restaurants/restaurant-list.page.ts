@@ -178,6 +178,12 @@ type DiscountHighlight = {
       gap: 1.5rem;
     }
 
+    @media (min-width: 900px) {
+      .grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
     a.card {
       position: relative;
       display: flex;
