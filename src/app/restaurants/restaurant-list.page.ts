@@ -247,7 +247,54 @@ type DiscountHighlight = {
     .card-body {
       display: flex;
       flex-direction: column;
-      gap: 0.5rem;
+      gap: 0.75rem;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+    }
+
+    .card-logo {
+      flex-shrink: 0;
+      width: 3.25rem;
+      height: 3.25rem;
+      border-radius: 14px;
+      background: rgba(10, 10, 10, 0.08);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .card-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .card-logo.placeholder {
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: rgba(10, 10, 10, 0.65);
+      letter-spacing: 0.02em;
+    }
+
+    .card-text {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .card-text h3 {
+      margin: 0;
+    }
+
+    .card-text p {
+      margin: 0;
+      color: var(--text-secondary);
     }
 
     .cuisine-tags {
@@ -361,10 +408,20 @@ type DiscountHighlight = {
           </ng-template>
         </div>
           <div class="card-body">
-            <h3>{{ getRestaurantName(r) }}</h3>
-            <p>
-              {{ getRestaurantDescription(r) }}
-            </p>
+            <div class="card-header">
+              <ng-container *ngIf="r.logo_url as logoUrl; else logoFallback">
+                <div class="card-logo">
+                  <img [src]="logoUrl" [alt]="getRestaurantName(r) + ' logo'" loading="lazy" />
+                </div>
+              </ng-container>
+              <ng-template #logoFallback>
+                <div class="card-logo placeholder">{{ getRestaurantInitial(r) }}</div>
+              </ng-template>
+              <div class="card-text">
+                <h3>{{ getRestaurantName(r) }}</h3>
+                <p>{{ getRestaurantDescription(r) }}</p>
+              </div>
+            </div>
             <ul class="cuisine-tags" *ngIf="r.cuisines?.length">
               <li *ngFor="let cuisine of r.cuisines">{{ cuisine | titlecase }}</li>
             </ul>
