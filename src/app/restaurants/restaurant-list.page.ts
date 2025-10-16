@@ -252,12 +252,13 @@ type DiscountHighlight = {
 
     .card-header {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 0.9rem;
     }
 
     .card-logo {
       flex-shrink: 0;
+      align-self: flex-start;
       width: 3.25rem;
       height: 3.25rem;
       border-radius: 14px;
@@ -271,7 +272,7 @@ type DiscountHighlight = {
     .card-logo img {
       width: 100%;
       height: 100%;
-      object-fit: contain;
+      object-fit: cover;
       display: block;
     }
 
