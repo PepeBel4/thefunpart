@@ -1,4 +1,13 @@
-import { Component, HostListener, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  HostListener,
+  ViewChild,
+  computed,
+  effect,
+  inject,
+  signal
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { NgFor, NgIf } from '@angular/common';
@@ -156,40 +165,38 @@ type LanguageOption = { code: string; label: string; flag: string };
     }
 
     .language-menu {
+      position: relative;
       display: inline-flex;
       align-items: center;
-      gap: 0.35rem;
-      padding: 0.3rem 0.55rem;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.12);
       color: rgba(255, 255, 255, 0.85);
     }
 
-    .language-menu button {
+    .language-toggle {
       border: 0;
-      background: transparent;
+      background: rgba(255, 255, 255, 0.12);
       color: inherit;
       font: inherit;
       display: inline-flex;
       align-items: center;
-      gap: 0.35rem;
-      padding: 0.35rem 0.6rem;
+      gap: 0.45rem;
+      padding: 0.35rem 0.75rem;
       border-radius: 999px;
       cursor: pointer;
-      transition: background 0.25s ease, color 0.25s ease;
+      transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
     }
 
-    .language-menu button:hover,
-    .language-menu button:focus-visible {
+    .language-toggle:hover,
+    .language-toggle:focus-visible {
       background: rgba(255, 255, 255, 0.18);
       color: #fff;
       outline: none;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.14);
     }
 
-    .language-menu button.active {
-      background: rgba(255, 255, 255, 0.2);
+    .language-menu.open .language-toggle {
+      background: rgba(255, 255, 255, 0.16);
       color: #fff;
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
     }
 
     .language-menu .flag {
@@ -199,6 +206,69 @@ type LanguageOption = { code: string; label: string; flag: string };
 
     .language-menu .label {
       font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .chevron {
+      font-size: 0.9rem;
+      transition: transform 0.2s ease;
+    }
+
+    .language-menu.open .chevron {
+      transform: rotate(180deg);
+    }
+
+    .language-options {
+      position: absolute;
+      top: calc(100% + 0.35rem);
+      right: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+      padding: 0.45rem;
+      border-radius: 0.9rem;
+      background: rgba(20, 20, 20, 0.94);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
+      min-width: max-content;
+      z-index: 5;
+    }
+
+    .language-option {
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.45rem 0.75rem;
+      border-radius: 0.75rem;
+      cursor: pointer;
+      transition: background 0.25s ease, color 0.25s ease;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .language-option:hover,
+    .language-option:focus-visible {
+      background: rgba(255, 255, 255, 0.18);
+      color: #fff;
+      outline: none;
+    }
+
+    .language-option[aria-selected='true'] {
+      background: rgba(255, 255, 255, 0.14);
+      color: #fff;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+      cursor: default;
+    }
+
+    @media (max-width: 760px) {
+      .language-options {
+        right: auto;
+        left: 50%;
+        transform: translateX(-50%);
+      }
     }
 
     .sr-only {
@@ -283,18 +353,13 @@ type LanguageOption = { code: string; label: string; flag: string };
         display: flex;
       }
 
-      .language-menu {
+      .language-toggle {
         background: rgba(255, 255, 255, 0.08);
-        padding: 0.25rem 0.4rem;
-        gap: 0.45rem;
-      }
-
-      .language-menu button {
         padding: 0.45rem;
-        border-radius: 999px;
+        gap: 0.35rem;
       }
 
-      .language-menu .label {
+      .language-toggle .label {
         position: absolute;
         width: 1px;
         height: 1px;
@@ -341,6 +406,31 @@ type LanguageOption = { code: string; label: string; flag: string };
       .menu-toggle {
         display: inline-flex;
       }
+
+      .language-options {
+        left: 50%;
+        right: auto;
+        transform: translate(-50%, 0);
+        padding: 0.35rem;
+        gap: 0.1rem;
+      }
+
+      .language-option {
+        padding: 0.4rem 0.6rem;
+        gap: 0.35rem;
+      }
+
+      .language-option .label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
     }
   `],
   template: `
@@ -366,18 +456,44 @@ type LanguageOption = { code: string; label: string; flag: string };
         <a *ngIf="auth.isLoggedIn()" routerLink="/admin" (click)="closeMenu()">{{ 'nav.manage' | translate: 'Manage' }}</a>
       </div>
       <div class="nav-actions">
-        <div class="language-menu" role="group" aria-label="{{ 'nav.languageLabel' | translate: 'Language' }}">
+        <div
+          class="language-menu"
+          #languageMenu
+          [class.open]="isLanguageMenuOpen()"
+          aria-label="{{ 'nav.languageLabel' | translate: 'Language' }}"
+        >
           <button
             type="button"
-            *ngFor="let lang of languages"
-            (click)="onLanguageChange(lang.code)"
-            [class.active]="selectedLanguage() === lang.code"
-            [attr.aria-pressed]="selectedLanguage() === lang.code"
-            [attr.aria-label]="lang.label"
+            class="language-toggle"
+            (click)="toggleLanguageMenu()"
+            [attr.aria-expanded]="isLanguageMenuOpen()"
+            aria-haspopup="listbox"
           >
-            <span aria-hidden="true" class="flag">{{ lang.flag }}</span>
-            <span class="label">{{ lang.label }}</span>
+            <span aria-hidden="true" class="flag">{{ selectedLanguageDetails().flag }}</span>
+            <span class="label">{{ selectedLanguageDetails().label }}</span>
+            <span aria-hidden="true" class="chevron">▾</span>
+            <span class="sr-only">{{ 'nav.changeLanguage' | translate: 'Change language' }}</span>
           </button>
+          <ul
+            *ngIf="isLanguageMenuOpen()"
+            class="language-options"
+            role="listbox"
+            [attr.aria-activedescendant]="selectedLanguageOptionId"
+          >
+            <li *ngFor="let lang of languages" role="presentation">
+              <button
+                type="button"
+                class="language-option"
+                (click)="onLanguageSelect(lang.code)"
+                [attr.id]="languageOptionId(lang.code)"
+                [attr.role]="'option'"
+                [attr.aria-selected]="selectedLanguage() === lang.code"
+              >
+                <span aria-hidden="true" class="flag">{{ lang.flag }}</span>
+                <span class="label">{{ lang.label }}</span>
+              </button>
+            </li>
+          </ul>
         </div>
         <app-user-menu class="user-menu"></app-user-menu>
         <a routerLink="/checkout" class="cart-pill">
@@ -395,22 +511,45 @@ export class NavbarComponent {
   auth = inject(AuthService);
   cart = inject(CartService);
   private i18n = inject(TranslationService);
+  @ViewChild('languageMenu') languageMenu?: ElementRef<HTMLElement>;
   languages: LanguageOption[] = this.i18n.languages.map((lang) => ({
     ...lang,
     flag: this.flagFor(lang.code)
   }));
   language = this.i18n.languageSignal;
   selectedLanguage = signal(this.language());
+  selectedLanguageDetails = computed<LanguageOption>(() => {
+    const fallback = this.languages[0];
+    return this.languages.find((lang) => lang.code === this.selectedLanguage()) ?? fallback;
+  });
   isMenuOpen = signal(false);
+  isLanguageMenuOpen = signal(false);
+  selectedLanguageOptionId = `language-option-${this.selectedLanguage()}`;
 
   constructor() {
     effect(() => {
       this.selectedLanguage.set(this.language());
+      this.selectedLanguageOptionId = this.languageOptionId(this.selectedLanguage());
     });
   }
 
   onLanguageChange(code: string) {
     this.i18n.setLanguage(code);
+  }
+
+  onLanguageSelect(code: string) {
+    if (code !== this.selectedLanguage()) {
+      this.onLanguageChange(code);
+    }
+    this.isLanguageMenuOpen.set(false);
+  }
+
+  toggleLanguageMenu() {
+    this.isLanguageMenuOpen.update((open) => !open);
+  }
+
+  languageOptionId(code: string) {
+    return `language-option-${code}`;
   }
 
   private flagFor(code: string): string {
@@ -433,6 +572,27 @@ export class NavbarComponent {
 
   closeMenu() {
     this.isMenuOpen.set(false);
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent) {
+    if (!this.isLanguageMenuOpen()) {
+      return;
+    }
+
+    const target = event.target as Node | null;
+    if (target && this.languageMenu?.nativeElement.contains(target)) {
+      return;
+    }
+
+    this.isLanguageMenuOpen.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape() {
+    if (this.isLanguageMenuOpen()) {
+      this.isLanguageMenuOpen.set(false);
+    }
   }
 
   @HostListener('window:resize')
