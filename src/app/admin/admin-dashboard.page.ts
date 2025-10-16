@@ -55,6 +55,57 @@ import { TranslatePipe } from '../shared/translate.pipe';
       background: rgba(255, 255, 255, 0.85);
     }
 
+    .create-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(10, 10, 10, 0.08);
+    }
+
+    .create-form label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .create-form input {
+      padding: 0.6rem 0.75rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(10, 10, 10, 0.12);
+      font-size: 1rem;
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .create-form button {
+      align-self: flex-start;
+      padding: 0.55rem 1.1rem;
+      border-radius: 999px;
+      border: none;
+      background: var(--brand-green, #06c167);
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .create-form button:disabled {
+      cursor: not-allowed;
+      background: rgba(10, 10, 10, 0.2);
+    }
+
+    .create-form button:not(:disabled):hover {
+      background: var(--brand-green-dark, #059a52);
+    }
+
+    .error-message {
+      color: var(--brand-red, #c81e1e);
+      margin: 0;
+    }
+
     .section-shell {
       display: flex;
       flex-direction: column;
@@ -129,6 +180,31 @@ import { TranslatePipe } from '../shared/translate.pipe';
         </ng-container>
       </ng-container>
 
+      <form class="create-form" (ngSubmit)="createRestaurant()">
+        <label>
+          {{ 'admin.manage.add.label' | translate: 'Add a new restaurant' }}
+          <input
+            type="text"
+            name="restaurantName"
+            [(ngModel)]="newRestaurantName"
+            [disabled]="creatingRestaurant"
+            placeholder="{{ 'admin.manage.add.placeholder' | translate: 'Restaurant name' }}"
+            required
+          />
+        </label>
+        <button type="submit" [disabled]="creatingRestaurant || !newRestaurantName.trim()">
+          {{
+            creatingRestaurant
+              ? ('admin.manage.add.creating' | translate: 'Creating…')
+              : ('admin.manage.add.submit' | translate: 'Add restaurant')
+          }}
+        </button>
+      </form>
+
+      <p *ngIf="creationError" class="error-message">
+        {{ 'admin.manage.add.error' | translate: 'Could not create restaurant. Please try again.' }}
+      </p>
+
       <ng-template #noRestaurants>
         <p class="empty-state">{{ 'admin.manage.empty' | translate: 'No restaurants found.' }}</p>
       </ng-template>
@@ -183,6 +259,9 @@ export class AdminDashboardPage {
   restaurants$ = this.context.restaurants$;
   selectedRestaurantId$ = this.context.selectedRestaurantId$;
   loading = true;
+  newRestaurantName = '';
+  creatingRestaurant = false;
+  creationError = false;
 
   constructor() {
     void this.context.loadRestaurants().finally(() => {
@@ -193,5 +272,24 @@ export class AdminDashboardPage {
   onRestaurantChange(value: string | number) {
     const id = Number(value);
     this.context.selectRestaurant(Number.isNaN(id) ? null : id);
+  }
+
+  async createRestaurant(): Promise<void> {
+    const name = this.newRestaurantName.trim();
+    if (!name || this.creatingRestaurant) {
+      return;
+    }
+
+    this.creatingRestaurant = true;
+    this.creationError = false;
+
+    try {
+      await this.context.createRestaurant({ name });
+      this.newRestaurantName = '';
+    } catch (error) {
+      this.creationError = true;
+    } finally {
+      this.creatingRestaurant = false;
+    }
   }
 }

@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, filter, firstValueFrom, shareReplay, switchMap } from 'rxjs';
-import { Restaurant } from '../core/models';
+import { Restaurant, RestaurantCreateInput } from '../core/models';
 import { RestaurantService } from '../restaurants/restaurant.service';
 
 @Injectable({ providedIn: 'root' })
@@ -71,6 +71,19 @@ export class AdminRestaurantContextService {
     const next = [...restaurants];
     next[index] = updated;
     this.restaurantsSubject.next(next);
+  }
+
+  async createRestaurant(payload: RestaurantCreateInput): Promise<Restaurant> {
+    try {
+      const restaurant = await firstValueFrom(this.restaurantService.create(payload));
+      const restaurants = this.restaurantsSubject.value;
+      this.restaurantsSubject.next([...restaurants, restaurant]);
+      this.selectedRestaurantIdSubject.next(restaurant.id);
+      return restaurant;
+    } catch (error) {
+      console.error('Failed to create restaurant', error);
+      throw error;
+    }
   }
 
   private ensureSelectedRestaurant(restaurants: Restaurant[]): void {

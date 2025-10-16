@@ -33,6 +33,15 @@ export interface RestaurantUpdateInput {
   cuisines?: string[];
 }
 
+export interface RestaurantCreateInput {
+  name: string;
+  description?: string;
+  name_translations?: Record<string, string>;
+  description_translations?: Record<string, string>;
+  chain_id?: number | null;
+  cuisines?: string[];
+}
+
 export interface CardTransaction {
   id: number;
   entry_type: string;
