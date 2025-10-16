@@ -49,6 +49,8 @@ type PendingCartAddition = {
 
 type CounterLocationViewModel = {
   location: Location;
+  telephone: string | null;
+  email: string | null;
   addressLines: string[];
   mapUrl: SafeResourceUrl | null;
   hasDetails: boolean;
@@ -554,11 +556,11 @@ type CounterLocationViewModel = {
               id="counter-location-panel"
             >
               <dl class="location-details">
-                <div *ngIf="counterLocation.location.telephone as telephone">
+                <div *ngIf="counterLocation.telephone as telephone">
                   <dt>{{ 'restaurantDetail.counterLocationPhone' | translate: 'Telephone' }}</dt>
                   <dd><a [href]="buildTelephoneLink(telephone)">{{ telephone }}</a></dd>
                 </div>
-                <div *ngIf="counterLocation.location.email as email">
+                <div *ngIf="counterLocation.email as email">
                   <dt>{{ 'restaurantDetail.counterLocationEmail' | translate: 'Email' }}</dt>
                   <dd><a [href]="buildEmailLink(email)">{{ email }}</a></dd>
                 </div>
@@ -1463,7 +1465,8 @@ export class RestaurantDetailPage implements OnDestroy {
   }
 
   buildMapLink(location: Location): string {
-    const { latitude, longitude } = location;
+    const latitude = this.parseCoordinate(location.latitude);
+    const longitude = this.parseCoordinate(location.longitude);
     if (latitude != null && longitude != null) {
       const lat = latitude.toFixed(6);
       const lon = longitude.toFixed(6);
@@ -1506,16 +1509,20 @@ export class RestaurantDetailPage implements OnDestroy {
   }
 
   private buildCounterLocationVm(location: Location): CounterLocationViewModel {
+    const telephone = this.extractLocationTelephone(location);
+    const email = location.email?.trim() || null;
     const addressLines = this.buildAddressLines(location);
     const mapUrl = this.buildMapUrl(location);
     const hasDetails =
-      Boolean(location.telephone?.trim()) ||
-      Boolean(location.email?.trim()) ||
+      Boolean(telephone) ||
+      Boolean(email) ||
       addressLines.length > 0 ||
       mapUrl !== null;
 
     return {
       location,
+      telephone,
+      email,
       addressLines,
       mapUrl,
       hasDetails,
@@ -1561,7 +1568,8 @@ export class RestaurantDetailPage implements OnDestroy {
   }
 
   private buildMapUrl(location: Location): SafeResourceUrl | null {
-    const { latitude, longitude } = location;
+    const latitude = this.parseCoordinate(location.latitude);
+    const longitude = this.parseCoordinate(location.longitude);
     if (latitude == null || longitude == null) {
       return null;
     }
@@ -1577,5 +1585,30 @@ export class RestaurantDetailPage implements OnDestroy {
     const markerLon = lon.toFixed(6);
     const url = `https://www.openstreetmap.org/export/embed.html?bbox=${left}%2C${bottom}%2C${right}%2C${top}&layer=mapnik&marker=${markerLat}%2C${markerLon}`;
     return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+  }
+
+  private extractLocationTelephone(location: Location): string | null {
+    const telephoneRecord = location as Location & { telephone_number?: string | null };
+    const telephone = location.telephone ?? telephoneRecord.telephone_number ?? null;
+
+    if (typeof telephone !== 'string') {
+      return null;
+    }
+
+    const trimmed = telephone.trim();
+    return trimmed.length ? trimmed : null;
+  }
+
+  private parseCoordinate(value: number | string | null | undefined): number | null {
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? value : null;
+    }
+
+    if (typeof value === 'string') {
+      const parsed = Number.parseFloat(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    return null;
   }
 }
