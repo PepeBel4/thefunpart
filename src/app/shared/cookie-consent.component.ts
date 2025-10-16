@@ -60,14 +60,14 @@ import { TranslatePipe } from './translate.pipe';
     }
 
     button.primary {
-      background: var(--brand-primary, #06c167);
-      color: var(--surface, #040707);
-      box-shadow: 0 10px 20px rgba(6, 193, 103, 0.25);
+      background: var(--brand-green);
+      color: var(--brand-on-primary);
+      box-shadow: 0 10px 20px rgba(var(--brand-green-rgb, 6, 193, 103), 0.25);
     }
 
     button.primary:hover {
       transform: translateY(-1px);
-      box-shadow: 0 16px 30px rgba(6, 193, 103, 0.35);
+      box-shadow: 0 16px 30px rgba(var(--brand-green-rgb, 6, 193, 103), 0.35);
     }
 
     button.secondary {

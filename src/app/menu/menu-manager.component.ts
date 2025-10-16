@@ -103,13 +103,13 @@ interface QueuedPhoto {
 
     button.primary {
       background: var(--brand-green);
-      color: #042f1a;
-      box-shadow: 0 12px 24px rgba(6, 193, 103, 0.24);
+      color: var(--brand-on-primary);
+      box-shadow: 0 12px 24px rgba(var(--brand-green-rgb, 6, 193, 103), 0.24);
     }
 
     button.primary:hover {
       transform: translateY(-1px);
-      box-shadow: 0 16px 28px rgba(6, 193, 103, 0.28);
+      box-shadow: 0 16px 28px rgba(var(--brand-green-rgb, 6, 193, 103), 0.28);
     }
 
     button.secondary {
@@ -219,7 +219,7 @@ interface QueuedPhoto {
     }
 
     .category-tags .tag {
-      background: rgba(6, 193, 103, 0.12);
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.12);
       color: #036239;
       border-radius: 999px;
       padding: 0.25rem 0.6rem;

@@ -18,7 +18,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
       display: grid;
       grid-template-rows: auto 1fr;
       min-height: 100vh;
-      background: radial-gradient(circle at top, rgba(6, 193, 103, 0.05), transparent 60%),
+      background: radial-gradient(circle at top, rgba(var(--brand-green-rgb, 6, 193, 103), 0.05), transparent 60%),
         var(--surface-elevated);
     }
 

@@ -50,7 +50,7 @@ import { TranslatePipe } from '../shared/translate.pipe';
     .status {
       padding: 0.25rem 0.75rem;
       border-radius: 999px;
-      background: rgba(6, 193, 103, 0.12);
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.12);
       color: var(--brand-green);
       font-weight: 600;
       font-size: 0.85rem;

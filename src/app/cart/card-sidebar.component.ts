@@ -30,15 +30,15 @@ import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
       gap: 0.25rem;
       padding: 0.75rem 1rem;
       border-radius: 12px;
-      background: #06c16719;
-      color: #056333;
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.1);
+      color: color-mix(in srgb, var(--brand-green) 65%, black);
       font-weight: 600;
     }
 
     .cart-restaurant-label {
       font-size: 0.75rem;
       text-transform: uppercase;
-      color: #056333cc;
+      color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.8);
     }
 
     .cart-restaurant-name {
@@ -108,9 +108,9 @@ import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
     }
 
     .option.active {
-      background: #06c16723;
-      border-color: #06c16766;
-      color: #056333;
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.14);
+      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.4);
+      color: color-mix(in srgb, var(--brand-green) 65%, black);
     }
 
     .target-time-input {
@@ -124,7 +124,7 @@ import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
     .target-time-input:focus {
       border-color: var(--brand-green);
       outline: none;
-      box-shadow: 0 0 0 3px #06c16729;
+      box-shadow: 0 0 0 3px rgba(var(--brand-green-rgb, 6, 193, 103), 0.16);
     }
 
     .help-text {
@@ -150,7 +150,7 @@ import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
     .badge {
       padding: 0.25rem 0.75rem;
       border-radius: 999px;
-      background: #06c1671f;
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.12);
       color: var(--brand-green);
       font-size: 0.8rem;
       font-weight: 600;
@@ -211,8 +211,8 @@ import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.04em;
-      color: #056333;
-      background: #06c16729;
+      color: color-mix(in srgb, var(--brand-green) 65%, black);
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.16);
       border-radius: 999px;
       padding: 0.1rem 0.4rem;
     }
@@ -239,7 +239,7 @@ import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
     }
 
     .qty-btn:hover:not(:disabled) {
-      background: #06c1671f;
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.12);
       color: var(--brand-green);
     }
 
@@ -274,7 +274,7 @@ import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
     }
 
     button.remove:hover {
-      background: #06c1671f;
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.12);
       color: var(--brand-green);
     }
 
@@ -300,19 +300,19 @@ import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
       align-items: center;
       justify-content: center;
       background: var(--brand-green);
-      color: #042f1a;
+      color: var(--brand-on-primary);
       border: 0;
       border-radius: 14px;
       padding: 0.85rem 1rem;
       font-weight: 700;
       text-decoration: none;
-      box-shadow: 0 16px 30px #06c16747;
+      box-shadow: 0 16px 30px rgba(var(--brand-green-rgb, 6, 193, 103), 0.28);
       transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
     .checkout:hover {
       transform: translateY(-1px);
-      box-shadow: 0 20px 40px #06c16752;
+      box-shadow: 0 20px 40px rgba(var(--brand-green-rgb, 6, 193, 103), 0.32);
     }
 
     .checkout.disabled {

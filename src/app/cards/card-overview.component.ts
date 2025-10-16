@@ -49,8 +49,8 @@ interface CardOverviewState {
       gap: 1.25rem;
       padding: 1.5rem 1.75rem;
       border-radius: var(--radius-card);
-      border: 1px solid rgba(6, 193, 103, 0.18);
-      background: linear-gradient(135deg, rgba(6, 193, 103, 0.14), rgba(6, 193, 103, 0.03));
+      border: 1px solid rgba(var(--brand-green-rgb, 6, 193, 103), 0.18);
+      background: linear-gradient(135deg, rgba(var(--brand-green-rgb, 6, 193, 103), 0.14), rgba(var(--brand-green-rgb, 6, 193, 103), 0.03));
       box-shadow: var(--shadow-soft);
     }
 
@@ -98,7 +98,7 @@ interface CardOverviewState {
       content: '';
       position: absolute;
       inset: 0;
-      background: linear-gradient(180deg, rgba(6, 193, 103, 0.12), transparent 70%);
+      background: linear-gradient(180deg, rgba(var(--brand-green-rgb, 6, 193, 103), 0.12), transparent 70%);
       opacity: 0;
       transition: opacity 0.2s ease;
       pointer-events: none;
@@ -114,7 +114,7 @@ interface CardOverviewState {
       aspect-ratio: 4 / 3;
       border-radius: calc(var(--radius-card) - 10px);
       overflow: hidden;
-      background: linear-gradient(135deg, rgba(6, 193, 103, 0.14), rgba(6, 193, 103, 0.05));
+      background: linear-gradient(135deg, rgba(var(--brand-green-rgb, 6, 193, 103), 0.14), rgba(var(--brand-green-rgb, 6, 193, 103), 0.05));
       display: flex;
       align-items: center;
       justify-content: center;
@@ -144,7 +144,7 @@ interface CardOverviewState {
       align-self: flex-start;
       padding: 0.25rem 0.65rem;
       border-radius: 999px;
-      background: rgba(6, 193, 103, 0.14);
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.14);
       color: var(--brand-green);
       font-weight: 600;
       font-size: 0.75rem;
@@ -178,7 +178,7 @@ interface CardOverviewState {
       gap: 0.25rem;
       padding: 0.55rem 0.65rem;
       border-radius: 14px;
-      background: rgba(6, 193, 103, 0.08);
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.08);
     }
 
     .metric .label {

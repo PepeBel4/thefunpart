@@ -98,7 +98,7 @@ import { TranslatePipe } from '../shared/translate.pipe';
     }
 
     .create-form button:not(:disabled):hover {
-      background: var(--brand-green-dark, #059a52);
+      background: color-mix(in srgb, var(--brand-green) 85%, black);
     }
 
     .error-message {
@@ -134,9 +134,9 @@ import { TranslatePipe } from '../shared/translate.pipe';
     }
 
     nav.section-nav a.active {
-      background: rgba(6, 193, 103, 0.12);
-      border-color: rgba(6, 193, 103, 0.35);
-      color: var(--brand-green-dark, #065f46);
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.12);
+      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.35);
+      color: color-mix(in srgb, var(--brand-green) 60%, black);
     }
 
     nav.section-nav a:hover {
@@ -189,6 +189,16 @@ import { TranslatePipe } from '../shared/translate.pipe';
             [(ngModel)]="newRestaurantName"
             [disabled]="creatingRestaurant"
             placeholder="{{ 'admin.manage.add.placeholder' | translate: 'Restaurant name' }}"
+            required
+          />
+        </label>
+        <label>
+          {{ 'admin.manage.add.colorLabel' | translate: 'Primary color' }}
+          <input
+            type="color"
+            name="restaurantColor"
+            [(ngModel)]="newRestaurantColor"
+            [disabled]="creatingRestaurant"
             required
           />
         </label>
@@ -266,6 +276,7 @@ export class AdminDashboardPage {
   selectedRestaurantId$ = this.context.selectedRestaurantId$;
   loading = true;
   newRestaurantName = '';
+  newRestaurantColor = '#06c167';
   creatingRestaurant = false;
   creationError = false;
 
@@ -290,8 +301,10 @@ export class AdminDashboardPage {
     this.creationError = false;
 
     try {
-      await this.context.createRestaurant({ name });
+      const color = this.newRestaurantColor?.trim();
+      await this.context.createRestaurant({ name, primary_color: color });
       this.newRestaurantName = '';
+      this.newRestaurantColor = '#06c167';
     } catch (error) {
       this.creationError = true;
     } finally {

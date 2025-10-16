@@ -28,10 +28,10 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
     }
 
     .order-card {
-      background: rgba(6, 193, 103, 0.05);
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.05);
       border-radius: 1rem;
       padding: 1.25rem;
-      border: 1px solid rgba(6, 193, 103, 0.18);
+      border: 1px solid rgba(var(--brand-green-rgb, 6, 193, 103), 0.18);
       display: flex;
       flex-direction: column;
       gap: 0.5rem;

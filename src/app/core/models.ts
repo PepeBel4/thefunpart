@@ -22,6 +22,7 @@ export interface Restaurant {
   chain_id?: number | null;
   chain?: Chain | null;
   cuisines?: string[];
+  primary_color?: string | null;
 }
 
 export interface Location {
@@ -62,6 +63,7 @@ export interface RestaurantUpdateInput {
   description_translations?: Record<string, string>;
   chain_id?: number | null;
   cuisines?: string[];
+  primary_color?: string | null;
 }
 
 export interface RestaurantCreateInput {
@@ -71,6 +73,7 @@ export interface RestaurantCreateInput {
   description_translations?: Record<string, string>;
   chain_id?: number | null;
   cuisines?: string[];
+  primary_color?: string | null;
 }
 
 export interface CardTransaction {

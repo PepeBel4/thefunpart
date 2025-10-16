@@ -69,7 +69,7 @@ import { UserMenuComponent } from './user-menu.component';
       height: 8px;
       border-radius: 50%;
       background: var(--brand-green);
-      box-shadow: 0 0 0 4px rgba(6, 193, 103, 0.25);
+      box-shadow: 0 0 0 4px rgba(var(--brand-green-rgb, 6, 193, 103), 0.25);
     }
 
     .spacer {
@@ -146,11 +146,11 @@ import { UserMenuComponent } from './user-menu.component';
       gap: 0.5rem;
       text-decoration: none;
       background: var(--brand-green);
-      color: #042f1a;
+      color: var(--brand-on-primary);
       padding: 0.55rem 1.1rem;
       border-radius: 999px;
       font-weight: 600;
-      box-shadow: 0 12px 25px rgba(6, 193, 103, 0.28);
+      box-shadow: 0 12px 25px rgba(var(--brand-green-rgb, 6, 193, 103), 0.28);
       transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
@@ -162,7 +162,7 @@ import { UserMenuComponent } from './user-menu.component';
       min-width: 1.75rem;
       padding: 0.1rem 0.45rem;
       border-radius: 999px;
-      background: rgba(4, 47, 26, 0.12);
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.18);
       color: inherit;
       font-variant-numeric: tabular-nums;
       text-align: center;
@@ -170,7 +170,7 @@ import { UserMenuComponent } from './user-menu.component';
 
     .cart-pill:hover {
       transform: translateY(-1px);
-      box-shadow: 0 16px 35px rgba(6, 193, 103, 0.32);
+      box-shadow: 0 16px 35px rgba(var(--brand-green-rgb, 6, 193, 103), 0.32);
     }
 
     @media (max-width: 900px) {

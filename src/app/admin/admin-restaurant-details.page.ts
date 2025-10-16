@@ -67,10 +67,19 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
       appearance: none;
     }
 
+    .color-field input[type='color'] {
+      width: 100%;
+      height: 44px;
+      border: 1px solid rgba(10, 10, 10, 0.12);
+      border-radius: 0.75rem;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 0.2rem;
+    }
+
     .details-form select:focus {
-      border-color: rgba(6, 193, 103, 0.45);
+      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.45);
       outline: none;
-      box-shadow: 0 0 0 3px rgba(6, 193, 103, 0.16);
+      box-shadow: 0 0 0 3px rgba(var(--brand-green-rgb, 6, 193, 103), 0.16);
     }
 
     .details-form select:disabled {
@@ -194,19 +203,19 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
 
     button {
       background: var(--brand-green);
-      color: #042f1a;
+      color: var(--brand-on-primary);
       border: 0;
       border-radius: 999px;
       padding: 0.65rem 1.4rem;
       font-weight: 600;
       cursor: pointer;
-      box-shadow: 0 12px 24px rgba(6, 193, 103, 0.24);
+      box-shadow: 0 12px 24px rgba(var(--brand-green-rgb, 6, 193, 103), 0.24);
       transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
     button:hover {
       transform: translateY(-1px);
-      box-shadow: 0 16px 32px rgba(6, 193, 103, 0.28);
+      box-shadow: 0 16px 32px rgba(var(--brand-green-rgb, 6, 193, 103), 0.28);
     }
 
     button[disabled] {
@@ -260,6 +269,17 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
             [attr.placeholder]="
               'admin.details.namePlaceholder' | translate: 'Enter the restaurant name'
             "
+          />
+        </label>
+
+        <label class="color-field" for="restaurant-color">
+          {{ 'admin.details.colorLabel' | translate: 'Primary color' }}
+          <input
+            id="restaurant-color"
+            type="color"
+            name="primaryColor"
+            [(ngModel)]="detailsForm.primaryColor"
+            required
           />
         </label>
 
@@ -375,10 +395,16 @@ export class AdminRestaurantDetailsPage {
   chainMessageType: 'success' | 'error' | '' = '';
   readonly createChainOptionValue = '__create__';
 
-  detailsForm: { name: string; descriptions: Record<string, string>; cuisines: string[] } = {
+  detailsForm: {
+    name: string;
+    descriptions: Record<string, string>;
+    cuisines: string[];
+    primaryColor: string;
+  } = {
     name: '',
     descriptions: {},
     cuisines: [],
+    primaryColor: '#06c167',
   };
   detailsSaving = false;
   detailsMessage = '';
@@ -505,6 +531,7 @@ export class AdminRestaurantDetailsPage {
       name: restaurant.name ?? '',
       descriptions,
       cuisines: [...(restaurant.cuisines ?? [])],
+      primaryColor: restaurant.primary_color ?? '#06c167',
     };
 
     const primaryDescription = restaurant.description ?? '';
@@ -535,6 +562,7 @@ export class AdminRestaurantDetailsPage {
     }
 
     payload.cuisines = [...this.detailsForm.cuisines];
+    payload.primary_color = this.detailsForm.primaryColor;
 
     return payload;
   }

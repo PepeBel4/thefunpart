@@ -49,8 +49,8 @@ type DiscountHighlight = {
       gap: 1rem;
       padding: 1.4rem 1.6rem;
       border-radius: var(--radius-card);
-      background: linear-gradient(135deg, rgba(6, 193, 103, 0.08), rgba(6, 193, 103, 0.02));
-      border: 1px solid rgba(6, 193, 103, 0.2);
+      background: linear-gradient(135deg, rgba(var(--brand-green-rgb, 6, 193, 103), 0.08), rgba(var(--brand-green-rgb, 6, 193, 103), 0.02));
+      border: 1px solid rgba(var(--brand-green-rgb, 6, 193, 103), 0.2);
       box-shadow: var(--shadow-soft);
     }
 
@@ -92,7 +92,7 @@ type DiscountHighlight = {
       gap: 0.35rem;
       padding: 0.35rem 0.75rem;
       border-radius: 999px;
-      background: rgba(6, 193, 103, 0.16);
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.16);
       color: var(--brand-green);
       font-weight: 600;
       font-size: 0.8rem;
@@ -133,15 +133,15 @@ type DiscountHighlight = {
       align-items: center;
       gap: 1.1rem;
       padding: 1.4rem 1.6rem;
-      border: 1px solid rgba(6, 193, 103, 0.28);
-      background: linear-gradient(135deg, rgba(6, 193, 103, 0.12), rgba(6, 193, 103, 0.03));
+      border: 1px solid rgba(var(--brand-green-rgb, 6, 193, 103), 0.28);
+      background: linear-gradient(135deg, rgba(var(--brand-green-rgb, 6, 193, 103), 0.12), rgba(var(--brand-green-rgb, 6, 193, 103), 0.03));
     }
 
     .profile-card .profile-icon {
       width: 48px;
       height: 48px;
       border-radius: 14px;
-      background: rgba(6, 193, 103, 0.18);
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.18);
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -204,7 +204,7 @@ type DiscountHighlight = {
       content: '';
       position: absolute;
       inset: 0;
-      background: linear-gradient(135deg, rgba(6, 193, 103, 0.14), transparent 60%);
+      background: linear-gradient(135deg, rgba(var(--brand-green-rgb, 6, 193, 103), 0.14), transparent 60%);
       opacity: 0;
       transition: opacity 0.2s ease;
       pointer-events: none;
@@ -225,7 +225,7 @@ type DiscountHighlight = {
       aspect-ratio: 3 / 2;
       border-radius: calc(var(--radius-card) - 6px);
       overflow: hidden;
-      background: linear-gradient(135deg, rgba(6, 193, 103, 0.2), rgba(6, 193, 103, 0.05));
+      background: linear-gradient(135deg, rgba(var(--brand-green-rgb, 6, 193, 103), 0.2), rgba(var(--brand-green-rgb, 6, 193, 103), 0.05));
       display: flex;
       align-items: center;
       justify-content: center;
@@ -284,7 +284,7 @@ type DiscountHighlight = {
       gap: 0.35rem;
       padding: 0.35rem 0.75rem;
       border-radius: 999px;
-      background: rgba(6, 193, 103, 0.12);
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.12);
       color: var(--brand-green);
       font-weight: 600;
       font-size: 0.8rem;
