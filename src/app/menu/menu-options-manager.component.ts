@@ -51,7 +51,7 @@ interface ValidationErrors {
       border-radius: var(--radius-card);
       padding: 1.75rem;
       box-shadow: var(--shadow-soft);
-      border: 1px solid rgba(10, 10, 10, 0.05);
+      border: 1px solid var(--surface-border);
       display: flex;
       flex-direction: column;
       gap: 1.25rem;
@@ -133,7 +133,7 @@ interface ValidationErrors {
     .option-card {
       background: var(--surface-elevated);
       border-radius: var(--radius-card);
-      border: 1px solid rgba(10, 10, 10, 0.05);
+      border: 1px solid var(--surface-border);
       padding: 1.1rem 1.25rem;
       display: grid;
       gap: 0.75rem;

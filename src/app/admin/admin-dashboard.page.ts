@@ -33,7 +33,7 @@ import { TranslatePipe } from '../shared/translate.pipe';
       border-radius: var(--radius-card);
       padding: 2rem clamp(1.5rem, 3vw, 2.5rem);
       box-shadow: var(--shadow-soft);
-      border: 1px solid rgba(10, 10, 10, 0.05);
+      border: 1px solid var(--surface-border);
       display: flex;
       flex-direction: column;
       gap: 1.25rem;
@@ -159,7 +159,7 @@ import { TranslatePipe } from '../shared/translate.pipe';
       </p>
     </header>
 
-    <section class="card selection-card">
+    <section class="card glass-panel selection-card">
       <header>
         <h3>{{ 'admin.manage.heading' | translate: 'Manage restaurant' }}</h3>
         <p>{{ 'admin.manage.description' | translate: "Choose which location you'd like to update." }}</p>
@@ -245,7 +245,7 @@ import { TranslatePipe } from '../shared/translate.pipe';
     </ng-container>
 
     <ng-template #managePlaceholder>
-      <section class="card">
+      <section class="card glass-panel">
         <header>
           <h3>{{ 'admin.managePlaceholder.title' | translate: 'Manage restaurant content' }}</h3>
         </header>

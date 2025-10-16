@@ -43,7 +43,7 @@ import { AuthService } from '../core/auth.service';
       border-radius: var(--radius-card);
       background: var(--surface);
       box-shadow: var(--shadow-soft);
-      border: 1px solid rgba(10, 10, 10, 0.05);
+      border: 1px solid var(--surface-border);
     }
 
     .field {

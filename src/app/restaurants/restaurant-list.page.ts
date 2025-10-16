@@ -195,7 +195,7 @@ type DiscountHighlight = {
       text-decoration: none;
       color: inherit;
       box-shadow: var(--shadow-soft);
-      border: 1px solid rgba(10, 10, 10, 0.05);
+      border: 1px solid var(--surface-border);
       transition: transform 0.2s ease, box-shadow 0.2s ease;
       overflow: hidden;
     }
@@ -260,7 +260,7 @@ type DiscountHighlight = {
     }
 
     .cuisine-tags li {
-      background: rgba(10, 10, 10, 0.05);
+      background: var(--surface-border);
       color: var(--text-secondary);
       padding: 0.3rem 0.65rem;
       border-radius: 999px;
@@ -334,7 +334,7 @@ type DiscountHighlight = {
       </section>
     </ng-container>
     <a
-      class="card profile-card"
+      class="card glass-panel profile-card"
       routerLink="/profile"
       *ngIf="shouldShowProfilePrompt()"
     >
@@ -351,7 +351,7 @@ type DiscountHighlight = {
       <span class="cta">{{ 'profilePrompt.action' | translate: 'Finish profile' }}</span>
     </a>
     <div class="grid" *ngIf="restaurants$ | async as restaurants">
-      <a class="card" *ngFor="let r of restaurants" [routerLink]="['/restaurants', r.id]">
+      <a class="card glass-panel" *ngFor="let r of restaurants" [routerLink]="['/restaurants', r.id]">
         <div class="card-media">
           <ng-container *ngIf="r.heroPhoto; else placeholder">
             <img [src]="r.heroPhoto" [alt]="getRestaurantName(r)" loading="lazy" />

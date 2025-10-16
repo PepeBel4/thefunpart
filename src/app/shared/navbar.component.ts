@@ -25,20 +25,42 @@ type LanguageOption = { code: string; label: string; flag: string };
   styles: [`
     nav {
       position: sticky;
-      top: 0;
-      z-index: 10;
+      top: clamp(0.5rem, 2vw, 1.5rem);
+      z-index: 20;
       display: flex;
       align-items: center;
       gap: 1.25rem;
-      padding: 1.1rem clamp(1rem, 4vw, 3rem);
-      background: var(--brand-black);
-      color: #fefefe;
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      transition: border-color 0.2s ease;
+      margin: 0 auto;
+      width: min(1220px, 100%);
+      padding: 1rem clamp(1rem, 4vw, 2.5rem);
+      border-radius: clamp(22px, 4vw, 32px);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.58));
+      color: var(--text-primary);
+      border: 1px solid var(--surface-border);
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    nav::after {
+      content: '';
+      position: absolute;
+      inset: 1px;
+      border-radius: inherit;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.75), transparent 65%);
+      mix-blend-mode: screen;
+      pointer-events: none;
+      opacity: 0.85;
+    }
+
+    nav:hover {
+      box-shadow: 0 28px 70px rgba(15, 23, 42, 0.22);
+      transform: translateY(-2px);
     }
 
     .brand {
+      position: relative;
       display: flex;
       align-items: center;
       gap: 0.65rem;
@@ -50,40 +72,58 @@ type LanguageOption = { code: string; label: string; flag: string };
     }
 
     .brand span {
-      color: var(--brand-green);
+      background: linear-gradient(135deg, #1d9bf0, #38efb1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
     .brand-icon {
+      position: relative;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.08);
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.4));
+      color: var(--brand-green);
       font-size: 1.35rem;
+      box-shadow: inset 0 1px 6px rgba(255, 255, 255, 0.5), 0 8px 18px rgba(15, 23, 42, 0.14);
+    }
+
+    .brand-icon::after {
+      content: '';
+      position: absolute;
+      inset: 1px;
+      border-radius: inherit;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), transparent 70%);
+      pointer-events: none;
+      mix-blend-mode: screen;
     }
 
     .menu-toggle {
+      position: relative;
       display: none;
       align-items: center;
       gap: 0.55rem;
-      padding: 0.45rem 0.9rem;
+      padding: 0.5rem 1rem;
       border: 0;
-      border-radius: 0.95rem;
-      background: rgba(255, 255, 255, 0.12);
-      color: rgba(255, 255, 255, 0.9);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.68);
+      color: var(--text-primary);
       font: inherit;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 10px 25px rgba(15, 23, 42, 0.12);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
     }
 
     .menu-toggle:hover,
     .menu-toggle:focus-visible {
-      background: rgba(255, 255, 255, 0.18);
-      color: #fff;
-      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.14);
+      transform: translateY(-1px);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 12px 28px rgba(15, 23, 42, 0.16);
       outline: none;
     }
 
@@ -139,18 +179,36 @@ type LanguageOption = { code: string; label: string; flag: string };
     }
 
     .nav-links a {
-      padding: 0.45rem 0.9rem;
+      position: relative;
+      padding: 0.45rem 1rem;
       border-radius: 999px;
       text-decoration: none;
-      color: rgba(255, 255, 255, 0.85);
-      font-weight: 500;
-      transition: background 0.25s ease, color 0.25s ease;
+      color: color-mix(in srgb, var(--text-secondary) 70%, #1f2937 30%);
+      font-weight: 600;
+      transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .nav-links a::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.75), transparent 70%);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
     }
 
     .nav-links a:hover,
     .nav-links a.active {
-      background: rgba(255, 255, 255, 0.16);
-      color: #fff;
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.7);
+      box-shadow: 0 12px 20px rgba(15, 23, 42, 0.12);
+    }
+
+    .nav-links a:hover::after,
+    .nav-links a.active::after {
+      opacity: 1;
     }
 
     .nav-actions {
@@ -168,35 +226,38 @@ type LanguageOption = { code: string; label: string; flag: string };
       position: relative;
       display: inline-flex;
       align-items: center;
-      color: rgba(255, 255, 255, 0.85);
+      color: var(--text-secondary);
     }
 
     .language-toggle {
+      position: relative;
       border: 0;
-      background: rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.65);
       color: inherit;
       font: inherit;
       display: inline-flex;
       align-items: center;
       gap: 0.45rem;
-      padding: 0.35rem 0.75rem;
+      padding: 0.35rem 0.9rem;
       border-radius: 999px;
       cursor: pointer;
-      transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+      transition: transform 0.25s ease, box-shadow 0.25s ease, color 0.25s ease;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 12px 24px rgba(15, 23, 42, 0.12);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
     }
 
     .language-toggle:hover,
     .language-toggle:focus-visible {
-      background: rgba(255, 255, 255, 0.18);
-      color: #fff;
+      color: var(--text-primary);
+      transform: translateY(-1px);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 16px 32px rgba(15, 23, 42, 0.16);
       outline: none;
-      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.14);
     }
 
     .language-menu.open .language-toggle {
-      background: rgba(255, 255, 255, 0.16);
-      color: #fff;
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+      color: var(--text-primary);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.75), 0 16px 30px rgba(15, 23, 42, 0.15);
     }
 
     .language-menu .flag {
@@ -224,19 +285,22 @@ type LanguageOption = { code: string; label: string; flag: string };
       right: 0;
       display: flex;
       flex-direction: column;
-      gap: 0.15rem;
+      gap: 0.2rem;
       padding: 0.45rem;
       border-radius: 0.9rem;
-      background: rgba(20, 20, 20, 0.94);
-      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid var(--surface-border);
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
       min-width: max-content;
       z-index: 5;
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
     }
 
     .language-option {
       border: 0;
       background: transparent;
-      color: inherit;
+      color: var(--text-secondary);
       font: inherit;
       display: inline-flex;
       align-items: center;
@@ -251,15 +315,16 @@ type LanguageOption = { code: string; label: string; flag: string };
 
     .language-option:hover,
     .language-option:focus-visible {
-      background: rgba(255, 255, 255, 0.18);
-      color: #fff;
+      background: rgba(255, 255, 255, 0.95);
+      color: var(--text-primary);
       outline: none;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
     }
 
     .language-option[aria-selected='true'] {
-      background: rgba(255, 255, 255, 0.14);
-      color: #fff;
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.8);
+      color: var(--text-primary);
+      box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.3);
       cursor: default;
     }
 

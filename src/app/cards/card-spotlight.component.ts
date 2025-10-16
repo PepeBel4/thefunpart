@@ -33,7 +33,7 @@ import { CardSpotlightService } from './card-spotlight.service';
       display: flex;
       align-items: center;
       justify-content: center;
-      color: rgba(4, 24, 16, 0.65);
+      color: var(--brand-on-primary);
       font-size: 2.25rem;
       font-weight: 700;
     }
@@ -69,6 +69,7 @@ import { CardSpotlightService } from './card-spotlight.service';
       margin: 0;
       font-size: 1.35rem;
       letter-spacing: -0.01em;
+      color: var(--text-primary);
     }
 
     p {
@@ -97,7 +98,7 @@ import { CardSpotlightService } from './card-spotlight.service';
     .balance-label {
       font-size: 0.75rem;
       font-weight: 600;
-      color: rgba(4, 24, 16, 0.65);
+      color: var(--text-secondary);
       text-transform: uppercase;
       letter-spacing: 0.06em;
     }
@@ -105,7 +106,7 @@ import { CardSpotlightService } from './card-spotlight.service';
     .balance-value {
       font-size: 1.15rem;
       font-weight: 700;
-      color: rgba(4, 24, 16, 0.9);
+      color: var(--text-primary);
     }
 
     .cta {

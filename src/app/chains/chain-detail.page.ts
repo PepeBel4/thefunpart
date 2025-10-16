@@ -61,7 +61,7 @@ interface ChainDetailState {
       padding: 1.2rem 1.35rem;
       border-radius: var(--radius-card);
       background: var(--surface);
-      border: 1px solid rgba(10, 10, 10, 0.05);
+      border: 1px solid var(--surface-border);
       box-shadow: var(--shadow-soft);
       text-decoration: none;
       color: inherit;
@@ -103,12 +103,14 @@ interface ChainDetailState {
     .state-card {
       padding: 1.4rem 1.6rem;
       border-radius: var(--radius-card);
-      border: 1px dashed rgba(10, 10, 10, 0.16);
-      background: rgba(10, 10, 10, 0.03);
+      border: 1px solid var(--surface-border);
+      background: color-mix(in srgb, var(--surface) 85%, rgba(148, 163, 184, 0.08) 15%);
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
       color: var(--text-secondary);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
     }
 
     .state-card h3 {
@@ -136,7 +138,7 @@ interface ChainDetailState {
         </div>
         <div class="restaurant-grid">
           <a
-            class="restaurant-card"
+            class="restaurant-card glass-panel"
             *ngFor="let restaurant of state().restaurants"
             [routerLink]="['/restaurants', restaurant.id]"
           >
@@ -146,19 +148,19 @@ interface ChainDetailState {
           </a>
         </div>
       </section>
-      <section class="state-card" *ngSwitchCase="'loading'">
+      <section class="state-card glass-panel" *ngSwitchCase="'loading'">
         <h3>Loading chain details…</h3>
         <p>Please hold on while we find the restaurants for this chain.</p>
       </section>
-      <section class="state-card" *ngSwitchCase="'empty'">
+      <section class="state-card glass-panel" *ngSwitchCase="'empty'">
         <h3>No restaurants found</h3>
         <p>We couldn\'t find any restaurants assigned to this chain just yet.</p>
       </section>
-      <section class="state-card" *ngSwitchCase="'error'">
+      <section class="state-card glass-panel" *ngSwitchCase="'error'">
         <h3>We couldn\'t load this chain</h3>
         <p>Please refresh the page or return to the home screen.</p>
       </section>
-      <section class="state-card" *ngSwitchDefault>
+      <section class="state-card glass-panel" *ngSwitchDefault>
         <h3>Chain overview</h3>
         <p>Fetching the latest information…</p>
       </section>

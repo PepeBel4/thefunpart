@@ -18,10 +18,12 @@ import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
       border-radius: var(--radius-card);
       box-shadow: var(--shadow-soft);
       padding: 1.75rem 1.75rem 2rem;
-      border: 1px solid #0a0a0a0f;
+      border: 1px solid var(--surface-border);
       display: flex;
       flex-direction: column;
       gap: 1.5rem;
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
     }
 
     .cart-restaurant {
@@ -329,7 +331,7 @@ import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
     }
   `],
   template: `
-    <aside>
+    <aside class="glass-panel">
       <div class="cart-restaurant" *ngIf="cart.restaurant() as restaurant">
         <span class="cart-restaurant-label">
           {{ 'cart.restaurantLabel' | translate: 'Ordering from' }}

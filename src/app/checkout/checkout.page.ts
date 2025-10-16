@@ -22,7 +22,7 @@ import { TranslatePipe } from '../shared/translate.pipe';
       background: var(--surface);
       border-radius: var(--radius-card);
       box-shadow: var(--shadow-soft);
-      border: 1px solid rgba(10, 10, 10, 0.05);
+      border: 1px solid var(--surface-border);
       display: flex;
       flex-direction: column;
       gap: 1.5rem;
@@ -170,7 +170,7 @@ import { TranslatePipe } from '../shared/translate.pipe';
     }
   `],
   template: `
-    <div class="card">
+    <div class="card glass-panel">
       <div>
         <h2>{{ 'checkout.title' | translate: 'Checkout' }}</h2>
         <p>{{ 'checkout.subtitle' | translate: 'Confirm your delivery and get ready for a delicious drop-off.' }}</p>
