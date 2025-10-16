@@ -38,6 +38,20 @@ export class RestaurantService {
       .pipe(map(restaurant => this.normalizeRestaurant(restaurant)));
   }
 
+  uploadLogo(id: number, file: File): Observable<Restaurant> {
+    const formData = new FormData();
+    formData.append('logo', file);
+    return this.api
+      .post<RestaurantApiResponse>(`/restaurants/${id}/logo`, formData)
+      .pipe(map(restaurant => this.normalizeRestaurant(restaurant)));
+  }
+
+  deleteLogo(id: number): Observable<Restaurant> {
+    return this.api
+      .delete<RestaurantApiResponse>(`/restaurants/${id}/logo`)
+      .pipe(map(restaurant => this.normalizeRestaurant(restaurant)));
+  }
+
   deletePhoto(restaurantId: number, photoId: number): Observable<Restaurant> {
     return this.api
       .delete<RestaurantApiResponse>(`/restaurants/${restaurantId}/photos/${photoId}`)

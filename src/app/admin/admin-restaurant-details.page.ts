@@ -77,6 +77,90 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
       padding: 0.2rem;
     }
 
+    .logo-manager {
+      display: grid;
+      gap: 0.75rem;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(10, 10, 10, 0.08);
+      border-radius: 0.85rem;
+      padding: clamp(1rem, 2vw, 1.25rem);
+    }
+
+    .logo-header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .logo-header span:first-child {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .logo-header span:last-child {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      font-weight: 400;
+    }
+
+    .logo-content {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .logo-preview {
+      width: 96px;
+      height: 96px;
+      border-radius: 20px;
+      border: 1px dashed rgba(10, 10, 10, 0.15);
+      background: rgba(250, 250, 250, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .logo-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .logo-preview.empty {
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      text-align: center;
+      padding: 0.5rem;
+    }
+
+    .logo-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .logo-actions button {
+      padding: 0.55rem 1.1rem;
+      font-size: 0.9rem;
+    }
+
+    .logo-actions .remove-button {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid rgba(10, 10, 10, 0.12);
+      box-shadow: none;
+    }
+
+    .logo-actions .remove-button:hover {
+      transform: none;
+      box-shadow: none;
+      border-color: rgba(10, 10, 10, 0.2);
+      color: rgba(0, 0, 0, 0.8);
+    }
+
     .details-form select:focus {
       border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.45);
       outline: none;
@@ -284,6 +368,72 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
           />
         </label>
 
+        <div class="logo-manager">
+          <div class="logo-header">
+            <span>{{ 'admin.details.logoHeading' | translate: 'Logo' }}</span>
+            <span>
+              {{
+                'admin.details.logoHelp'
+                  | translate: 'Upload a square logo to show alongside the restaurant.'
+              }}
+            </span>
+          </div>
+
+          <div class="logo-content">
+            <div
+              class="logo-preview"
+              [class.empty]="!(currentRestaurant?.logo_url || restaurant.logo_url)"
+            >
+              <ng-container *ngIf="currentRestaurant?.logo_url || restaurant.logo_url; else noLogo">
+                <img
+                  [src]="currentRestaurant?.logo_url || restaurant.logo_url || ''"
+                  [alt]="restaurant.name + ' logo'"
+                />
+              </ng-container>
+              <ng-template #noLogo>
+                <span>{{ 'admin.details.logoEmpty' | translate: 'No logo uploaded yet.' }}</span>
+              </ng-template>
+            </div>
+
+            <div class="logo-actions">
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                (change)="onLogoFileChange($event)"
+                #logoInput
+                hidden
+                [disabled]="logoUploading"
+              />
+              <button type="button" (click)="logoInput.click()" [disabled]="logoUploading">
+                {{
+                  logoUploading
+                    ? ('admin.details.logoUploading' | translate: 'Uploading…')
+                    : (currentRestaurant?.logo_url || restaurant.logo_url)
+                      ? ('admin.details.logoChange' | translate: 'Change logo')
+                      : ('admin.details.logoUpload' | translate: 'Upload logo')
+                }}
+              </button>
+              <button
+                type="button"
+                class="remove-button"
+                *ngIf="currentRestaurant?.logo_url || restaurant.logo_url"
+                (click)="removeLogo()"
+                [disabled]="logoUploading || logoRemoving"
+              >
+                {{
+                  logoRemoving
+                    ? ('admin.details.logoRemoving' | translate: 'Removing…')
+                    : ('admin.details.logoRemove' | translate: 'Remove logo')
+                }}
+              </button>
+            </div>
+          </div>
+
+          <p *ngIf="logoMessage" class="status" [class.error]="logoMessageType === 'error'" [class.success]="logoMessageType === 'success'">
+            {{ logoMessage }}
+          </p>
+        </div>
+
         <div class="chain-manager">
           <label class="chain-select">
             <span class="chain-label-heading">
@@ -376,6 +526,13 @@ export class AdminRestaurantDetailsPage {
   readonly cuisines = [...RESTAURANT_CUISINES];
   readonly languages = this.i18n.languages;
   readonly primaryLanguageCode = this.languages[0]?.code ?? 'en';
+  readonly logoMaxSizeBytes = 2 * 1024 * 1024;
+  private readonly logoAllowedMimeTypes = [
+    'image/png',
+    'image/jpeg',
+    'image/webp',
+    'image/svg+xml',
+  ];
 
   readonly selectedRestaurant$ = this.context.selectedRestaurant$.pipe(
     tap(restaurant => {
@@ -384,6 +541,7 @@ export class AdminRestaurantDetailsPage {
       this.setRestaurantChain(restaurant);
       this.resetDetailsStatus();
       this.resetChainStatus();
+      this.resetLogoStatus();
     })
   );
 
@@ -410,9 +568,71 @@ export class AdminRestaurantDetailsPage {
   detailsSaving = false;
   detailsMessage = '';
   detailsMessageType: 'success' | 'error' | '' = '';
+  logoUploading = false;
+  logoRemoving = false;
+  logoMessage = '';
+  logoMessageType: 'success' | 'error' | '' = '';
 
   constructor() {
     void this.loadChains();
+  }
+
+  onLogoFileChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    if (input.value) {
+      input.value = '';
+    }
+
+    this.logoMessage = '';
+    this.logoMessageType = '';
+
+    if (!file) {
+      return;
+    }
+
+    if (!this.validateLogoFile(file)) {
+      return;
+    }
+
+    void this.uploadLogo(file);
+  }
+
+  async removeLogo() {
+    const restaurantId = this.context.selectedRestaurantId;
+    if (restaurantId === null || this.logoRemoving || this.logoUploading) {
+      return;
+    }
+
+    const confirmationMessage = this.i18n.translate(
+      'admin.details.removeLogoConfirm',
+      'Remove the current logo?'
+    );
+
+    if (typeof window !== 'undefined' && !window.confirm(confirmationMessage)) {
+      return;
+    }
+
+    this.logoRemoving = true;
+    this.logoMessage = '';
+    this.logoMessageType = '';
+
+    try {
+      const updatedRestaurant = await firstValueFrom(this.restaurantService.deleteLogo(restaurantId));
+      this.currentRestaurant = updatedRestaurant;
+      this.setLogoMessage('success', 'admin.details.logoRemoved', 'Logo removed.');
+      this.context.updateRestaurantInList(updatedRestaurant);
+      this.context.refreshSelectedRestaurant();
+    } catch (err) {
+      console.error(err);
+      this.setLogoMessage(
+        'error',
+        'admin.details.logoError',
+        'Unable to update the logo. Please try again.'
+      );
+    } finally {
+      this.logoRemoving = false;
+    }
   }
 
   async saveDetails() {
@@ -541,6 +761,59 @@ export class AdminRestaurantDetailsPage {
     }
   }
 
+  private async uploadLogo(file: File) {
+    const restaurantId = this.context.selectedRestaurantId;
+    if (restaurantId === null) {
+      return;
+    }
+
+    this.logoUploading = true;
+    this.logoMessage = '';
+    this.logoMessageType = '';
+
+    try {
+      const updatedRestaurant = await firstValueFrom(
+        this.restaurantService.uploadLogo(restaurantId, file)
+      );
+      this.currentRestaurant = updatedRestaurant;
+      this.setLogoMessage('success', 'admin.details.logoSaved', 'Logo updated!');
+      this.context.updateRestaurantInList(updatedRestaurant);
+      this.context.refreshSelectedRestaurant();
+    } catch (err) {
+      console.error(err);
+      this.setLogoMessage(
+        'error',
+        'admin.details.logoError',
+        'Unable to update the logo. Please try again.'
+      );
+    } finally {
+      this.logoUploading = false;
+    }
+  }
+
+  private validateLogoFile(file: File): boolean {
+    if (!this.logoAllowedMimeTypes.includes(file.type)) {
+      this.setLogoMessage(
+        'error',
+        'admin.details.logoInvalidType',
+        'Please choose a PNG, JPEG, SVG, or WebP file.'
+      );
+      return false;
+    }
+
+    if (file.size > this.logoMaxSizeBytes) {
+      this.setLogoMessage('error', 'admin.details.logoTooLarge', 'Choose a file smaller than 2 MB.');
+      return false;
+    }
+
+    return true;
+  }
+
+  private setLogoMessage(type: 'success' | 'error', key: string, fallback: string) {
+    this.logoMessage = this.i18n.translate(key, fallback);
+    this.logoMessageType = type;
+  }
+
   private buildUpdatePayload(trimmedName: string): RestaurantUpdateInput {
     const descriptionTranslations: Record<string, string> = {};
 
@@ -603,6 +876,13 @@ export class AdminRestaurantDetailsPage {
   private clearChainMessage() {
     this.chainMessage = '';
     this.chainMessageType = '';
+  }
+
+  private resetLogoStatus() {
+    this.logoUploading = false;
+    this.logoRemoving = false;
+    this.logoMessage = '';
+    this.logoMessageType = '';
   }
 
   private async promptCreateChain() {
