@@ -232,22 +232,6 @@ type DiscountHighlight = {
       --logo-size: 3.1rem;
     }
 
-    .card-media::after {
-      content: '';
-      position: absolute;
-      left: 0;
-      bottom: 0;
-      width: calc(var(--logo-size) + 1.8rem);
-      height: calc(var(--logo-size) + 1.8rem);
-      background: #fff;
-      border-top-left-radius: calc(var(--radius-card) - 6px);
-      border-bottom-left-radius: calc(var(--radius-card) - 6px);
-      border-top-right-radius: calc(var(--radius-card) - 6px);
-      border-bottom-right-radius: calc(var(--radius-card) - 6px);
-      z-index: 1;
-      pointer-events: none;
-    }
-
     .card-media img,
     .card-media .placeholder {
       position: relative;
@@ -292,15 +276,15 @@ type DiscountHighlight = {
       position: absolute;
       left: 0.55rem;
       bottom: 0.55rem;
-      width: calc(var(--logo-size) + 0.7rem);
-      height: calc(var(--logo-size) + 0.7rem);
+      width: calc(var(--logo-size));
+      height: calc(var(--logo-size));
       padding: 0.35rem;
       border-radius: 18px;
-      background: #fff;
+      //background: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 14px 32px rgba(15, 23, 42, 0.18);
+      box-shadow: -1px 1px 20px 9px rgb(255, 255, 255);
       z-index: 2;
     }
 
