@@ -4,7 +4,7 @@ import { MenuService } from '../menu/menu.service';
 import { RestaurantService } from './restaurant.service';
 import { AsyncPipe, CurrencyPipe, NgIf, NgFor, NgStyle, DOCUMENT, TitleCasePipe } from '@angular/common';
 import { Allergen, Card, MenuItem, Restaurant } from '../core/models';
-import { Observable, combineLatest, firstValueFrom, map, of, shareReplay, startWith, switchMap, tap, timer } from 'rxjs';
+import { BehaviorSubject, Observable, combineLatest, firstValueFrom, map, of, shareReplay, startWith, switchMap, tap, timer } from 'rxjs';
 import { CartCategorySelection, CartRestaurant, CartService } from '../cart/cart.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
@@ -176,32 +176,104 @@ type PendingCartAddition = {
       font-size: 1.5rem;
     }
 
+    .menu-search {
+      position: relative;
+      width: 100%;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .menu-search input {
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 999px;
+      padding: 0.65rem 1rem 0.65rem 2.65rem;
+      font: inherit;
+      background: rgba(255, 255, 255, 0.78);
+      backdrop-filter: blur(8px);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      width: 100%;
+    }
+
+    .menu-search input::placeholder {
+      color: rgba(16, 24, 18, 0.45);
+    }
+
+    .menu-search input:focus {
+      outline: none;
+      border-color: color-mix(in srgb, var(--brand-green) 65%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-green) 30%, transparent);
+      background: rgba(255, 255, 255, 0.92);
+    }
+
+    .menu-search-icon {
+      position: absolute;
+      left: 1.1rem;
+      width: 1.1rem;
+      height: 1.1rem;
+      color: rgba(16, 24, 18, 0.7);
+      pointer-events: none;
+    }
+
+    .menu-empty {
+      margin: 2.5rem 0;
+      padding: 2rem;
+      text-align: center;
+      border-radius: var(--radius-card);
+      background: rgba(4, 24, 16, 0.04);
+      color: rgba(16, 24, 18, 0.7);
+      font-weight: 500;
+    }
+
     .category-nav {
       display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
+      justify-content: center;
       margin-bottom: 2rem;
       position: sticky;
       top: 0;
       z-index: 20;
-      padding: 0.75rem 0;
-      background: transparent;
+      padding: clamp(0.75rem, 1vw, 1.25rem) 0;
+      //background: linear-gradient(to bottom, rgba(245, 247, 246, 0.92), rgba(245, 247, 246, 0.86));
+      //backdrop-filter: blur(12px);
+    }
+
+    .category-nav-surface {
+      width: min(980px, 100%);
+      //background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(18px) saturate(130%);
+      border-radius: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.75);
+      box-shadow: 0 12px 36px rgba(12, 32, 22, 0.12);
+      padding: clamp(0.85rem, 1.6vw, 1.25rem);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(0.75rem, 1.5vw, 1rem);
+    }
+
+    .category-nav-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      justify-content: center;
     }
 
     .category-nav button {
-      border: 1px solid var(--border-soft);
-      background: var(--surface);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      background: rgba(255, 255, 255, 0.66);
       border-radius: 999px;
       padding: 0.45rem 1rem;
       cursor: pointer;
       font-weight: 600;
-      color: var(--text-secondary);
-      transition: color 0.2s ease;
+      color: rgba(16, 24, 18, 0.72);
+      transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+      backdrop-filter: blur(6px);
     }
 
     .category-nav button:hover,
     .category-nav button:focus {
       color: var(--brand-green);
+      background: rgba(255, 255, 255, 0.9);
+      border-color: color-mix(in srgb, var(--brand-green) 35%, rgba(255, 255, 255, 0.7));
     }
 
     .category-nav button:focus-visible {
@@ -513,11 +585,39 @@ type PendingCartAddition = {
         </div>
       </section>
       <ng-container *ngIf="(menuCategories$ | async) as menuCategories">
-        <h3 *ngIf="menuCategories.length">{{ 'restaurants.menuHeading' | translate: 'Menu' }}</h3>
-        <nav class="category-nav" *ngIf="menuCategories.length">
-          <button type="button" *ngFor="let category of menuCategories" (click)="scrollTo(category.anchor)">
-            {{ category.name }}
-          </button>
+        <h3 *ngIf="menuCategories.length || searchTerm">
+          {{ 'restaurants.menuHeading' | translate: 'Menu' }}
+        </h3>
+        <nav class="category-nav" *ngIf="menuCategories.length || searchTerm">
+          <div class="category-nav-surface">
+            <div class="menu-search">
+              <svg class="menu-search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="2"></circle>
+                <line
+                  x1="16"
+                  y1="16"
+                  x2="20.5"
+                  y2="20.5"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                ></line>
+              </svg>
+              <input
+                type="search"
+                id="restaurant-menu-search"
+                [value]="searchTerm"
+                (input)="onSearchTermChange($any($event.target).value)"
+                [attr.placeholder]="'restaurantDetail.searchMenuPlaceholder' | translate: 'Search menu items'"
+                [attr.aria-label]="'restaurantDetail.searchMenu' | translate: 'Search menu'"
+              />
+            </div>
+            <div class="category-nav-buttons" *ngIf="menuCategories.length">
+              <button type="button" *ngFor="let category of menuCategories" (click)="scrollTo(category.anchor)">
+                {{ category.name }}
+              </button>
+            </div>
+          </div>
         </nav>
         <section class="menu-section" *ngFor="let category of menuCategories" [attr.id]="category.anchor">
           <h4>{{ category.name }}</h4>
@@ -593,6 +693,9 @@ type PendingCartAddition = {
             </div>
           </div>
         </section>
+        <div class="menu-empty" *ngIf="!menuCategories.length && searchTerm">
+          {{ 'restaurantDetail.menuSearchEmpty' | translate: 'No menu items match your search.' }}
+        </div>
       </ng-container>
 
     </ng-container>
@@ -667,7 +770,9 @@ export class RestaurantDetailPage implements OnDestroy {
 
   id = Number(this.route.snapshot.paramMap.get('id'));
   restaurant$: Observable<Restaurant> = this.rSvc.get(this.id).pipe(shareReplay({ bufferSize: 1, refCount: true }));
+  private searchTerm$ = new BehaviorSubject<string>('');
   menuCategories$: Observable<MenuCategoryGroup[]> = this.createMenuCategoriesStream();
+  searchTerm = '';
 
   defaultHeroBackground =
     'linear-gradient(135deg, color-mix(in srgb, var(--brand-green) 32%, transparent), color-mix(in srgb, var(--brand-green) 68%, black))';
@@ -743,6 +848,7 @@ export class RestaurantDetailPage implements OnDestroy {
     this.cartFlightTimeouts.clear();
     this.cartFlights.set([]);
     this.unlockBodyScroll();
+    this.searchTerm$.complete();
   }
 
   onPhotoSelection(files: FileList | null) {
@@ -784,10 +890,17 @@ export class RestaurantDetailPage implements OnDestroy {
     this.menuCategories$ = this.createMenuCategoriesStream();
   }
 
+  onSearchTermChange(value: string) {
+    const term = value ?? '';
+    this.searchTerm = term;
+    this.searchTerm$.next(term);
+  }
+
   private createMenuCategoriesStream(): Observable<MenuCategoryGroup[]> {
     return combineLatest([
       this.menuSvc.listByRestaurant(this.id).pipe(map(items => this.organizeMenu(items))),
       this.highlightMenuItemId$,
+      this.searchTerm$.pipe(map(term => term.trim().toLowerCase())),
     ]).pipe(
       tap(([, highlightId]) => {
         this.highlightMenuItemId = highlightId;
@@ -795,8 +908,31 @@ export class RestaurantDetailPage implements OnDestroy {
           this.scheduleHighlightScroll(highlightId);
         }
       }),
-      map(([categories]) => categories)
+      map(([categories, _highlightId, searchTerm]) => {
+        if (!searchTerm) {
+          return categories;
+        }
+
+        return categories
+          .map(category => ({
+            ...category,
+            items: category.items.filter(item => this.matchesSearchTerm(item, searchTerm)),
+          }))
+          .filter(category => category.items.length);
+      })
     );
+  }
+
+  private matchesSearchTerm(item: MenuItem, searchTerm: string): boolean {
+    if (!searchTerm) {
+      return true;
+    }
+
+    const values = [item.name, item.description]
+      .filter((value): value is string => typeof value === 'string' && value.length > 0)
+      .map(value => value.toLowerCase());
+
+    return values.some(value => value.includes(searchTerm));
   }
 
   hasDiscount(item: MenuItem): boolean {
