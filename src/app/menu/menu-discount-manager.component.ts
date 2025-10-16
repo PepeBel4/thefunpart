@@ -663,9 +663,21 @@ export class MenuDiscountManagerComponent implements OnDestroy {
       return [];
     }
 
-    return this.discounts.filter(discount =>
-      discount.menu_items.some(item => item.restaurant_id === restaurantId)
-    );
+    const menuItems = this.menuItems;
+
+    return this.discounts.filter(discount => {
+      if (discount.menu_items.some(item => item.restaurant_id === restaurantId)) {
+        return true;
+      }
+
+      if (!discount.menu_item_ids.length) {
+        return false;
+      }
+
+      return discount.menu_item_ids.some(id =>
+        menuItems.some(item => item.id === id && item.restaurant_id === restaurantId)
+      );
+    });
   }
 
   async createDiscount() {
@@ -1065,10 +1077,30 @@ export class MenuDiscountManagerComponent implements OnDestroy {
           .filter((item): item is typeof item & { restaurant_id: number } => item !== null)
       : [];
 
+    const knownMenuItemsById = new Map(this.menuItems.map(item => [item.id, item]));
+    const mergedMenuItems = [...menuItems];
+
+    for (const id of menuItemIds) {
+      if (mergedMenuItems.some(item => item.id === id)) {
+        continue;
+      }
+
+      const known = knownMenuItemsById.get(id);
+      if (!known) {
+        continue;
+      }
+
+      mergedMenuItems.push({
+        id: known.id,
+        name: known.name,
+        restaurant_id: known.restaurant_id,
+      });
+    }
+
     return {
       ...discount,
       menu_item_ids: menuItemIds,
-      menu_items: menuItems.map(item => ({ ...item })),
+      menu_items: mergedMenuItems.map(item => ({ ...item })),
     };
   }
 
