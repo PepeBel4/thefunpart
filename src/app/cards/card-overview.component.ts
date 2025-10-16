@@ -91,7 +91,7 @@ interface CardOverviewState {
       box-shadow: var(--shadow-soft);
       overflow: hidden;
       text-decoration: none;
-      color: inherit;
+      color: var(--text-primary);
       backdrop-filter: var(--glass-blur);
       -webkit-backdrop-filter: var(--glass-blur);
     }
@@ -132,7 +132,7 @@ interface CardOverviewState {
     .card-media .placeholder {
       font-size: 2.25rem;
       font-weight: 700;
-      color: rgba(10, 10, 10, 0.6);
+      color: var(--text-primary);
     }
 
     .card-content {
@@ -159,6 +159,7 @@ interface CardOverviewState {
       font-size: 1.15rem;
       font-weight: 600;
       letter-spacing: -0.01em;
+      color: var(--text-primary);
     }
 
     .card-content p {
