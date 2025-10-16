@@ -5,13 +5,14 @@ import { NgFor, NgIf } from '@angular/common';
 import { CartService } from '../cart/cart.service';
 import { TranslatePipe } from './translate.pipe';
 import { TranslationService } from '../core/translation.service';
-import { FormsModule } from '@angular/forms';
 import { UserMenuComponent } from './user-menu.component';
+
+type LanguageOption = { code: string; label: string; flag: string };
 
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [RouterLink, NgIf, NgFor, TranslatePipe, FormsModule, UserMenuComponent],
+  imports: [RouterLink, NgIf, NgFor, TranslatePipe, UserMenuComponent],
   styles: [`
     nav {
       position: sticky;
@@ -121,30 +122,6 @@ import { UserMenuComponent } from './user-menu.component';
       opacity: 0;
     }
 
-    .location-chip {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.45rem 1rem;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.12);
-      font-size: 0.85rem;
-      color: rgba(255, 255, 255, 0.85);
-    }
-
-    .location-chip::before {
-      content: '';
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--brand-green);
-      box-shadow: 0 0 0 4px rgba(6, 193, 103, 0.25);
-    }
-
-    .spacer {
-      flex: 1;
-    }
-
     .nav-links {
       display: flex;
       align-items: center;
@@ -167,35 +144,51 @@ import { UserMenuComponent } from './user-menu.component';
       color: #fff;
     }
 
-    .language-select {
-      position: relative;
+    .language-menu {
       display: inline-flex;
       align-items: center;
-      gap: 0.35rem;
-      padding: 0.35rem 0.75rem;
+      gap: 0.4rem;
+      padding: 0.35rem 0.6rem;
       border-radius: 999px;
       background: rgba(255, 255, 255, 0.12);
       color: rgba(255, 255, 255, 0.85);
+      margin-left: auto;
     }
 
-    .language-select select {
-      appearance: none;
+    .language-menu button {
       border: 0;
       background: transparent;
       color: inherit;
       font: inherit;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.6rem;
+      border-radius: 999px;
       cursor: pointer;
-      padding-right: 1.1rem;
+      transition: background 0.25s ease, color 0.25s ease;
     }
 
-    .language-select select:focus-visible {
-      outline: 2px solid rgba(255, 255, 255, 0.5);
-      outline-offset: 2px;
+    .language-menu button:hover,
+    .language-menu button:focus-visible {
+      background: rgba(255, 255, 255, 0.18);
+      color: #fff;
+      outline: none;
     }
 
-    .language-select::after {
-      content: '▾';
-      font-size: 0.75rem;
+    .language-menu button.active {
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+    }
+
+    .language-menu .flag {
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    .language-menu .label {
+      font-weight: 600;
     }
 
     .sr-only {
@@ -250,18 +243,9 @@ import { UserMenuComponent } from './user-menu.component';
         align-items: flex-start;
       }
 
-      .location-chip {
-        order: 4;
-        width: 100%;
-        justify-content: center;
-      }
-
-      .language-select {
+      .language-menu {
+        margin-left: 0;
         order: 5;
-      }
-
-      .spacer {
-        display: none;
       }
     }
 
@@ -301,10 +285,29 @@ import { UserMenuComponent } from './user-menu.component';
         text-align: center;
       }
 
-      .language-select {
+      .language-menu {
         order: 5;
         width: 100%;
         justify-content: center;
+        gap: 0.85rem;
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .language-menu button {
+        padding: 0.5rem;
+        border-radius: 999px;
+      }
+
+      .language-menu .label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
       }
 
       .nav-links a {
@@ -322,10 +325,6 @@ import { UserMenuComponent } from './user-menu.component';
         display: inline-flex;
         order: 3;
       }
-
-      .location-chip {
-        justify-content: flex-start;
-      }
     }
   `],
   template: `
@@ -334,9 +333,6 @@ import { UserMenuComponent } from './user-menu.component';
         <span class="brand-icon">🛵</span>
         thefunpart <span>eats</span>
       </a>
-      <div class="location-chip">
-        {{ 'nav.deliveryChip' | translate: 'Deliver now • 15-25 min' }}
-      </div>
       <button
         type="button"
         class="menu-toggle"
@@ -347,24 +343,26 @@ import { UserMenuComponent } from './user-menu.component';
         <span class="menu-icon" aria-hidden="true"><span></span></span>
         <span>{{ 'nav.menu' | translate: 'Menu' }}</span>
       </button>
-      <span class="spacer"></span>
       <div class="nav-links" id="primary-navigation" [class.open]="isMenuOpen()">
         <a routerLink="/" (click)="closeMenu()">{{ 'nav.discover' | translate: 'Discover' }}</a>
         <a routerLink="/b2b" (click)="closeMenu()">{{ 'nav.b2b' | translate: 'For restaurants' }}</a>
         <a routerLink="/orders" (click)="closeMenu()">{{ 'nav.orders' | translate: 'Orders' }}</a>
         <a *ngIf="auth.isLoggedIn()" routerLink="/admin" (click)="closeMenu()">{{ 'nav.manage' | translate: 'Manage' }}</a>
       </div>
-      <app-user-menu class="user-menu"></app-user-menu>
-      <label class="language-select">
-        <span class="sr-only">{{ 'nav.languageLabel' | translate: 'Language' }}</span>
-        <select
-          [ngModel]="selectedLanguage()"
-          (ngModelChange)="onLanguageChange($event)"
-          [attr.aria-label]="'nav.languageAria' | translate: 'Select website language'"
+      <div class="language-menu" role="group" aria-label="{{ 'nav.languageLabel' | translate: 'Language' }}">
+        <button
+          type="button"
+          *ngFor="let lang of languages"
+          (click)="onLanguageChange(lang.code)"
+          [class.active]="selectedLanguage() === lang.code"
+          [attr.aria-pressed]="selectedLanguage() === lang.code"
+          [attr.aria-label]="lang.label"
         >
-          <option *ngFor="let lang of languages" [value]="lang.code">{{ lang.label }}</option>
-        </select>
-      </label>
+          <span aria-hidden="true" class="flag">{{ lang.flag }}</span>
+          <span class="label">{{ lang.label }}</span>
+        </button>
+      </div>
+      <app-user-menu class="user-menu"></app-user-menu>
       <a routerLink="/checkout" class="cart-pill">
         <span aria-hidden="true" class="cart-icon">🛒</span>
         <span class="cart-count">{{ cart.count() }}</span>
@@ -379,7 +377,10 @@ export class NavbarComponent {
   auth = inject(AuthService);
   cart = inject(CartService);
   private i18n = inject(TranslationService);
-  languages = this.i18n.languages;
+  languages: LanguageOption[] = this.i18n.languages.map((lang) => ({
+    ...lang,
+    flag: this.flagFor(lang.code)
+  }));
   language = this.i18n.languageSignal;
   selectedLanguage = signal(this.language());
   isMenuOpen = signal(false);
@@ -392,6 +393,20 @@ export class NavbarComponent {
 
   onLanguageChange(code: string) {
     this.i18n.setLanguage(code);
+  }
+
+  private flagFor(code: string): string {
+    switch (code) {
+      case 'nl':
+        return '🇳🇱';
+      case 'fr':
+        return '🇫🇷';
+      case 'de':
+        return '🇩🇪';
+      case 'en':
+      default:
+        return '🇬🇧';
+    }
   }
 
   toggleMenu() {
