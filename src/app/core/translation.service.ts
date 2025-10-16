@@ -73,6 +73,8 @@ export class TranslationService {
       'checkout.subtitle': 'Confirm your delivery and get ready for a delicious drop-off.',
       'checkout.total': 'Total',
       'checkout.placeOrder': 'Place order',
+      'checkout.aiSuggestions.title': 'Recommended for your order',
+      'checkout.aiSuggestions.subtitle': 'Complete your meal with these smart picks.',
 
       'orders.title': 'Your orders',
       'orders.subtitle': 'Track deliveries and revisit your favourite meals.',
@@ -320,6 +322,8 @@ export class TranslationService {
       'checkout.subtitle': 'Bevestig je bezorging en maak je klaar voor een heerlijke levering.',
       'checkout.total': 'Totaal',
       'checkout.placeOrder': 'Bestelling plaatsen',
+      'checkout.aiSuggestions.title': 'Aanbevolen voor je bestelling',
+      'checkout.aiSuggestions.subtitle': 'Maak je maaltijd compleet met deze slimme suggesties.',
 
       'orders.title': 'Je bestellingen',
       'orders.subtitle': 'Volg bezorgingen en ontdek je favoriete gerechten opnieuw.',
@@ -568,6 +572,8 @@ export class TranslationService {
       'checkout.subtitle': 'Confirmez votre livraison et préparez-vous à une arrivée gourmande.',
       'checkout.total': 'Total',
       'checkout.placeOrder': 'Passer la commande',
+      'checkout.aiSuggestions.title': 'Recommandé pour votre commande',
+      'checkout.aiSuggestions.subtitle': 'Complétez votre repas avec ces suggestions intelligentes.',
 
       'orders.title': 'Vos commandes',
       'orders.subtitle': 'Suivez vos livraisons et retrouvez vos plats préférés.',
@@ -816,6 +822,8 @@ export class TranslationService {
       'checkout.subtitle': 'Bestätige deine Lieferung und freu dich auf eine köstliche Ankunft.',
       'checkout.total': 'Summe',
       'checkout.placeOrder': 'Bestellung aufgeben',
+      'checkout.aiSuggestions.title': 'Empfehlungen zu deiner Bestellung',
+      'checkout.aiSuggestions.subtitle': 'Vervollständige deine Mahlzeit mit diesen smarten Vorschlägen.',
 
       'orders.title': 'Deine Bestellungen',
       'orders.subtitle': 'Verfolge Lieferungen und entdecke deine Lieblingsgerichte erneut.',

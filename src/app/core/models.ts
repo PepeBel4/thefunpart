@@ -83,6 +83,15 @@ export interface MenuItem {
   photos?: RestaurantPhoto[];
 }
 
+export interface AiSuggestedMenuItem {
+  id: number;
+  name: string;
+  price_cents: number;
+  discounted_price_cents?: number | null;
+  description?: string | null;
+  reason?: string | null;
+}
+
 export interface MenuItemInput {
   name: string;
   description?: string;
