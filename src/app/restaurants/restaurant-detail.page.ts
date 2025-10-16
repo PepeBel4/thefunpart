@@ -1958,7 +1958,7 @@ export class RestaurantDetailPage implements OnDestroy {
 
   private extractLocationTelephone(location: Location): string | null {
     const telephoneRecord = location as Location & { telephone_number?: string | null };
-    const telephone = location.telephone ?? telephoneRecord.telephone_number ?? null;
+    const telephone = location.telephone_number ?? telephoneRecord.telephone_number ?? null;
 
     if (typeof telephone !== 'string') {
       return null;
