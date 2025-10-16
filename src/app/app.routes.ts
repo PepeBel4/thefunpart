@@ -31,6 +31,10 @@ export const appRoutes: Routes = [
         loadComponent: () => import('./admin/admin-menu.page').then(m => m.AdminMenuPage),
       },
       {
+        path: 'options',
+        loadComponent: () => import('./admin/admin-menu-options.page').then(m => m.AdminMenuOptionsPage),
+      },
+      {
         path: 'discounts',
         loadComponent: () => import('./admin/admin-discounts.page').then(m => m.AdminDiscountsPage),
       },
