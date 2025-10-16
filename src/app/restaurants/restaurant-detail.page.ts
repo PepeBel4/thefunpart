@@ -726,8 +726,8 @@ export class RestaurantDetailPage implements OnDestroy {
 
   id = Number(this.route.snapshot.paramMap.get('id'));
   restaurant$: Observable<Restaurant> = this.rSvc.get(this.id).pipe(shareReplay({ bufferSize: 1, refCount: true }));
-  menuCategories$: Observable<MenuCategoryGroup[]> = this.createMenuCategoriesStream();
   private searchTerm$ = new BehaviorSubject<string>('');
+  menuCategories$: Observable<MenuCategoryGroup[]> = this.createMenuCategoriesStream();
   searchTerm = '';
 
   defaultHeroBackground =
