@@ -24,6 +24,37 @@ export interface Restaurant {
   cuisines?: string[];
 }
 
+export interface Location {
+  id: number;
+  locatable_type: string;
+  locatable_id: number;
+  name: string;
+  location_type?: string | null;
+  address_line1?: string | null;
+  address_line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LocationInput {
+  name: string;
+  location_type?: string | null;
+  address_line1?: string | null;
+  address_line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
 export interface RestaurantUpdateInput {
   name?: string;
   description?: string;

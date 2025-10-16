@@ -226,6 +226,9 @@ import { TranslatePipe } from '../shared/translate.pipe';
           <a routerLink="photos" routerLinkActive="active">
             {{ 'admin.sections.photos' | translate: 'Restaurant photos' }}
           </a>
+          <a routerLink="locations" routerLinkActive="active">
+            {{ 'admin.sections.locations' | translate: 'Locations' }}
+          </a>
           <a routerLink="menu" routerLinkActive="active">
             {{ 'admin.sections.menu' | translate: 'Manage menu' }}
           </a>

@@ -28,6 +28,10 @@ export const appRoutes: Routes = [
         loadComponent: () => import('./admin/admin-restaurant-photos.page').then(m => m.AdminRestaurantPhotosPage),
       },
       {
+        path: 'locations',
+        loadComponent: () => import('./admin/admin-locations.page').then(m => m.AdminLocationsPage),
+      },
+      {
         path: 'menu',
         loadComponent: () => import('./admin/admin-menu.page').then(m => m.AdminMenuPage),
       },
