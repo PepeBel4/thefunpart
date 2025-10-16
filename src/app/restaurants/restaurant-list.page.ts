@@ -565,7 +565,12 @@ export class RestaurantListPage {
       restaurant.description_translations
     );
 
-    return resolved || this.i18n.translate('restaurants.defaultDescription', 'Popular choices • Comfort food');
+    const fallback = this.i18n.translate(
+      'restaurants.defaultDescription',
+      'Popular choices • Comfort food'
+    );
+
+    return this.formatRestaurantPreviewDescription(resolved || fallback);
   }
 
   getRestaurantInitial(restaurant: Restaurant): string {
@@ -595,6 +600,34 @@ export class RestaurantListPage {
     }
 
     return fallback?.trim() ?? '';
+  }
+
+  private formatRestaurantPreviewDescription(description: string): string {
+    const limit = 100;
+    const normalized = description.replace(/\s+/g, ' ').trim();
+
+    if (normalized.length <= limit) {
+      return normalized;
+    }
+
+    const softBoundary = limit + 15;
+    const nextWhitespace = normalized.indexOf(' ', limit);
+    if (nextWhitespace !== -1 && nextWhitespace <= softBoundary) {
+      return this.appendEllipsis(normalized.slice(0, nextWhitespace));
+    }
+
+    const previousWhitespace = normalized.lastIndexOf(' ', limit);
+    if (previousWhitespace !== -1) {
+      return this.appendEllipsis(normalized.slice(0, previousWhitespace));
+    }
+
+    return this.appendEllipsis(normalized.slice(0, limit));
+  }
+
+  private appendEllipsis(value: string): string {
+    const trimmed = value.replace(/[\s.,;:!?-]+$/, '').trim();
+    const safeValue = trimmed || value.trim() || value;
+    return safeValue + '…';
   }
 
   private buildLocaleCandidates(): string[] {
