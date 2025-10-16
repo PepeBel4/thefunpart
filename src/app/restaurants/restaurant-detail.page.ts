@@ -232,13 +232,13 @@ type PendingCartAddition = {
       top: 0;
       z-index: 20;
       padding: clamp(0.75rem, 1vw, 1.25rem) 0;
-      background: linear-gradient(to bottom, rgba(245, 247, 246, 0.92), rgba(245, 247, 246, 0.86));
-      backdrop-filter: blur(12px);
+      //background: linear-gradient(to bottom, rgba(245, 247, 246, 0.92), rgba(245, 247, 246, 0.86));
+      //backdrop-filter: blur(12px);
     }
 
     .category-nav-surface {
       width: min(980px, 100%);
-      background: rgba(255, 255, 255, 0.82);
+      //background: rgba(255, 255, 255, 0.82);
       backdrop-filter: blur(18px) saturate(130%);
       border-radius: 22px;
       border: 1px solid rgba(255, 255, 255, 0.75);
