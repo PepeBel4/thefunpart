@@ -14,7 +14,6 @@ type OptionModifierType = 'none' | 'amount' | 'percentage';
 interface AssignmentFormEntry {
   menuItemId: number;
   name: string;
-  selected: boolean;
   modifierType: OptionModifierType;
   amount: string;
   percentage: string;
@@ -145,23 +144,15 @@ interface ValidationErrors {
       gap: 1rem;
     }
 
-    .assignment-toggle {
-      display: flex;
-      align-items: center;
-      gap: 0.65rem;
+    .assignment-name {
       font-weight: 600;
-    }
-
-    .assignment-toggle input[type='checkbox'] {
-      width: 1.1rem;
-      height: 1.1rem;
-      accent-color: var(--brand-green);
+      font-size: 0.95rem;
     }
 
     .modifiers {
       display: grid;
       gap: 0.5rem;
-      padding-left: 1.75rem;
+      padding-left: 0;
     }
 
     .modifier-row {
@@ -317,8 +308,13 @@ interface ValidationErrors {
 
         <section class="assignment-section" *ngIf="newOption.categoryId !== null">
           <div class="assignment-header">
-            <h4>{{ 'menu.options.form.menuItemsLabel' | translate: 'Apply to menu items' }}</h4>
-            <p>{{ 'menu.options.form.menuItemsHint' | translate: 'Select the dishes that should include this option.' }}</p>
+            <h4>{{ 'menu.options.form.menuItemsLabel' | translate: 'Menu items in this category' }}</h4>
+            <p>
+              {{
+                'menu.options.form.menuItemsHint'
+                  | translate: 'All dishes in this category automatically include the option. Adjust price modifiers if needed.'
+              }}
+            </p>
           </div>
 
           <p *ngIf="!newOption.assignments.length" class="empty-state">
@@ -327,18 +323,9 @@ interface ValidationErrors {
 
           <div class="assignment-list" *ngIf="newOption.assignments.length">
             <div class="assignment-row" *ngFor="let assignment of newOption.assignments">
-              <label class="assignment-toggle">
-                <input
-                  type="checkbox"
-                  name="newAssignment-{{ assignment.menuItemId }}"
-                  [(ngModel)]="assignment.selected"
-                  (ngModelChange)="toggleAssignment('new', assignment, $event)"
-                  [ngModelOptions]="{ standalone: true }"
-                />
-                <span>{{ assignment.name }}</span>
-              </label>
+              <div class="assignment-name">{{ assignment.name }}</div>
 
-              <div class="modifiers" *ngIf="assignment.selected">
+              <div class="modifiers">
                 <div class="modifier-row">
                   <label>
                     {{ 'menu.options.form.modifierLabel' | translate: 'Price modifier' }}
@@ -501,11 +488,12 @@ interface ValidationErrors {
 
               <section class="assignment-section" *ngIf="editModel.categoryId !== null">
                 <div class="assignment-header">
-                  <h4>{{ 'menu.options.form.menuItemsLabel' | translate: 'Apply to menu items' }}</h4>
+                  <h4>{{ 'menu.options.form.menuItemsLabel' | translate: 'Menu items in this category' }}</h4>
                   <p>
                     {{
                       'menu.options.form.menuItemsHint'
-                        | translate: 'Select the dishes that should include this option.'
+                        | translate:
+                          'All dishes in this category automatically include the option. Adjust price modifiers if needed.'
                     }}
                   </p>
                 </div>
@@ -516,18 +504,9 @@ interface ValidationErrors {
 
                 <div class="assignment-list" *ngIf="editModel.assignments.length">
                   <div class="assignment-row" *ngFor="let assignment of editModel.assignments">
-                    <label class="assignment-toggle">
-                      <input
-                        type="checkbox"
-                        name="editAssignment-{{ option.id }}-{{ assignment.menuItemId }}"
-                        [(ngModel)]="assignment.selected"
-                        (ngModelChange)="toggleAssignment('edit', assignment, $event)"
-                        [ngModelOptions]="{ standalone: true }"
-                      />
-                      <span>{{ assignment.name }}</span>
-                    </label>
+                    <div class="assignment-name">{{ assignment.name }}</div>
 
-                    <div class="modifiers" *ngIf="assignment.selected">
+                    <div class="modifiers">
                       <div class="modifier-row">
                         <label>
                           {{ 'menu.options.form.modifierLabel' | translate: 'Price modifier' }}
@@ -872,16 +851,6 @@ export class MenuOptionsManagerComponent implements OnChanges {
     }
   }
 
-  toggleAssignment(context: 'new' | 'edit', assignment: AssignmentFormEntry, selected: boolean): void {
-    assignment.selected = selected;
-    if (!selected) {
-      assignment.modifierType = 'none';
-      assignment.amount = '';
-      assignment.percentage = '';
-    }
-    this.clearAssignmentErrors(context, assignment.menuItemId);
-  }
-
   changeModifier(context: 'new' | 'edit', assignment: AssignmentFormEntry, type: OptionModifierType): void {
     assignment.modifierType = type;
     if (type === 'amount') {
@@ -1026,11 +995,6 @@ export class MenuOptionsManagerComponent implements OnChanges {
     ).map(item => ({ id: item.id, name: item.name }));
 
     const sorted = this.sortByName(available);
-    const selectedIds = new Set(
-      option.menu_item_ids && option.menu_item_ids.length
-        ? option.menu_item_ids
-        : (option.option_assignments ?? []).map(assignment => assignment.menu_item_id)
-    );
     const optionItems = new Map((option.option_items ?? []).map(item => [item.menu_item_id, item]));
 
     return sorted.map(item => {
@@ -1039,7 +1003,6 @@ export class MenuOptionsManagerComponent implements OnChanges {
       return {
         menuItemId: item.id,
         name: item.name,
-        selected: selectedIds.has(item.id),
         modifierType,
         amount: modifierType === 'amount' ? this.formatCurrencyInput(existing?.price_modifier_amount_cents) : '',
         percentage:
@@ -1055,7 +1018,6 @@ export class MenuOptionsManagerComponent implements OnChanges {
     return {
       menuItemId,
       name,
-      selected: false,
       modifierType: 'none',
       amount: '',
       percentage: '',
@@ -1094,17 +1056,10 @@ export class MenuOptionsManagerComponent implements OnChanges {
       errors.minMaxInvalid = true;
     }
 
-    const menuItemIds: number[] = [];
     const optionItems: MenuOptionItemInput[] = [];
     const menuItemOptionId = baseOption?.id;
 
     for (const assignment of form.assignments) {
-      if (!assignment.selected) {
-        continue;
-      }
-
-      menuItemIds.push(assignment.menuItemId);
-
       if (assignment.modifierType === 'amount') {
         const parsed = this.parseCurrency(assignment.amount);
         if (!parsed.valid) {
@@ -1135,7 +1090,7 @@ export class MenuOptionsManagerComponent implements OnChanges {
           price_modifier_amount_cents: null,
           price_modifier_percentage: parsed.percentage,
         });
-      } else if (assignment.optionItemId != null) {
+      } else {
         optionItems.push({
           id: assignment.optionItemId,
           menu_item_option_id: menuItemOptionId,
@@ -1166,12 +1121,8 @@ export class MenuOptionsManagerComponent implements OnChanges {
       category_id: form.categoryId,
       min_selections: min.value,
       max_selections: max.value,
-      menu_item_ids: menuItemIds,
+      option_items: optionItems,
     };
-
-    if (optionItems.length) {
-      payload.option_items = optionItems;
-    }
 
     return { payload, errors };
   }

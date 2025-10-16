@@ -17,7 +17,6 @@ export interface MenuOptionInput {
   category_id: number;
   min_selections: number;
   max_selections: number;
-  menu_item_ids: number[];
   option_items?: MenuOptionItemInput[];
 }
 
