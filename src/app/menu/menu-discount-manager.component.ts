@@ -632,12 +632,14 @@ export class MenuDiscountManagerComponent implements OnDestroy {
   loadError = '';
 
   @Input()
-  set restaurantId(value: number | null) {
-    if (value === this.restaurantIdValue) {
+  set restaurantId(value: number | string | null) {
+    const nextValue = this.parseNumber(value);
+
+    if (nextValue === this.restaurantIdValue) {
       return;
     }
 
-    this.restaurantIdValue = value ?? null;
+    this.restaurantIdValue = nextValue;
 
     if (this.restaurantIdValue === null) {
       this.cancelPendingRequests();
@@ -646,7 +648,10 @@ export class MenuDiscountManagerComponent implements OnDestroy {
     }
 
     this.cancelPendingRequests();
-    void this.initialize(this.restaurantIdValue);
+    const restaurantId = this.restaurantIdValue;
+    if (restaurantId !== null) {
+      void this.initialize(restaurantId);
+    }
   }
 
   get restaurantId(): number | null {
