@@ -3,6 +3,7 @@ import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom, tap } from 'rxjs';
 import { ChainService } from '../chains/chain.service';
+import { coerceHexColor, DEFAULT_BRAND_COLOR, normalizeHexColor } from '../core/color-utils';
 import { Chain, Restaurant, RestaurantUpdateInput } from '../core/models';
 import { TranslationService } from '../core/translation.service';
 import { RESTAURANT_CUISINES } from '../restaurants/cuisines';
@@ -404,7 +405,7 @@ export class AdminRestaurantDetailsPage {
     name: '',
     descriptions: {},
     cuisines: [],
-    primaryColor: '#06c167',
+    primaryColor: DEFAULT_BRAND_COLOR,
   };
   detailsSaving = false;
   detailsMessage = '';
@@ -531,7 +532,7 @@ export class AdminRestaurantDetailsPage {
       name: restaurant.name ?? '',
       descriptions,
       cuisines: [...(restaurant.cuisines ?? [])],
-      primaryColor: restaurant.primary_color ?? '#06c167',
+      primaryColor: coerceHexColor(restaurant.primary_color),
     };
 
     const primaryDescription = restaurant.description ?? '';
@@ -562,7 +563,14 @@ export class AdminRestaurantDetailsPage {
     }
 
     payload.cuisines = [...this.detailsForm.cuisines];
-    payload.primary_color = this.detailsForm.primaryColor;
+
+    const normalizedColor = normalizeHexColor(this.detailsForm.primaryColor) ?? DEFAULT_BRAND_COLOR;
+    payload.primary_color = normalizedColor;
+
+    this.detailsForm = {
+      ...this.detailsForm,
+      primaryColor: normalizedColor,
+    };
 
     return payload;
   }

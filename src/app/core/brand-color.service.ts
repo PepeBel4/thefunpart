@@ -1,5 +1,6 @@
 import { DOCUMENT } from '@angular/common';
 import { Inject, Injectable } from '@angular/core';
+import { DEFAULT_BRAND_COLOR, normalizeHexColor } from './color-utils';
 
 @Injectable({ providedIn: 'root' })
 export class BrandColorService {
@@ -12,13 +13,13 @@ export class BrandColorService {
     const root = this.document.documentElement;
     const computedStyle = this.document.defaultView?.getComputedStyle(root);
     const color = computedStyle
-      ? this.normalizeHex(computedStyle.getPropertyValue('--brand-green'))
+      ? normalizeHexColor(computedStyle.getPropertyValue('--brand-green'))
       : null;
     const onPrimary = computedStyle
-      ? this.normalizeHex(computedStyle.getPropertyValue('--brand-on-primary'))
+      ? normalizeHexColor(computedStyle.getPropertyValue('--brand-on-primary'))
       : null;
 
-    this.defaultColor = color ?? '#06c167';
+    this.defaultColor = color ?? DEFAULT_BRAND_COLOR;
     this.appliedColor = this.defaultColor;
 
     if (!onPrimary) {
@@ -27,7 +28,7 @@ export class BrandColorService {
   }
 
   setOverride(color: string | null | undefined): void {
-    const normalized = this.normalizeHex(color);
+    const normalized = normalizeHexColor(color);
 
     if (!normalized) {
       this.applyIfNeeded(this.defaultColor);
@@ -97,7 +98,7 @@ export class BrandColorService {
   }
 
   private hexToRgbArray(hex: string): [number, number, number] | null {
-    const normalized = this.normalizeHex(hex);
+    const normalized = normalizeHexColor(hex);
     if (!normalized) {
       return null;
     }
@@ -110,22 +111,4 @@ export class BrandColorService {
     return [r, g, b];
   }
 
-  private normalizeHex(input: string | null | undefined): string | null {
-    const value = input?.trim();
-    if (!value) {
-      return null;
-    }
-
-    const hexMatch = value.match(/^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
-    if (!hexMatch) {
-      return null;
-    }
-
-    const hex = hexMatch[1];
-    if (hex.length === 3) {
-      return `#${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}`.toLowerCase();
-    }
-
-    return `#${hex.toLowerCase()}`;
-  }
 }
