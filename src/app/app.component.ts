@@ -3,11 +3,12 @@ import { RouterOutlet } from '@angular/router';
 import { NavbarComponent } from './shared/navbar.component';
 import { CartSidebarComponent } from './cart/card-sidebar.component';
 import { CookieConsentComponent } from './shared/cookie-consent.component';
+import { CardSpotlightComponent } from './cards/card-spotlight.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NavbarComponent, CartSidebarComponent, CookieConsentComponent],
+  imports: [RouterOutlet, NavbarComponent, CartSidebarComponent, CookieConsentComponent, CardSpotlightComponent],
   styles: [`
     :host {
       display: grid;
@@ -32,6 +33,12 @@ import { CookieConsentComponent } from './shared/cookie-consent.component';
       gap: 1.75rem;
     }
 
+    .sidebar-shell {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
     @media (max-width: 1080px) {
       main {
         gap: 2rem;
@@ -44,6 +51,10 @@ import { CookieConsentComponent } from './shared/cookie-consent.component';
         grid-template-columns: 1fr;
         padding-bottom: 2.5rem;
       }
+
+      .sidebar-shell {
+        gap: 1.25rem;
+      }
     }
   `],
   template: `
@@ -52,7 +63,10 @@ import { CookieConsentComponent } from './shared/cookie-consent.component';
       <section class="page-shell">
         <router-outlet />
       </section>
-      <app-cart-sidebar />
+      <div class="sidebar-shell">
+        <app-card-spotlight />
+        <app-cart-sidebar />
+      </div>
     </main>
     <app-cookie-consent />
   `
