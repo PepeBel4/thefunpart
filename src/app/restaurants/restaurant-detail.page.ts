@@ -79,6 +79,23 @@ type PendingCartAddition = {
       max-width: 540px;
     }
 
+    .hero-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .hero-logo {
+      width: clamp(64px, 10vw, 96px);
+      aspect-ratio: 1;
+      border-radius: 22%;
+      object-fit: cover;
+      background: rgba(255, 255, 255, 0.18);
+      padding: 0.35rem;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.24);
+    }
+
     .hero-title {
       font-size: clamp(2.5rem, 5vw, 3.75rem);
       font-weight: 700;
@@ -434,6 +451,14 @@ type PendingCartAddition = {
         min-height: 240px;
       }
 
+      .hero-header {
+        align-items: flex-start;
+      }
+
+      .hero-logo {
+        width: 56px;
+      }
+
       .menu-grid {
         grid-template-columns: 1fr;
       }
@@ -446,7 +471,16 @@ type PendingCartAddition = {
         [ngStyle]="{ 'background-image': (heroBackground$ | async) || defaultHeroBackground }"
       >
         <div class="hero-content">
-          <h2 class="hero-title">{{ getRestaurantName(r) }}</h2>
+          <div class="hero-header">
+            <img
+              *ngIf="r.logo?.url as logoUrl"
+              class="hero-logo"
+              [src]="logoUrl"
+              [alt]="getRestaurantName(r) + ' logo'"
+              loading="lazy"
+            />
+            <h2 class="hero-title">{{ getRestaurantName(r) }}</h2>
+          </div>
           <p>
             {{ getRestaurantDescription(r) }}
           </p>
