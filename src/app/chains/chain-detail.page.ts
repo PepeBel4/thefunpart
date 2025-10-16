@@ -1,10 +1,12 @@
 import { NgFor, NgIf, NgSwitch, NgSwitchCase, NgSwitchDefault } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { EMPTY, catchError, map, switchMap, tap } from 'rxjs';
-import { Restaurant } from '../core/models';
+import { EMPTY, catchError, map, of, switchMap, tap } from 'rxjs';
+import { Card, Restaurant } from '../core/models';
 import { RestaurantService } from '../restaurants/restaurant.service';
+import { CardService } from '../cards/card.service';
+import { CardSpotlightEntry, CardSpotlightService } from '../cards/card-spotlight.service';
 
 interface ChainDetailState {
   status: 'loading' | 'ready' | 'empty' | 'error';
@@ -163,9 +165,13 @@ interface ChainDetailState {
     </ng-container>
   `,
 })
-export class ChainDetailPage {
+export class ChainDetailPage implements OnDestroy {
   private route = inject(ActivatedRoute);
   private restaurants = inject(RestaurantService);
+  private cards = inject(CardService);
+  private cardSpotlight = inject(CardSpotlightService);
+  private chainCard: Card | null = null;
+  private currentChainId: number | null = null;
 
   readonly state = signal<ChainDetailState>({ status: 'loading', chainName: 'Chain', restaurants: [] });
 
@@ -175,7 +181,13 @@ export class ChainDetailPage {
         takeUntilDestroyed(),
         map(params => Number(params.get('id'))),
         tap(chainId => {
-          const chainName = Number.isFinite(chainId) && chainId > 0 ? `Chain #${chainId}` : 'Chain';
+          const validId = Number.isFinite(chainId) && chainId > 0 ? chainId : null;
+          const chainName = validId ? `Chain #${validId}` : 'Chain';
+          this.currentChainId = validId;
+          if (validId == null) {
+            this.chainCard = null;
+            this.cardSpotlight.clear();
+          }
           this.state.set({ status: 'loading', chainName, restaurants: [] });
         }),
         switchMap(chainId => {
@@ -197,7 +209,128 @@ export class ChainDetailPage {
       )
       .subscribe(state => {
         this.state.set(state);
+        this.updateChainSpotlight();
       });
+
+    this.route.paramMap
+      .pipe(
+        takeUntilDestroyed(),
+        map(params => Number(params.get('id'))),
+        switchMap(chainId => {
+          if (!Number.isFinite(chainId) || chainId <= 0) {
+            return of(null);
+          }
+
+          return this.cards.findForChain(chainId);
+        })
+      )
+      .subscribe(card => {
+        this.chainCard = card;
+        this.updateChainSpotlight();
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.cardSpotlight.clear();
+  }
+
+  private updateChainSpotlight() {
+    const snapshot = this.state();
+    if (snapshot.status !== 'ready' || !this.chainCard) {
+      this.cardSpotlight.clear();
+      return;
+    }
+
+    this.cardSpotlight.set(this.presentChainSpotlight(snapshot, this.chainCard));
+  }
+
+  private presentChainSpotlight(state: ChainDetailState, card: Card): CardSpotlightEntry {
+    const type: 'restaurant' | 'chain' = card.chain_id || card.chain ? 'chain' : 'restaurant';
+    const titleSource =
+      (type === 'chain' ? card.chain?.name : card.restaurant?.name) ??
+      card.chain?.name ??
+      card.restaurant?.name ??
+      state.chainName ??
+      'Loyalty card';
+    const title = titleSource.trim() || 'Loyalty card';
+    const subtitle =
+      type === 'chain'
+        ? this.buildChainSubtitle(state.restaurants.length)
+        : card.restaurant?.name ?? null;
+
+    return {
+      id: card.id,
+      type,
+      title,
+      subtitle,
+      loyaltyPoints: card.loyalty_points,
+      creditCents: card.credit_cents,
+      heroPhoto: this.pickChainHeroPhoto(state.restaurants),
+      placeholderInitial: this.buildSpotlightInitial(title),
+      linkCommands: this.buildChainLinkCommands(type, card),
+    };
+  }
+
+  private buildChainSubtitle(count: number): string | null {
+    if (!count) {
+      return null;
+    }
+
+    return count === 1 ? 'Valid at 1 location' : `Valid at ${count} locations`;
+  }
+
+  private buildChainLinkCommands(type: 'restaurant' | 'chain', card: Card): (string | number)[] | null {
+    const chainId = card.chain_id ?? card.chain?.id ?? this.currentChainId;
+    const restaurantId = card.restaurant_id ?? card.restaurant?.id ?? null;
+
+    if (type === 'chain' && chainId != null) {
+      return ['/chains', chainId];
+    }
+
+    if (restaurantId != null) {
+      return ['/restaurants', restaurantId];
+    }
+
+    if (chainId != null) {
+      return ['/chains', chainId];
+    }
+
+    return null;
+  }
+
+  private pickChainHeroPhoto(restaurants: Restaurant[]): string | null {
+    for (const restaurant of restaurants) {
+      const candidates = this.collectRestaurantPhotos(restaurant);
+      if (candidates.length) {
+        return candidates[0] ?? null;
+      }
+    }
+
+    return null;
+  }
+
+  private collectRestaurantPhotos(restaurant: Restaurant): string[] {
+    const candidates: string[] = [];
+
+    if (restaurant.photos?.length) {
+      candidates.push(...restaurant.photos.map(photo => photo.url).filter((url): url is string => Boolean(url)));
+    }
+
+    if (restaurant.photo_urls?.length) {
+      candidates.push(...restaurant.photo_urls.filter((url): url is string => Boolean(url)));
+    }
+
+    return candidates;
+  }
+
+  private buildSpotlightInitial(title: string): string {
+    const trimmed = title.trim();
+    if (!trimmed) {
+      return '?';
+    }
+
+    const [firstWord] = trimmed.split(/\s+/);
+    return firstWord?.charAt(0).toUpperCase() ?? '?';
   }
 
   private buildState(chainId: number, restaurants: Restaurant[]): ChainDetailState {
