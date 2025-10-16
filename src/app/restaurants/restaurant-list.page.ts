@@ -10,6 +10,7 @@ import { AuthService } from '../core/auth.service';
 import { ProfileService } from '../core/profile.service';
 import { RESTAURANT_CUISINES } from './cuisines';
 import { MenuService } from '../menu/menu.service';
+import { CardOverviewComponent } from '../cards/card-overview.component';
 
 type DiscountHighlight = {
   restaurant: Restaurant;
@@ -23,7 +24,7 @@ type DiscountHighlight = {
 @Component({
   standalone: true,
   selector: 'app-restaurant-list',
-  imports: [AsyncPipe, RouterLink, NgFor, NgIf, TitleCasePipe, TranslatePipe, CurrencyPipe],
+  imports: [AsyncPipe, RouterLink, NgFor, NgIf, TitleCasePipe, TranslatePipe, CurrencyPipe, CardOverviewComponent],
   styles: [`
     :host {
       display: flex;
@@ -290,6 +291,7 @@ type DiscountHighlight = {
         {{ 'restaurants.subheading' | translate: 'Hand-picked favourites delivering fast, just like the Uber Eats app.' }}
       </p>
     </div>
+    <app-card-overview *ngIf="isLoggedIn()" />
     <ng-container *ngIf="discounts$ | async as discounts">
       <section class="discounts-section" *ngIf="discounts.length">
         <div class="discounts-header">
@@ -413,6 +415,10 @@ export class RestaurantListPage {
 
       return () => subscription.unsubscribe();
     });
+  }
+
+  isLoggedIn(): boolean {
+    return this.auth.isLoggedIn();
   }
 
   private ensureHeroPhoto(restaurant: Restaurant): string | undefined {

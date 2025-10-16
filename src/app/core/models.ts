@@ -33,6 +33,32 @@ export interface RestaurantUpdateInput {
   cuisines?: string[];
 }
 
+export interface CardTransaction {
+  id: number;
+  entry_type: string;
+  loyalty_points_delta: number;
+  credit_cents_delta: number;
+  loyalty_points_balance: number;
+  credit_cents_balance: number;
+  description?: string | null;
+  metadata?: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Card {
+  id: number;
+  loyalty_points: number;
+  credit_cents: number;
+  restaurant_id?: number | null;
+  chain_id?: number | null;
+  restaurant?: Pick<Restaurant, 'id' | 'name'> | null;
+  chain?: Chain | null;
+  created_at: string;
+  updated_at: string;
+  transactions?: CardTransaction[];
+}
+
 export interface Allergen {
   id: number;
   name?: string;
