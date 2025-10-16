@@ -1,22 +1,47 @@
-import { CurrencyPipe, NgFor, NgIf } from '@angular/common';
+import { NgFor, NgIf } from '@angular/common';
 import { Component, Input, OnChanges, SimpleChanges, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
-import { MenuOption } from '../core/models';
+import { MenuItem, MenuItemCategory, MenuOption, MenuOptionItem } from '../core/models';
 import { TranslationService } from '../core/translation.service';
 import { TranslatePipe } from '../shared/translate.pipe';
-import { MenuOptionInput, MenuOptionsService } from './menu-options.service';
+import { CategoriesService } from './categories.service';
+import { MenuService } from './menu.service';
+import { MenuOptionInput, MenuOptionItemInput, MenuOptionsService } from './menu-options.service';
+
+type OptionModifierType = 'none' | 'amount' | 'percentage';
+
+interface AssignmentFormEntry {
+  menuItemId: number;
+  name: string;
+  selected: boolean;
+  modifierType: OptionModifierType;
+  amount: string;
+  percentage: string;
+  optionItemId?: number;
+}
 
 interface OptionFormModel {
   title: string;
-  price: string;
-  description: string;
+  categoryId: number | null;
+  minSelections: string;
+  maxSelections: string;
+  assignments: AssignmentFormEntry[];
+}
+
+interface ValidationErrors {
+  categoryMissing: boolean;
+  minInvalid: boolean;
+  maxInvalid: boolean;
+  minMaxInvalid: boolean;
+  amountInvalidIds: number[];
+  percentageInvalidIds: number[];
 }
 
 @Component({
   standalone: true,
   selector: 'app-menu-options-manager',
-  imports: [FormsModule, NgFor, NgIf, CurrencyPipe, TranslatePipe],
+  imports: [FormsModule, NgFor, NgIf, TranslatePipe],
   styles: [`
     :host {
       display: block;
@@ -34,19 +59,15 @@ interface OptionFormModel {
       margin-top: 2.5rem;
     }
 
-    h3 {
-      margin: 0;
-      font-size: 1.5rem;
-    }
-
-    p.description {
-      margin: 0;
-      color: var(--text-secondary);
-    }
-
     form.option-form {
       display: grid;
-      gap: 0.75rem;
+      gap: 1rem;
+    }
+
+    .field-grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     }
 
     label {
@@ -58,7 +79,7 @@ interface OptionFormModel {
     }
 
     input,
-    textarea {
+    select {
       width: 100%;
       padding: 0.65rem 0.75rem;
       border-radius: 10px;
@@ -67,9 +88,85 @@ interface OptionFormModel {
       font: inherit;
     }
 
-    textarea {
-      min-height: 72px;
-      resize: vertical;
+    .assignment-section {
+      border-top: 1px solid var(--border-soft);
+      padding-top: 1rem;
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .assignment-header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .assignment-header h4 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .assignment-header p {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    .assignment-list {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .assignment-row {
+      background: var(--surface-elevated);
+      border-radius: var(--radius-card);
+      border: 1px solid var(--border-soft);
+      padding: 0.85rem 1rem;
+      display: grid;
+      gap: 0.6rem;
+    }
+
+    .options-list {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .option-card {
+      background: var(--surface-elevated);
+      border-radius: var(--radius-card);
+      border: 1px solid rgba(10, 10, 10, 0.05);
+      padding: 1.1rem 1.25rem;
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .edit-grid {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .assignment-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      font-weight: 600;
+    }
+
+    .assignment-toggle input[type='checkbox'] {
+      width: 1.1rem;
+      height: 1.1rem;
+      accent-color: var(--brand-green);
+    }
+
+    .modifiers {
+      display: grid;
+      gap: 0.5rem;
+      padding-left: 1.75rem;
+    }
+
+    .modifier-row {
+      display: grid;
+      gap: 0.4rem;
     }
 
     .actions {
@@ -133,6 +230,7 @@ interface OptionFormModel {
     .error {
       color: #d14343;
       font-size: 0.9rem;
+      margin: 0;
     }
 
     .empty-state {
@@ -140,93 +238,173 @@ interface OptionFormModel {
       font-style: italic;
     }
 
-    .options-list {
-      display: grid;
-      gap: 1rem;
-    }
-
-    .option-card {
-      background: var(--surface-elevated);
-      border-radius: var(--radius-card);
-      border: 1px solid rgba(10, 10, 10, 0.05);
-      padding: 1.1rem 1.25rem;
-      display: grid;
-      gap: 0.6rem;
-    }
-
-    .option-header {
-      display: flex;
-      justify-content: space-between;
-      gap: 1rem;
-      align-items: flex-start;
-    }
-
-    .option-header h4 {
-      margin: 0;
-      font-size: 1.1rem;
-    }
-
-    .option-header p {
-      margin: 0.35rem 0 0;
-      color: var(--text-secondary);
-    }
-
-    .option-price {
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    .edit-grid {
-      display: grid;
-      gap: 0.75rem;
-    }
-
     @media (max-width: 600px) {
-      .option-header {
-        flex-direction: column;
-        align-items: flex-start;
+      .field-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .modifiers {
+        padding-left: 0;
       }
     }
   `],
   template: `
     <div class="manager-card">
       <form class="option-form" (ngSubmit)="createOption()">
-        <label>
-          {{ 'menu.options.form.nameLabel' | translate: 'Option name' }}
-          <input
-            name="optionTitle"
-            [(ngModel)]="newOption.title"
-            required
-            placeholder="{{ 'menu.options.form.nameLabel' | translate: 'Option name' }}"
-          />
-        </label>
-        <label>
-          {{ 'menu.options.form.priceLabel' | translate: 'Price (EUR)' }}
-          <input
-            name="optionPrice"
-            [(ngModel)]="newOption.price"
-            [attr.placeholder]="'menu.options.form.pricePlaceholder' | translate: 'e.g. 1.50'"
-          />
-        </label>
-        <label>
-          {{ 'menu.options.form.descriptionLabel' | translate: 'Description' }}
-          <textarea
-            name="optionDescription"
-            [(ngModel)]="newOption.description"
-            [attr.placeholder]="
-              'menu.options.form.descriptionPlaceholder' | translate: 'Optional description'
-            "
-          ></textarea>
-        </label>
+        <div class="field-grid">
+          <label>
+            {{ 'menu.options.form.titleLabel' | translate: 'Option title' }}
+            <input
+              name="optionTitle"
+              [(ngModel)]="newOption.title"
+              required
+              placeholder="{{ 'menu.options.form.titleLabel' | translate: 'Option title' }}"
+            />
+          </label>
+          <label>
+            {{ 'menu.options.form.categoryLabel' | translate: 'Category' }}
+            <select
+              name="optionCategory"
+              [(ngModel)]="newOption.categoryId"
+              (ngModelChange)="handleCategoryChange('new', $event)"
+              [ngModelOptions]="{ standalone: true }"
+            >
+              <option [ngValue]="null">
+                {{ 'menu.options.form.categoryPlaceholder' | translate: 'Select a category' }}
+              </option>
+              <option *ngFor="let category of categories" [ngValue]="category.id">
+                {{ resolveCategoryName(category) }}
+              </option>
+            </select>
+          </label>
+          <label>
+            {{ 'menu.options.form.minLabel' | translate: 'Minimum selections' }}
+            <input
+              type="number"
+              min="0"
+              name="optionMin"
+              [(ngModel)]="newOption.minSelections"
+              [ngModelOptions]="{ standalone: true }"
+            />
+          </label>
+          <label>
+            {{ 'menu.options.form.maxLabel' | translate: 'Maximum selections' }}
+            <input
+              type="number"
+              min="0"
+              name="optionMax"
+              [(ngModel)]="newOption.maxSelections"
+              [ngModelOptions]="{ standalone: true }"
+            />
+          </label>
+        </div>
 
-        <p *ngIf="createPriceInvalid" class="error">
-          {{ 'menu.options.error.price' | translate: 'Enter a valid price (e.g. 1.50).' }}
+        <p *ngIf="createCategoryMissing" class="error">
+          {{ 'menu.options.error.category' | translate: 'Select a category for the option.' }}
         </p>
-        <p *ngIf="createError" class="error">
+        <p *ngIf="createMinInvalid" class="error">
+          {{ 'menu.options.error.minSelections' | translate: 'Enter a valid minimum selections number.' }}
+        </p>
+        <p *ngIf="createMaxInvalid" class="error">
+          {{ 'menu.options.error.maxSelections' | translate: 'Enter a valid maximum selections number.' }}
+        </p>
+        <p *ngIf="createMinMaxInvalid" class="error">
           {{
-            'menu.options.error.create'
-              | translate: 'Unable to add the option. Please try again.'
+            'menu.options.error.minMax'
+              | translate: 'Maximum selections must be equal to or greater than the minimum.'
           }}
+        </p>
+
+        <section class="assignment-section" *ngIf="newOption.categoryId !== null">
+          <div class="assignment-header">
+            <h4>{{ 'menu.options.form.menuItemsLabel' | translate: 'Apply to menu items' }}</h4>
+            <p>{{ 'menu.options.form.menuItemsHint' | translate: 'Select the dishes that should include this option.' }}</p>
+          </div>
+
+          <p *ngIf="!newOption.assignments.length" class="empty-state">
+            {{ 'menu.options.form.noMenuItems' | translate: 'No menu items in this category yet.' }}
+          </p>
+
+          <div class="assignment-list" *ngIf="newOption.assignments.length">
+            <div class="assignment-row" *ngFor="let assignment of newOption.assignments">
+              <label class="assignment-toggle">
+                <input
+                  type="checkbox"
+                  name="newAssignment-{{ assignment.menuItemId }}"
+                  [(ngModel)]="assignment.selected"
+                  (ngModelChange)="toggleAssignment('new', assignment, $event)"
+                  [ngModelOptions]="{ standalone: true }"
+                />
+                <span>{{ assignment.name }}</span>
+              </label>
+
+              <div class="modifiers" *ngIf="assignment.selected">
+                <div class="modifier-row">
+                  <label>
+                    {{ 'menu.options.form.modifierLabel' | translate: 'Price modifier' }}
+                    <select
+                      name="newModifier-{{ assignment.menuItemId }}"
+                      [(ngModel)]="assignment.modifierType"
+                      (ngModelChange)="changeModifier('new', assignment, $event)"
+                      [ngModelOptions]="{ standalone: true }"
+                    >
+                      <option value="none">
+                        {{ 'menu.options.form.modifierNone' | translate: 'No price change' }}
+                      </option>
+                      <option value="amount">
+                        {{ 'menu.options.form.modifierAmount' | translate: 'Add fixed amount' }}
+                      </option>
+                      <option value="percentage">
+                        {{ 'menu.options.form.modifierPercentage' | translate: 'Add percentage' }}
+                      </option>
+                    </select>
+                  </label>
+                </div>
+
+                <div class="modifier-row" *ngIf="assignment.modifierType === 'amount'">
+                  <label>
+                    {{ 'menu.options.form.modifierAmountLabel' | translate: 'Amount (EUR)' }}
+                    <input
+                      type="text"
+                      name="newAmount-{{ assignment.menuItemId }}"
+                      [(ngModel)]="assignment.amount"
+                      (input)="clearAssignmentErrors('new', assignment.menuItemId)"
+                      [ngModelOptions]="{ standalone: true }"
+                      placeholder="1.50"
+                    />
+                  </label>
+                  <p *ngIf="createAmountErrors[assignment.menuItemId]" class="error">
+                    {{
+                      'menu.options.error.amount'
+                        | translate: 'Enter a valid amount in euros (e.g. 1.50).'
+                    }}
+                  </p>
+                </div>
+
+                <div class="modifier-row" *ngIf="assignment.modifierType === 'percentage'">
+                  <label>
+                    {{ 'menu.options.form.modifierPercentageLabel' | translate: 'Percentage (%)' }}
+                    <input
+                      type="number"
+                      step="0.01"
+                      name="newPercentage-{{ assignment.menuItemId }}"
+                      [(ngModel)]="assignment.percentage"
+                      (input)="clearAssignmentErrors('new', assignment.menuItemId)"
+                      [ngModelOptions]="{ standalone: true }"
+                      placeholder="10"
+                    />
+                  </label>
+                  <p *ngIf="createPercentageErrors[assignment.menuItemId]" class="error">
+                    {{ 'menu.options.error.percentage' | translate: 'Enter a valid percentage (e.g. 12.5).' }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <p *ngIf="createError" class="error">
+          {{ 'menu.options.error.create' | translate: 'Unable to add the option. Please try again.' }}
         </p>
 
         <div class="actions">
@@ -252,45 +430,170 @@ interface OptionFormModel {
 
       <div class="options-list" *ngIf="options.length">
         <article class="option-card" *ngFor="let option of options">
-          <ng-container *ngIf="editingId === option.id; else viewOption">
-            <div class="edit-grid">
-              <label>
-                {{ 'menu.options.form.nameLabel' | translate: 'Option name' }}
-                <input
-                  [(ngModel)]="editModel!.title"
-                  name="editTitle-{{ option.id }}"
-                  [ngModelOptions]="{ standalone: true }"
-                />
-              </label>
-              <label>
-                {{ 'menu.options.form.priceLabel' | translate: 'Price (EUR)' }}
-                <input
-                  [(ngModel)]="editModel!.price"
-                  name="editPrice-{{ option.id }}"
-                  [ngModelOptions]="{ standalone: true }"
-                  [attr.placeholder]="'menu.options.form.pricePlaceholder' | translate: 'e.g. 1.50'"
-                />
-              </label>
-              <label>
-                {{ 'menu.options.form.descriptionLabel' | translate: 'Description' }}
-                <textarea
-                  [(ngModel)]="editModel!.description"
-                  name="editDescription-{{ option.id }}"
-                  [ngModelOptions]="{ standalone: true }"
-                  [attr.placeholder]="
-                    'menu.options.form.descriptionPlaceholder' | translate: 'Optional description'
-                  "
-                ></textarea>
-              </label>
+          <ng-container *ngIf="editingId === option.id && editModel; else viewOption">
+            <div class="assignment-header">
+              <h4>{{ 'menu.options.list.editing' | translate: 'Edit option' }}</h4>
+            </div>
 
-              <p *ngIf="editPriceInvalid" class="error">
-                {{ 'menu.options.error.price' | translate: 'Enter a valid price (e.g. 1.50).' }}
+            <div class="edit-grid">
+              <div class="field-grid">
+                <label>
+                  {{ 'menu.options.form.titleLabel' | translate: 'Option title' }}
+                  <input
+                    name="editTitle-{{ option.id }}"
+                    [(ngModel)]="editModel.title"
+                    [ngModelOptions]="{ standalone: true }"
+                  />
+                </label>
+                <label>
+                  {{ 'menu.options.form.categoryLabel' | translate: 'Category' }}
+                  <select
+                    name="editCategory-{{ option.id }}"
+                    [(ngModel)]="editModel.categoryId"
+                    (ngModelChange)="handleCategoryChange('edit', $event)"
+                    [ngModelOptions]="{ standalone: true }"
+                  >
+                    <option [ngValue]="null">
+                      {{ 'menu.options.form.categoryPlaceholder' | translate: 'Select a category' }}
+                    </option>
+                    <option *ngFor="let category of categories" [ngValue]="category.id">
+                      {{ resolveCategoryName(category) }}
+                    </option>
+                  </select>
+                </label>
+                <label>
+                  {{ 'menu.options.form.minLabel' | translate: 'Minimum selections' }}
+                  <input
+                    type="number"
+                    min="0"
+                    name="editMin-{{ option.id }}"
+                    [(ngModel)]="editModel.minSelections"
+                    [ngModelOptions]="{ standalone: true }"
+                  />
+                </label>
+                <label>
+                  {{ 'menu.options.form.maxLabel' | translate: 'Maximum selections' }}
+                  <input
+                    type="number"
+                    min="0"
+                    name="editMax-{{ option.id }}"
+                    [(ngModel)]="editModel.maxSelections"
+                    [ngModelOptions]="{ standalone: true }"
+                  />
+                </label>
+              </div>
+
+              <p *ngIf="editCategoryMissing" class="error">
+                {{ 'menu.options.error.category' | translate: 'Select a category for the option.' }}
               </p>
-              <p *ngIf="updateError" class="error">
+              <p *ngIf="editMinInvalid" class="error">
+                {{ 'menu.options.error.minSelections' | translate: 'Enter a valid minimum selections number.' }}
+              </p>
+              <p *ngIf="editMaxInvalid" class="error">
+                {{ 'menu.options.error.maxSelections' | translate: 'Enter a valid maximum selections number.' }}
+              </p>
+              <p *ngIf="editMinMaxInvalid" class="error">
                 {{
-                  'menu.options.error.update'
-                    | translate: 'Unable to save changes. Please try again.'
+                  'menu.options.error.minMax'
+                    | translate: 'Maximum selections must be equal to or greater than the minimum.'
                 }}
+              </p>
+
+              <section class="assignment-section" *ngIf="editModel.categoryId !== null">
+                <div class="assignment-header">
+                  <h4>{{ 'menu.options.form.menuItemsLabel' | translate: 'Apply to menu items' }}</h4>
+                  <p>
+                    {{
+                      'menu.options.form.menuItemsHint'
+                        | translate: 'Select the dishes that should include this option.'
+                    }}
+                  </p>
+                </div>
+
+                <p *ngIf="!editModel.assignments.length" class="empty-state">
+                  {{ 'menu.options.form.noMenuItems' | translate: 'No menu items in this category yet.' }}
+                </p>
+
+                <div class="assignment-list" *ngIf="editModel.assignments.length">
+                  <div class="assignment-row" *ngFor="let assignment of editModel.assignments">
+                    <label class="assignment-toggle">
+                      <input
+                        type="checkbox"
+                        name="editAssignment-{{ option.id }}-{{ assignment.menuItemId }}"
+                        [(ngModel)]="assignment.selected"
+                        (ngModelChange)="toggleAssignment('edit', assignment, $event)"
+                        [ngModelOptions]="{ standalone: true }"
+                      />
+                      <span>{{ assignment.name }}</span>
+                    </label>
+
+                    <div class="modifiers" *ngIf="assignment.selected">
+                      <div class="modifier-row">
+                        <label>
+                          {{ 'menu.options.form.modifierLabel' | translate: 'Price modifier' }}
+                          <select
+                            name="editModifier-{{ option.id }}-{{ assignment.menuItemId }}"
+                            [(ngModel)]="assignment.modifierType"
+                            (ngModelChange)="changeModifier('edit', assignment, $event)"
+                            [ngModelOptions]="{ standalone: true }"
+                          >
+                            <option value="none">
+                              {{ 'menu.options.form.modifierNone' | translate: 'No price change' }}
+                            </option>
+                            <option value="amount">
+                              {{ 'menu.options.form.modifierAmount' | translate: 'Add fixed amount' }}
+                            </option>
+                            <option value="percentage">
+                              {{ 'menu.options.form.modifierPercentage' | translate: 'Add percentage' }}
+                            </option>
+                          </select>
+                        </label>
+                      </div>
+
+                      <div class="modifier-row" *ngIf="assignment.modifierType === 'amount'">
+                        <label>
+                          {{ 'menu.options.form.modifierAmountLabel' | translate: 'Amount (EUR)' }}
+                          <input
+                            type="text"
+                            name="editAmount-{{ option.id }}-{{ assignment.menuItemId }}"
+                            [(ngModel)]="assignment.amount"
+                            (input)="clearAssignmentErrors('edit', assignment.menuItemId)"
+                            [ngModelOptions]="{ standalone: true }"
+                            placeholder="1.50"
+                          />
+                        </label>
+                        <p *ngIf="editAmountErrors[assignment.menuItemId]" class="error">
+                          {{
+                            'menu.options.error.amount'
+                              | translate: 'Enter a valid amount in euros (e.g. 1.50).'
+                          }}
+                        </p>
+                      </div>
+
+                      <div class="modifier-row" *ngIf="assignment.modifierType === 'percentage'">
+                        <label>
+                          {{ 'menu.options.form.modifierPercentageLabel' | translate: 'Percentage (%)' }}
+                          <input
+                            type="number"
+                            step="0.01"
+                            name="editPercentage-{{ option.id }}-{{ assignment.menuItemId }}"
+                            [(ngModel)]="assignment.percentage"
+                            (input)="clearAssignmentErrors('edit', assignment.menuItemId)"
+                            [ngModelOptions]="{ standalone: true }"
+                            placeholder="10"
+                          />
+                        </label>
+                        <p *ngIf="editPercentageErrors[assignment.menuItemId]" class="error">
+                          {{ 'menu.options.error.percentage' | translate: 'Enter a valid percentage (e.g. 12.5).' }}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <p *ngIf="updateError" class="error">
+                {{ 'menu.options.error.update' | translate: 'Unable to save changes. Please try again.' }}
               </p>
 
               <div class="actions">
@@ -306,7 +609,7 @@ interface OptionFormModel {
                   class="primary"
                   type="button"
                   (click)="saveEdit(option)"
-                  [disabled]="updating || !editModel!.title.trim()"
+                  [disabled]="updating || !editModel.title.trim()"
                 >
                   {{
                     updating
@@ -319,21 +622,19 @@ interface OptionFormModel {
           </ng-container>
 
           <ng-template #viewOption>
-            <div class="option-header">
-              <div>
-                <h4>{{ option.title || option.name }}</h4>
-                <p *ngIf="option.description">{{ option.description }}</p>
-              </div>
-              <span class="option-price" *ngIf="option.price_cents != null">
-                {{ option.price_cents / 100 | currency: 'EUR' : 'symbol-narrow' : '1.2-2' }}
-              </span>
+            <div class="assignment-header">
+              <h4>{{ option.title }}</h4>
+              <p>
+                {{
+                  'menu.options.list.summary'
+                    | translate: 'Min {{min}} · Max {{max}}'
+                    : { min: option.min_selections, max: option.max_selections }
+                }}
+              </p>
             </div>
 
             <p *ngIf="deleteErrorId === option.id" class="error">
-              {{
-                'menu.options.error.delete'
-                  | translate: 'Unable to delete the option. Please try again.'
-              }}
+              {{ 'menu.options.error.delete' | translate: 'Unable to delete the option. Please try again.' }}
             </p>
 
             <div class="actions">
@@ -363,20 +664,36 @@ export class MenuOptionsManagerComponent implements OnChanges {
   @Input({ required: true }) restaurantId!: number;
 
   private menuOptions = inject(MenuOptionsService);
+  private categoriesService = inject(CategoriesService);
+  private menuService = inject(MenuService);
   private i18n = inject(TranslationService);
 
   options: MenuOption[] = [];
+  categories: MenuItemCategory[] = [];
+  menuItems: MenuItem[] = [];
+
   loading = false;
   loadError = false;
 
   creating = false;
   createError = false;
-  createPriceInvalid = false;
   newOption: OptionFormModel = this.createEmptyForm();
+  createCategoryMissing = false;
+  createMinInvalid = false;
+  createMaxInvalid = false;
+  createMinMaxInvalid = false;
+  createAmountErrors: Record<number, boolean> = {};
+  createPercentageErrors: Record<number, boolean> = {};
 
   editingId: number | null = null;
+  editingOption: MenuOption | null = null;
   editModel: OptionFormModel | null = null;
-  editPriceInvalid = false;
+  editCategoryMissing = false;
+  editMinInvalid = false;
+  editMaxInvalid = false;
+  editMinMaxInvalid = false;
+  editAmountErrors: Record<number, boolean> = {};
+  editPercentageErrors: Record<number, boolean> = {};
   updating = false;
   updateError = false;
 
@@ -384,50 +701,36 @@ export class MenuOptionsManagerComponent implements OnChanges {
   deleteErrorId: number | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['restaurantId'] && this.restaurantId) {
-      void this.loadOptions();
+    if ('restaurantId' in changes) {
+      const id = changes['restaurantId'].currentValue;
+      if (typeof id === 'number' && !Number.isNaN(id)) {
+        this.resetState();
+        void this.loadCategories(id);
+        void this.loadMenuItems(id);
+        void this.loadOptions();
+      }
     }
-  }
-
-  private createEmptyForm(): OptionFormModel {
-    return { title: '', price: '', description: '' };
-  }
-
-  private normalizeDescription(value: string): string | null {
-    const trimmed = value.trim();
-    return trimmed ? trimmed : null;
-  }
-
-  private parsePrice(value: string): { cents: number | null; valid: boolean } {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return { cents: null, valid: true };
-    }
-
-    const normalized = trimmed.replace(',', '.');
-    const parsed = Number(normalized);
-
-    if (!Number.isFinite(parsed)) {
-      return { cents: null, valid: false };
-    }
-
-    return { cents: Math.round(parsed * 100), valid: true };
-  }
-
-  private formatPriceInput(priceCents: number | null | undefined): string {
-    if (priceCents == null) {
-      return '';
-    }
-
-    return (priceCents / 100).toFixed(2);
   }
 
   async loadOptions(): Promise<void> {
+    if (typeof this.restaurantId !== 'number') {
+      return;
+    }
+
     this.loading = true;
     this.loadError = false;
 
     try {
-      this.options = await firstValueFrom(this.menuOptions.listByRestaurant(this.restaurantId));
+      const options = await firstValueFrom(this.menuOptions.listByRestaurant(this.restaurantId));
+      this.options = options ?? [];
+
+      if (this.editingId !== null) {
+        const match = this.options.find(option => option.id === this.editingId);
+        if (match && this.editModel) {
+          this.editingOption = match;
+          this.editModel = this.createFormFromOption(match);
+        }
+      }
     } catch (error) {
       console.error('Failed to load options', error);
       this.options = [];
@@ -438,24 +741,23 @@ export class MenuOptionsManagerComponent implements OnChanges {
   }
 
   async createOption(): Promise<void> {
+    if (this.creating) {
+      return;
+    }
+
     const title = this.newOption.title.trim();
-    if (!title || this.creating) {
+    if (!title) {
       return;
     }
 
-    const { cents, valid } = this.parsePrice(this.newOption.price);
-    if (!valid) {
-      this.createPriceInvalid = true;
+    this.resetValidationState('new');
+
+    const { payload, errors } = this.buildPayload(this.newOption, title);
+    this.applyValidationErrors('new', errors);
+
+    if (!payload || typeof this.restaurantId !== 'number') {
       return;
     }
-
-    this.createPriceInvalid = false;
-    const payload: MenuOptionInput = {
-      title,
-      name: title,
-      description: this.normalizeDescription(this.newOption.description),
-      price_cents: cents,
-    };
 
     this.creating = true;
     this.createError = false;
@@ -464,6 +766,8 @@ export class MenuOptionsManagerComponent implements OnChanges {
       const created = await firstValueFrom(this.menuOptions.create(this.restaurantId, payload));
       this.options = [...this.options, created];
       this.newOption = this.createEmptyForm();
+      this.resetValidationState('new');
+      void this.loadOptions();
     } catch (error) {
       console.error('Failed to create option', error);
       this.createError = true;
@@ -474,19 +778,17 @@ export class MenuOptionsManagerComponent implements OnChanges {
 
   startEdit(option: MenuOption): void {
     this.editingId = option.id;
-    this.editModel = {
-      title: option.title ?? option.name ?? '',
-      price: this.formatPriceInput(option.price_cents),
-      description: option.description ?? '',
-    };
-    this.editPriceInvalid = false;
+    this.editingOption = option;
+    this.editModel = this.createFormFromOption(option);
+    this.resetValidationState('edit');
     this.updateError = false;
   }
 
   cancelEdit(): void {
     this.editingId = null;
+    this.editingOption = null;
     this.editModel = null;
-    this.editPriceInvalid = false;
+    this.resetValidationState('edit');
     this.updateError = false;
   }
 
@@ -500,20 +802,15 @@ export class MenuOptionsManagerComponent implements OnChanges {
       return;
     }
 
-    const { cents, valid } = this.parsePrice(this.editModel.price);
-    if (!valid) {
-      this.editPriceInvalid = true;
+    this.resetValidationState('edit');
+
+    const baseOption = this.editingOption ?? option;
+    const { payload, errors } = this.buildPayload(this.editModel, title, baseOption);
+    this.applyValidationErrors('edit', errors);
+
+    if (!payload) {
       return;
     }
-
-    this.editPriceInvalid = false;
-
-    const payload: MenuOptionInput = {
-      title,
-      name: title,
-      description: this.normalizeDescription(this.editModel.description),
-      price_cents: cents,
-    };
 
     this.updating = true;
     this.updateError = false;
@@ -555,5 +852,491 @@ export class MenuOptionsManagerComponent implements OnChanges {
     } finally {
       this.deletingId = null;
     }
+  }
+
+  handleCategoryChange(context: 'new' | 'edit', value: number | null): void {
+    if (context === 'new') {
+      this.newOption.categoryId = value;
+      this.newOption.assignments = this.createAssignmentsForCategory(value);
+      this.resetValidationState('new');
+    } else if (this.editModel) {
+      this.editModel.categoryId = value;
+      if (value === null) {
+        this.editModel.assignments = [];
+      } else if (this.editingOption && this.editingOption.category_id === value) {
+        this.editModel.assignments = this.createAssignmentsFromOption(this.editingOption, value);
+      } else {
+        this.editModel.assignments = this.createAssignmentsForCategory(value);
+      }
+      this.resetValidationState('edit');
+    }
+  }
+
+  toggleAssignment(context: 'new' | 'edit', assignment: AssignmentFormEntry, selected: boolean): void {
+    assignment.selected = selected;
+    if (!selected) {
+      assignment.modifierType = 'none';
+      assignment.amount = '';
+      assignment.percentage = '';
+    }
+    this.clearAssignmentErrors(context, assignment.menuItemId);
+  }
+
+  changeModifier(context: 'new' | 'edit', assignment: AssignmentFormEntry, type: OptionModifierType): void {
+    assignment.modifierType = type;
+    if (type === 'amount') {
+      assignment.percentage = '';
+    } else if (type === 'percentage') {
+      assignment.amount = '';
+    } else {
+      assignment.amount = '';
+      assignment.percentage = '';
+    }
+    this.clearAssignmentErrors(context, assignment.menuItemId);
+  }
+
+  clearAssignmentErrors(context: 'new' | 'edit', menuItemId: number): void {
+    if (context === 'new') {
+      if (this.createAmountErrors[menuItemId] || this.createPercentageErrors[menuItemId]) {
+        const amount = { ...this.createAmountErrors };
+        const percentage = { ...this.createPercentageErrors };
+        delete amount[menuItemId];
+        delete percentage[menuItemId];
+        this.createAmountErrors = amount;
+        this.createPercentageErrors = percentage;
+      }
+    } else {
+      if (this.editAmountErrors[menuItemId] || this.editPercentageErrors[menuItemId]) {
+        const amount = { ...this.editAmountErrors };
+        const percentage = { ...this.editPercentageErrors };
+        delete amount[menuItemId];
+        delete percentage[menuItemId];
+        this.editAmountErrors = amount;
+        this.editPercentageErrors = percentage;
+      }
+    }
+  }
+
+  private async loadCategories(restaurantId: number): Promise<void> {
+    try {
+      const categories = await firstValueFrom(this.categoriesService.list(restaurantId));
+      const list = categories ?? [];
+      const locale = this.i18n.currentLocale();
+      this.categories = [...list].sort((a, b) =>
+        this.resolveCategoryName(a).localeCompare(this.resolveCategoryName(b), locale, { sensitivity: 'base' })
+      );
+    } catch (error) {
+      console.error('Could not load categories', error);
+      this.categories = [];
+    }
+  }
+
+  private async loadMenuItems(restaurantId: number): Promise<void> {
+    try {
+      const menuItems = await firstValueFrom(this.menuService.listByRestaurant(restaurantId));
+      this.menuItems = menuItems ?? [];
+
+      if (this.newOption.categoryId !== null) {
+        this.newOption.assignments = this.createAssignmentsForCategory(this.newOption.categoryId, this.newOption.assignments);
+      }
+
+      const editModel = this.editModel;
+      if (editModel && editModel.categoryId !== null) {
+        if (this.editingOption && this.editingOption.category_id === editModel.categoryId) {
+          editModel.assignments = this.createAssignmentsFromOption(
+            this.editingOption,
+            editModel.categoryId
+          );
+        } else {
+          editModel.assignments = this.createAssignmentsForCategory(
+            editModel.categoryId,
+            editModel.assignments
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Could not load menu items', error);
+      this.menuItems = [];
+    }
+  }
+
+  private resetState(): void {
+    this.options = [];
+    this.categories = [];
+    this.menuItems = [];
+    this.newOption = this.createEmptyForm();
+    this.resetValidationState('new');
+    this.cancelEdit();
+    this.createError = false;
+    this.updateError = false;
+    this.deletingId = null;
+    this.deleteErrorId = null;
+  }
+
+  private createEmptyForm(): OptionFormModel {
+    return {
+      title: '',
+      categoryId: null,
+      minSelections: '0',
+      maxSelections: '1',
+      assignments: [],
+    };
+  }
+
+  private createFormFromOption(option: MenuOption): OptionFormModel {
+    const categoryId = option.category_id ?? null;
+    return {
+      title: option.title ?? '',
+      categoryId,
+      minSelections: option.min_selections != null ? String(option.min_selections) : '0',
+      maxSelections: option.max_selections != null ? String(option.max_selections) : '0',
+      assignments: this.createAssignmentsFromOption(option, categoryId),
+    };
+  }
+
+  private createAssignmentsForCategory(
+    categoryId: number | null,
+    previous?: AssignmentFormEntry[]
+  ): AssignmentFormEntry[] {
+    if (categoryId === null) {
+      return [];
+    }
+
+    const items = this.getMenuItemsForCategory(categoryId);
+    const previousMap = new Map(previous?.map(entry => [entry.menuItemId, entry]));
+
+    return items.map(item => {
+      const existing = previousMap.get(item.id);
+      if (existing) {
+        return { ...existing, name: item.name };
+      }
+
+      return this.createAssignmentEntry(item.id, item.name);
+    });
+  }
+
+  private createAssignmentsFromOption(option: MenuOption, categoryId: number | null): AssignmentFormEntry[] {
+    if (categoryId === null) {
+      return [];
+    }
+
+    const available = (option.available_menu_items?.length
+      ? option.available_menu_items
+      : this.getMenuItemsForCategory(categoryId)
+    ).map(item => ({ id: item.id, name: item.name }));
+
+    const sorted = this.sortByName(available);
+    const selectedIds = new Set(
+      option.menu_item_ids && option.menu_item_ids.length
+        ? option.menu_item_ids
+        : (option.option_assignments ?? []).map(assignment => assignment.menu_item_id)
+    );
+    const optionItems = new Map((option.option_items ?? []).map(item => [item.menu_item_id, item]));
+
+    return sorted.map(item => {
+      const existing = optionItems.get(item.id);
+      const modifierType = this.resolveModifierType(existing);
+      return {
+        menuItemId: item.id,
+        name: item.name,
+        selected: selectedIds.has(item.id),
+        modifierType,
+        amount: modifierType === 'amount' ? this.formatCurrencyInput(existing?.price_modifier_amount_cents) : '',
+        percentage:
+          modifierType === 'percentage' && existing?.price_modifier_percentage != null
+            ? String(existing.price_modifier_percentage)
+            : '',
+        optionItemId: existing?.id ?? undefined,
+      };
+    });
+  }
+
+  private createAssignmentEntry(menuItemId: number, name: string): AssignmentFormEntry {
+    return {
+      menuItemId,
+      name,
+      selected: false,
+      modifierType: 'none',
+      amount: '',
+      percentage: '',
+    };
+  }
+
+  private buildPayload(
+    form: OptionFormModel,
+    title: string,
+    baseOption?: MenuOption
+  ): { payload?: MenuOptionInput; errors: ValidationErrors } {
+    const errors: ValidationErrors = {
+      categoryMissing: false,
+      minInvalid: false,
+      maxInvalid: false,
+      minMaxInvalid: false,
+      amountInvalidIds: [],
+      percentageInvalidIds: [],
+    };
+
+    if (form.categoryId === null) {
+      errors.categoryMissing = true;
+    }
+
+    const min = this.parseInteger(form.minSelections);
+    if (!min.valid) {
+      errors.minInvalid = true;
+    }
+
+    const max = this.parseInteger(form.maxSelections);
+    if (!max.valid) {
+      errors.maxInvalid = true;
+    }
+
+    if (min.valid && max.valid && max.value < min.value) {
+      errors.minMaxInvalid = true;
+    }
+
+    const menuItemIds: number[] = [];
+    const optionItems: MenuOptionItemInput[] = [];
+    const menuItemOptionId = baseOption?.id;
+
+    for (const assignment of form.assignments) {
+      if (!assignment.selected) {
+        continue;
+      }
+
+      menuItemIds.push(assignment.menuItemId);
+
+      if (assignment.modifierType === 'amount') {
+        const parsed = this.parseCurrency(assignment.amount);
+        if (!parsed.valid) {
+          errors.amountInvalidIds.push(assignment.menuItemId);
+          continue;
+        }
+
+        optionItems.push({
+          id: assignment.optionItemId,
+          menu_item_option_id: menuItemOptionId,
+          menu_item_id: assignment.menuItemId,
+          price_modifier_type: 'amount',
+          price_modifier_amount_cents: parsed.cents,
+          price_modifier_percentage: null,
+        });
+      } else if (assignment.modifierType === 'percentage') {
+        const parsed = this.parsePercentage(assignment.percentage);
+        if (!parsed.valid || parsed.percentage === null) {
+          errors.percentageInvalidIds.push(assignment.menuItemId);
+          continue;
+        }
+
+        optionItems.push({
+          id: assignment.optionItemId,
+          menu_item_option_id: menuItemOptionId,
+          menu_item_id: assignment.menuItemId,
+          price_modifier_type: 'percentage',
+          price_modifier_amount_cents: null,
+          price_modifier_percentage: parsed.percentage,
+        });
+      } else if (assignment.optionItemId != null) {
+        optionItems.push({
+          id: assignment.optionItemId,
+          menu_item_option_id: menuItemOptionId,
+          menu_item_id: assignment.menuItemId,
+          price_modifier_type: 'none',
+          price_modifier_amount_cents: null,
+          price_modifier_percentage: null,
+        });
+      }
+    }
+
+    const hasAmountErrors = errors.amountInvalidIds.length > 0;
+    const hasPercentageErrors = errors.percentageInvalidIds.length > 0;
+    const valid =
+      !errors.categoryMissing &&
+      !errors.minInvalid &&
+      !errors.maxInvalid &&
+      !errors.minMaxInvalid &&
+      !hasAmountErrors &&
+      !hasPercentageErrors;
+
+    if (!valid || form.categoryId === null || !min.valid || !max.valid) {
+      return { errors };
+    }
+
+    const payload: MenuOptionInput = {
+      title,
+      category_id: form.categoryId,
+      min_selections: min.value,
+      max_selections: max.value,
+      menu_item_ids: menuItemIds,
+    };
+
+    if (optionItems.length) {
+      payload.option_items = optionItems;
+    }
+
+    return { payload, errors };
+  }
+
+  private applyValidationErrors(context: 'new' | 'edit', errors: ValidationErrors): void {
+    const amountMap = this.buildErrorMap(errors.amountInvalidIds);
+    const percentageMap = this.buildErrorMap(errors.percentageInvalidIds);
+
+    if (context === 'new') {
+      this.createCategoryMissing = errors.categoryMissing;
+      this.createMinInvalid = errors.minInvalid;
+      this.createMaxInvalid = errors.maxInvalid;
+      this.createMinMaxInvalid = errors.minMaxInvalid;
+      this.createAmountErrors = amountMap;
+      this.createPercentageErrors = percentageMap;
+    } else {
+      this.editCategoryMissing = errors.categoryMissing;
+      this.editMinInvalid = errors.minInvalid;
+      this.editMaxInvalid = errors.maxInvalid;
+      this.editMinMaxInvalid = errors.minMaxInvalid;
+      this.editAmountErrors = amountMap;
+      this.editPercentageErrors = percentageMap;
+    }
+  }
+
+  private buildErrorMap(ids: number[]): Record<number, boolean> {
+    return ids.reduce<Record<number, boolean>>((acc, id) => {
+      acc[id] = true;
+      return acc;
+    }, {});
+  }
+
+  private resetValidationState(context: 'new' | 'edit'): void {
+    if (context === 'new') {
+      this.createCategoryMissing = false;
+      this.createMinInvalid = false;
+      this.createMaxInvalid = false;
+      this.createMinMaxInvalid = false;
+      this.createAmountErrors = {};
+      this.createPercentageErrors = {};
+    } else {
+      this.editCategoryMissing = false;
+      this.editMinInvalid = false;
+      this.editMaxInvalid = false;
+      this.editMinMaxInvalid = false;
+      this.editAmountErrors = {};
+      this.editPercentageErrors = {};
+    }
+  }
+
+  private getMenuItemsForCategory(categoryId: number): MenuItem[] {
+    const filtered = this.menuItems.filter(item =>
+      (item.categories ?? []).some(category => category?.id === categoryId)
+    );
+    return this.sortByName(filtered);
+  }
+
+  private sortByName<T extends { name: string }>(items: T[]): T[] {
+    const locale = this.i18n.currentLocale();
+    return [...items].sort((a, b) => a.name.localeCompare(b.name, locale, { sensitivity: 'base' }));
+  }
+
+  resolveCategoryName(category: MenuItemCategory): string {
+    if (!category) {
+      return '';
+    }
+
+    const direct = category.name?.trim();
+    if (direct) {
+      return direct;
+    }
+
+    const translations = category.name_translations;
+    if (translations) {
+      const preferred = translations[this.i18n.currentLanguageCode()]?.trim();
+      if (preferred) {
+        return preferred;
+      }
+
+      for (const value of Object.values(translations)) {
+        if (value?.trim()) {
+          return value.trim();
+        }
+      }
+    }
+
+    return '';
+  }
+
+  private formatCurrencyInput(value: number | null | undefined): string {
+    if (value == null) {
+      return '';
+    }
+
+    return (value / 100).toFixed(2);
+  }
+
+  private parseInteger(value: string): { value: number; valid: boolean } {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return { value: 0, valid: false };
+    }
+
+    const parsed = Number(trimmed);
+    if (!Number.isInteger(parsed) || parsed < 0) {
+      return { value: 0, valid: false };
+    }
+
+    return { value: parsed, valid: true };
+  }
+
+  private parseCurrency(value: string): { cents: number | null; valid: boolean } {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return { cents: null, valid: false };
+    }
+
+    const normalized = trimmed.replace(',', '.');
+    const parsed = Number(normalized);
+
+    if (!Number.isFinite(parsed)) {
+      return { cents: null, valid: false };
+    }
+
+    return { cents: Math.round(parsed * 100), valid: true };
+  }
+
+  private parsePercentage(value: string): { percentage: number | null; valid: boolean } {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return { percentage: null, valid: false };
+    }
+
+    const normalized = trimmed.replace(',', '.');
+    const parsed = Number(normalized);
+
+    if (!Number.isFinite(parsed)) {
+      return { percentage: null, valid: false };
+    }
+
+    return { percentage: parsed, valid: true };
+  }
+
+  private resolveModifierType(optionItem?: MenuOptionItem | null): OptionModifierType {
+    if (!optionItem) {
+      return 'none';
+    }
+
+    const type = optionItem.price_modifier_type ?? undefined;
+    if (type === 'amount') {
+      return 'amount';
+    }
+
+    if (type === 'percentage') {
+      return 'percentage';
+    }
+
+    if (optionItem.price_modifier_amount_cents != null) {
+      return 'amount';
+    }
+
+    if (optionItem.price_modifier_percentage != null) {
+      return 'percentage';
+    }
+
+    return 'none';
   }
 }

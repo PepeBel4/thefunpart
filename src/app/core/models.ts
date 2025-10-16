@@ -107,29 +107,39 @@ export interface MenuOptionMenuItem {
   is_available: boolean;
 }
 
+export interface MenuOptionAssignment {
+  id: number;
+  menu_item_option_id: number;
+  menu_item_id: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface MenuOptionItem {
   id: number;
-  title: string;
-  name?: string;
-  price_cents?: number | null;
-  max_quantity?: number | null;
+  menu_item_option_id: number;
+  menu_item_id: number;
+  price_modifier_type: string | null;
+  price_modifier_amount_cents: number | null;
+  price_modifier_percentage: number | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface MenuOption {
   id: number;
+  category_id: number | null;
   title: string;
-  category_id?: number | null;
-  min_selections?: number | null;
-  max_selections?: number | null;
-  menu_item_ids?: number[];
+  min_selections: number;
+  max_selections: number;
+  created_at: string;
+  updated_at: string;
+  menu_item_ids: number[];
   menu_items?: MenuOptionMenuItem[];
   option_items?: MenuOptionItem[];
+  option_assignments?: MenuOptionAssignment[];
   available_menu_items?: MenuOptionMenuItem[];
   category?: MenuOptionCategory | null;
-  description?: string | null;
-  price_cents?: number | null;
-  name?: string;
-  restaurant_id?: number | null;
 }
 
 export interface AiSuggestedMenuItem {

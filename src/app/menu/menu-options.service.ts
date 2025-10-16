@@ -3,11 +3,22 @@ import { Observable } from 'rxjs';
 import { ApiService } from '../core/api.service';
 import { MenuOption } from '../core/models';
 
+export interface MenuOptionItemInput {
+  id?: number;
+  menu_item_option_id?: number;
+  menu_item_id: number;
+  price_modifier_type: string | null;
+  price_modifier_amount_cents: number | null;
+  price_modifier_percentage: number | null;
+}
+
 export interface MenuOptionInput {
   title: string;
-  name?: string;
-  description?: string | null;
-  price_cents?: number | null;
+  category_id: number;
+  min_selections: number;
+  max_selections: number;
+  menu_item_ids: number[];
+  option_items?: MenuOptionItemInput[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -19,13 +30,23 @@ export class MenuOptionsService {
   }
 
   create(restaurantId: number, payload: MenuOptionInput): Observable<MenuOption> {
-    return this.api.post<MenuOption>('/options', {
-      option: { ...payload, restaurant_id: restaurantId },
-    });
+    const option = { ...payload, restaurant_id: restaurantId } as MenuOptionInput & {
+      restaurant_id: number;
+    };
+    if (!option.option_items || !option.option_items.length) {
+      delete option.option_items;
+    }
+
+    return this.api.post<MenuOption>('/options', { option });
   }
 
   update(id: number, payload: MenuOptionInput): Observable<MenuOption> {
-    return this.api.put<MenuOption>(`/options/${id}`, { option: payload });
+    const option: MenuOptionInput = { ...payload };
+    if (!option.option_items || !option.option_items.length) {
+      delete option.option_items;
+    }
+
+    return this.api.put<MenuOption>(`/options/${id}`, { option });
   }
 
   delete(id: number): Observable<void> {
