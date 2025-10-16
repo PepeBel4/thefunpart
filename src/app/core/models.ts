@@ -122,6 +122,7 @@ export interface MenuItem {
   categories?: MenuItemCategory[];
   allergens?: Allergen[];
   photos?: RestaurantPhoto[];
+  option_assignments?: MenuOptionAssignment[];
 }
 
 export interface MenuOptionCategory {
@@ -144,6 +145,11 @@ export interface MenuOptionAssignment {
   menu_item_id: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface MenuOptionAssignmentInput {
+  menu_item_option_id: number;
+  menu_item_id: number;
 }
 
 export interface MenuOptionItem {

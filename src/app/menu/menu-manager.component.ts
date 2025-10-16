@@ -2,13 +2,22 @@ import { CurrencyPipe, NgFor, NgIf } from '@angular/common';
 import { Component, EventEmitter, Input, Output, inject, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
-import { Allergen, MenuItem, MenuItemCategory, MenuItemInput } from '../core/models';
+import {
+  Allergen,
+  MenuItem,
+  MenuItemCategory,
+  MenuItemInput,
+  MenuOption,
+  MenuOptionAssignment,
+} from '../core/models';
 import { MenuService } from './menu.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
 import { CategoriesService } from './categories.service';
 import { AllergensService } from './allergens.service';
 import { AllergenIconComponent } from '../shared/allergen-icon.component';
+import { MenuOptionsService } from './menu-options.service';
+import { MenuOptionAssignmentsService } from './menu-option-assignments.service';
 
 interface CategoryFormModel {
   id?: number;
@@ -26,6 +35,17 @@ interface MenuFormModel {
 interface QueuedPhoto {
   file: File;
   preview: string;
+}
+
+interface OptionAssignmentDraft {
+  id?: number;
+  optionId: number | null;
+}
+
+interface OptionAssignmentChangeSet {
+  toCreate: number[];
+  toUpdate: { id: number; optionId: number }[];
+  toDelete: number[];
 }
 
 @Component({
@@ -360,6 +380,57 @@ interface QueuedPhoto {
       text-decoration: underline;
     }
 
+    .option-assignment-section {
+      display: grid;
+      gap: 0.6rem;
+    }
+
+    .option-assignment-description {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      margin: 0;
+    }
+
+    .option-assignment-list {
+      display: grid;
+      gap: 0.5rem;
+    }
+
+    .option-assignment-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .option-assignment-row select {
+      flex: 1;
+      padding: 0.65rem 0.75rem;
+      border-radius: 10px;
+      border: 1px solid var(--border-soft);
+      background: var(--surface-elevated);
+      font: inherit;
+    }
+
+    .option-assignment-help {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .option-assignment-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+
+    .option-assignment-tags .tag {
+      background: rgba(6, 193, 103, 0.12);
+      color: #036239;
+      border-radius: 999px;
+      padding: 0.3rem 0.65rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
     @media (max-width: 640px) {
       .manager-card {
         margin-top: 2rem;
@@ -590,6 +661,57 @@ interface QueuedPhoto {
                   </span>
                 </ng-template>
               </div>
+              <div class="option-assignment-section">
+                <label>{{ 'menu.options.assignments.label' | translate: 'Menu options' }}</label>
+                <p class="option-assignment-description">
+                  {{
+                    'menu.options.assignments.description'
+                      | translate: 'Assign options to this item.'
+                  }}
+                </p>
+                <ng-container *ngIf="availableOptions.length; else noOptionsAvailableTpl">
+                  <p *ngIf="!editOptionAssignments.length" class="option-assignment-help">
+                    {{
+                      'menu.options.assignments.none'
+                        | translate: 'No options assigned yet.'
+                    }}
+                  </p>
+                  <div class="option-assignment-list" *ngIf="editOptionAssignments.length">
+                    <div class="option-assignment-row" *ngFor="let assignment of editOptionAssignments; let i = index">
+                      <select
+                        [(ngModel)]="editOptionAssignments[i].optionId"
+                        name="editOption-{{ item.id }}-{{ i }}"
+                        [ngModelOptions]="{ standalone: true }"
+                      >
+                        <option [ngValue]="null">
+                          {{
+                            'menu.options.assignments.selectOption'
+                              | translate: 'Select option'
+                          }}
+                        </option>
+                        <option *ngFor="let option of availableOptions" [ngValue]="option.id">
+                          {{ option.title }}
+                        </option>
+                      </select>
+                      <button type="button" class="link remove" (click)="removeOptionAssignment(i)">
+                        {{ 'menu.options.assignments.remove' | translate: 'Remove' }}
+                      </button>
+                    </div>
+                  </div>
+                  <button type="button" class="link add" (click)="addOptionAssignment()">
+                    + {{ 'menu.options.assignments.add' | translate: 'Add option' }}
+                  </button>
+                </ng-container>
+                <ng-template #noOptionsAvailableTpl>
+                  <span class="option-assignment-help">
+                    {{
+                      'menu.options.assignments.noOptions'
+                        | translate: 'No menu options available yet.'
+                    }}
+                  </span>
+                </ng-template>
+                <p *ngIf="assignmentError" class="error">{{ assignmentError }}</p>
+              </div>
               <div class="photo-section">
                 <label>{{ 'menu.photos.label' | translate: 'Item photos' }}</label>
                 <div class="photo-grid" *ngIf="item.photos?.length; else noMenuItemPhotos">
@@ -685,6 +807,11 @@ interface QueuedPhoto {
                   </ng-container>
                 </ng-container>
               </div>
+              <div *ngIf="item.option_assignments?.length" class="option-assignment-tags">
+                <span class="tag" *ngFor="let assignment of item.option_assignments">
+                  {{ resolveOptionTitleById(assignment.menu_item_option_id) }}
+                </span>
+              </div>
               <div class="actions">
                 <button type="button" class="secondary" (click)="startEdit(item)">
                   {{ 'menu.items.edit' | translate: 'Edit' }}
@@ -712,12 +839,15 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
   private i18n = inject(TranslationService);
   private categories = inject(CategoriesService);
   private allergens = inject(AllergensService);
+  private options = inject(MenuOptionsService);
+  private optionAssignments = inject(MenuOptionAssignmentsService);
 
   private loadToken = 0;
 
   menuItems: MenuItem[] = [];
   availableCategories: MenuItemCategory[] = [];
   availableAllergens: Allergen[] = [];
+  availableOptions: MenuOption[] = [];
   loading = false;
   saving = false;
   error = '';
@@ -725,13 +855,18 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
   editingId: number | null = null;
   newItem: MenuFormModel = this.createEmptyForm();
   editItem: MenuFormModel = this.createEmptyForm();
+  editOptionAssignments: OptionAssignmentDraft[] = [];
   newPhotos: QueuedPhoto[] = [];
   editPhotos: QueuedPhoto[] = [];
   removingPhotoId: number | null = null;
+  assignmentError = '';
+
+  private originalOptionAssignments: MenuOptionAssignment[] = [];
 
   ngOnInit() {
     void this.fetchCategories();
     void this.fetchAllergens();
+    void this.fetchOptions();
   }
 
   ngOnDestroy() {
@@ -746,6 +881,7 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
         this.resetState();
         void this.fetchCategories(id);
         void this.fetchAllergens();
+        void this.fetchOptions(id);
         void this.loadMenu();
       }
     }
@@ -774,6 +910,18 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
     } catch (err) {
       console.error('Could not load allergens', err);
       this.availableAllergens = [];
+    }
+  }
+
+  private async fetchOptions(restaurantId = this.restaurantId) {
+    if (restaurantId === null || restaurantId === undefined) { return; }
+
+    try {
+      const options = await firstValueFrom(this.options.listByRestaurant(restaurantId));
+      this.availableOptions = this.sortOptions(options ?? []);
+    } catch (err) {
+      console.error('Could not load menu options', err);
+      this.availableOptions = [];
     }
   }
 
@@ -816,6 +964,9 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
       categories: this.mapCategoriesForForm(item.categories),
       allergens: this.mapAllergensForForm(item.allergens),
     };
+    this.editOptionAssignments = this.mapOptionAssignmentsForForm(item.option_assignments);
+    this.originalOptionAssignments = [...(item.option_assignments ?? [])];
+    this.assignmentError = '';
   }
 
   cancelEdit() {
@@ -824,6 +975,9 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
     this.releaseQueuedPhotos(this.editPhotos);
     this.editPhotos = [];
     this.removingPhotoId = null;
+    this.editOptionAssignments = [];
+    this.originalOptionAssignments = [];
+    this.assignmentError = '';
   }
 
   async createItem() {
@@ -884,6 +1038,16 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
       return;
     }
 
+    this.assignmentError = '';
+    const assignmentChanges = this.buildOptionAssignmentChanges();
+    if (!assignmentChanges) {
+      this.assignmentError = this.i18n.translate(
+        'menu.options.assignments.error.select',
+        'Select an option for each assignment.'
+      );
+      return;
+    }
+
     this.saving = true;
     this.error = '';
     try {
@@ -905,6 +1069,7 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
 
       const queuedPhotos = this.editPhotos;
       const pendingPhotos = queuedPhotos.length ? queuedPhotos.map(photo => photo.file) : [];
+      await this.applyOptionAssignmentChanges(id, assignmentChanges);
       this.cancelEdit();
       void this.fetchCategories();
       this.menuChanged.emit();
@@ -916,7 +1081,9 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
       }
     } catch (err) {
       console.error(err);
-      this.error = this.i18n.translate('menu.form.error.update', 'Unable to save changes. Please try again.');
+      if (!this.error) {
+        this.error = this.i18n.translate('menu.form.error.update', 'Unable to save changes. Please try again.');
+      }
     } finally {
       this.saving = false;
     }
@@ -1031,6 +1198,7 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
       ...updated,
       photos: updated.photos ?? current.photos,
       allergens: updated.allergens ?? current.allergens,
+      option_assignments: updated.option_assignments ?? current.option_assignments,
     };
   }
 
@@ -1067,11 +1235,15 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
     this.editItem = this.createEmptyForm();
     this.availableCategories = [];
     this.availableAllergens = [];
+    this.availableOptions = [];
     this.releaseQueuedPhotos(this.newPhotos);
     this.releaseQueuedPhotos(this.editPhotos);
     this.newPhotos = [];
     this.editPhotos = [];
     this.removingPhotoId = null;
+    this.editOptionAssignments = [];
+    this.originalOptionAssignments = [];
+    this.assignmentError = '';
     this.loadToken++;
   }
 
@@ -1085,6 +1257,22 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
     if (!list.length) {
       list.push(this.createEmptyCategory());
     }
+  }
+
+  addOptionAssignment() {
+    if (!this.availableOptions.length) { return; }
+    this.assignmentError = '';
+    this.editOptionAssignments = [
+      ...this.editOptionAssignments,
+      this.createOptionAssignmentDraft(),
+    ];
+  }
+
+  removeOptionAssignment(index: number) {
+    const next = [...this.editOptionAssignments];
+    next.splice(index, 1);
+    this.editOptionAssignments = next;
+    this.assignmentError = '';
   }
 
   resolveCategoryName(category: MenuItemCategory): string {
@@ -1103,6 +1291,23 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
     }
 
     return '';
+  }
+
+  resolveOptionTitleById(optionId: number | null | undefined): string {
+    const option = this.findOptionById(optionId);
+    if (option?.title?.trim()) {
+      return option.title.trim();
+    }
+
+    if (optionId == null) {
+      return this.i18n.translate('menu.options.assignments.fallback', 'Option #{{id}}', {
+        id: '—',
+      });
+    }
+
+    return this.i18n.translate('menu.options.assignments.fallback', 'Option #{{id}}', {
+      id: optionId,
+    });
   }
 
   private createEmptyForm(): MenuFormModel {
@@ -1167,6 +1372,97 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
       .filter((id): id is number => typeof id === 'number' && !Number.isNaN(id));
 
     return Array.from(new Set(ids));
+  }
+
+  private mapOptionAssignmentsForForm(assignments: MenuOptionAssignment[] | undefined): OptionAssignmentDraft[] {
+    if (!assignments?.length) {
+      return [];
+    }
+
+    return assignments.map(assignment =>
+      this.createOptionAssignmentDraft(assignment.menu_item_option_id ?? null, assignment.id)
+    );
+  }
+
+  private createOptionAssignmentDraft(optionId: number | null = null, id?: number): OptionAssignmentDraft {
+    return { id, optionId };
+  }
+
+  private buildOptionAssignmentChanges(): OptionAssignmentChangeSet | null {
+    const toCreate: number[] = [];
+    const toUpdate: { id: number; optionId: number }[] = [];
+    const seenIds = new Set<number>();
+
+    for (const assignment of this.editOptionAssignments) {
+      if (assignment.optionId == null) {
+        return null;
+      }
+
+      if (assignment.id != null) {
+        seenIds.add(assignment.id);
+        const original = this.originalOptionAssignments.find(item => item.id === assignment.id);
+        if (original && original.menu_item_option_id !== assignment.optionId) {
+          toUpdate.push({ id: assignment.id, optionId: assignment.optionId });
+        }
+      } else {
+        toCreate.push(assignment.optionId);
+      }
+    }
+
+    const toDelete = this.originalOptionAssignments
+      .filter(assignment => !seenIds.has(assignment.id))
+      .map(assignment => assignment.id);
+
+    return { toCreate, toUpdate, toDelete };
+  }
+
+  private async applyOptionAssignmentChanges(menuItemId: number, changes: OptionAssignmentChangeSet) {
+    if (!changes.toCreate.length && !changes.toUpdate.length && !changes.toDelete.length) {
+      return;
+    }
+
+    try {
+      for (const id of changes.toDelete) {
+        await firstValueFrom(this.optionAssignments.delete(id));
+      }
+
+      for (const update of changes.toUpdate) {
+        await firstValueFrom(
+          this.optionAssignments.update(update.id, {
+            menu_item_id: menuItemId,
+            menu_item_option_id: update.optionId,
+          })
+        );
+      }
+
+      for (const optionId of changes.toCreate) {
+        await firstValueFrom(
+          this.optionAssignments.create({
+            menu_item_id: menuItemId,
+            menu_item_option_id: optionId,
+          })
+        );
+      }
+    } catch (err) {
+      console.error(err);
+      this.error = this.i18n.translate(
+        'menu.options.assignments.error.save',
+        'Unable to update option assignments. Please try again.'
+      );
+      throw err;
+    }
+  }
+
+  private findOptionById(optionId: number | null | undefined): MenuOption | undefined {
+    if (optionId == null) {
+      return undefined;
+    }
+
+    return this.availableOptions.find(option => option.id === optionId);
+  }
+
+  private sortOptions(options: MenuOption[]): MenuOption[] {
+    return [...options].sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
   }
 
   onCategoryNameChange(target: 'new' | 'edit', index: number, value: string) {
