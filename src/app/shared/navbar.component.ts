@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, HostListener, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { NgFor, NgIf } from '@angular/common';
@@ -24,6 +24,8 @@ import { UserMenuComponent } from './user-menu.component';
       background: var(--brand-black);
       color: #fefefe;
       box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      transition: border-color 0.2s ease;
     }
 
     .brand {
@@ -50,6 +52,73 @@ import { UserMenuComponent } from './user-menu.component';
       border-radius: 12px;
       background: rgba(255, 255, 255, 0.08);
       font-size: 1.35rem;
+    }
+
+    .menu-toggle {
+      display: none;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.45rem 0.9rem;
+      border: 0;
+      border-radius: 0.95rem;
+      background: rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.9);
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .menu-toggle:hover,
+    .menu-toggle:focus-visible {
+      background: rgba(255, 255, 255, 0.18);
+      color: #fff;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.14);
+      outline: none;
+    }
+
+    .menu-icon {
+      position: relative;
+      width: 1.1rem;
+      height: 0.8rem;
+    }
+
+    .menu-icon::before,
+    .menu-icon::after,
+    .menu-icon span {
+      content: '';
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      border-radius: 999px;
+      background: currentColor;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+
+    .menu-icon::before {
+      top: 0;
+    }
+
+    .menu-icon::after {
+      bottom: 0;
+    }
+
+    .menu-icon span {
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .menu-toggle[aria-expanded='true'] .menu-icon::before {
+      transform: translateY(5px) rotate(45deg);
+    }
+
+    .menu-toggle[aria-expanded='true'] .menu-icon::after {
+      transform: translateY(-5px) rotate(-45deg);
+    }
+
+    .menu-toggle[aria-expanded='true'] .menu-icon span {
+      opacity: 0;
     }
 
     .location-chip {
@@ -80,6 +149,7 @@ import { UserMenuComponent } from './user-menu.component';
       display: flex;
       align-items: center;
       gap: 0.4rem;
+      transition: opacity 0.2s ease;
     }
 
     .nav-links a {
@@ -177,16 +247,17 @@ import { UserMenuComponent } from './user-menu.component';
       nav {
         flex-wrap: wrap;
         row-gap: 0.75rem;
+        align-items: flex-start;
       }
 
       .location-chip {
-        order: 3;
+        order: 4;
         width: 100%;
         justify-content: center;
       }
 
       .language-select {
-        order: 4;
+        order: 5;
       }
 
       .spacer {
@@ -197,30 +268,63 @@ import { UserMenuComponent } from './user-menu.component';
     @media (max-width: 640px) {
       nav {
         padding-inline: 1.1rem;
+        position: sticky;
       }
 
       .nav-links {
         width: 100%;
-        justify-content: center;
-        order: 5;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        order: 6;
+        gap: 0.35rem;
+        padding: 0.85rem;
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        display: none;
+      }
+
+      .nav-links.open {
+        display: flex;
       }
 
       .cart-pill {
-        order: 6;
-        width: 100%;
-        text-align: center;
-      }
-
-      .user-menu {
         order: 7;
         width: 100%;
         text-align: center;
       }
 
+      .user-menu {
+        order: 8;
+        width: 100%;
+        text-align: center;
+      }
+
       .language-select {
-        order: 4;
+        order: 5;
         width: 100%;
         justify-content: center;
+      }
+
+      .nav-links a {
+        width: 100%;
+        text-align: left;
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .nav-links a:hover,
+      .nav-links a.active {
+        background: rgba(255, 255, 255, 0.16);
+      }
+
+      .menu-toggle {
+        display: inline-flex;
+        order: 3;
+      }
+
+      .location-chip {
+        justify-content: flex-start;
       }
     }
   `],
@@ -233,12 +337,22 @@ import { UserMenuComponent } from './user-menu.component';
       <div class="location-chip">
         {{ 'nav.deliveryChip' | translate: 'Deliver now • 15-25 min' }}
       </div>
+      <button
+        type="button"
+        class="menu-toggle"
+        (click)="toggleMenu()"
+        [attr.aria-expanded]="isMenuOpen()"
+        aria-controls="primary-navigation"
+      >
+        <span class="menu-icon" aria-hidden="true"><span></span></span>
+        <span>{{ 'nav.menu' | translate: 'Menu' }}</span>
+      </button>
       <span class="spacer"></span>
-      <div class="nav-links">
-        <a routerLink="/">{{ 'nav.discover' | translate: 'Discover' }}</a>
-        <a routerLink="/b2b">{{ 'nav.b2b' | translate: 'For restaurants' }}</a>
-        <a routerLink="/orders">{{ 'nav.orders' | translate: 'Orders' }}</a>
-        <a *ngIf="auth.isLoggedIn()" routerLink="/admin">{{ 'nav.manage' | translate: 'Manage' }}</a>
+      <div class="nav-links" id="primary-navigation" [class.open]="isMenuOpen()">
+        <a routerLink="/" (click)="closeMenu()">{{ 'nav.discover' | translate: 'Discover' }}</a>
+        <a routerLink="/b2b" (click)="closeMenu()">{{ 'nav.b2b' | translate: 'For restaurants' }}</a>
+        <a routerLink="/orders" (click)="closeMenu()">{{ 'nav.orders' | translate: 'Orders' }}</a>
+        <a *ngIf="auth.isLoggedIn()" routerLink="/admin" (click)="closeMenu()">{{ 'nav.manage' | translate: 'Manage' }}</a>
       </div>
       <app-user-menu class="user-menu"></app-user-menu>
       <label class="language-select">
@@ -268,6 +382,7 @@ export class NavbarComponent {
   languages = this.i18n.languages;
   language = this.i18n.languageSignal;
   selectedLanguage = signal(this.language());
+  isMenuOpen = signal(false);
 
   constructor() {
     effect(() => {
@@ -277,5 +392,20 @@ export class NavbarComponent {
 
   onLanguageChange(code: string) {
     this.i18n.setLanguage(code);
+  }
+
+  toggleMenu() {
+    this.isMenuOpen.update((open) => !open);
+  }
+
+  closeMenu() {
+    this.isMenuOpen.set(false);
+  }
+
+  @HostListener('window:resize')
+  onWindowResize() {
+    if (typeof window !== 'undefined' && window.innerWidth > 640 && this.isMenuOpen()) {
+      this.closeMenu();
+    }
   }
 }
