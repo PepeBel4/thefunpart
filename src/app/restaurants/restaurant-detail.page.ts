@@ -177,24 +177,22 @@ type PendingCartAddition = {
     }
 
     .menu-search {
-      margin: 1.75rem 0 1.5rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-
-    .menu-search-label {
-      font-weight: 600;
-      color: rgba(16, 24, 18, 0.7);
+      position: relative;
+      flex: 1 1 240px;
+      max-width: min(360px, 100%);
+      display: inline-flex;
+      align-items: center;
+      margin-left: auto;
     }
 
     .menu-search input {
       border: 1px solid rgba(10, 10, 10, 0.12);
       border-radius: 999px;
-      padding: 0.75rem 1rem;
+      padding: 0.6rem 1rem 0.6rem 2.5rem;
       font: inherit;
       background-color: #fff;
       transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      width: 100%;
     }
 
     .menu-search input::placeholder {
@@ -205,6 +203,15 @@ type PendingCartAddition = {
       outline: none;
       border-color: color-mix(in srgb, var(--brand-green) 55%, transparent);
       box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-green) 22%, transparent);
+    }
+
+    .menu-search-icon {
+      position: absolute;
+      left: 0.95rem;
+      width: 1.1rem;
+      height: 1.1rem;
+      color: rgba(16, 24, 18, 0.45);
+      pointer-events: none;
     }
 
     .menu-empty {
@@ -221,12 +228,22 @@ type PendingCartAddition = {
       display: flex;
       gap: 1rem;
       flex-wrap: wrap;
+      align-items: center;
       margin-bottom: 2rem;
       position: sticky;
       top: 0;
       z-index: 20;
       padding: 0.75rem 0;
-      background: transparent;
+      background: var(--surface);
+      border-bottom: 1px solid rgba(10, 10, 10, 0.06);
+    }
+
+    .category-nav-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      flex: 2 1 320px;
+      align-items: center;
     }
 
     .category-nav button {
@@ -557,23 +574,34 @@ type PendingCartAddition = {
         <h3 *ngIf="menuCategories.length || searchTerm">
           {{ 'restaurants.menuHeading' | translate: 'Menu' }}
         </h3>
-        <div class="menu-search" *ngIf="menuCategories.length || searchTerm">
-          <label class="menu-search-label" for="restaurant-menu-search">
-            {{ 'restaurantDetail.searchMenu' | translate: 'Search menu' }}
-          </label>
-          <input
-            type="search"
-            id="restaurant-menu-search"
-            [value]="searchTerm"
-            (input)="onSearchTermChange($any($event.target).value)"
-            [attr.placeholder]="'restaurantDetail.searchMenuPlaceholder' | translate: 'Search menu items'"
-            [attr.aria-label]="'restaurantDetail.searchMenu' | translate: 'Search menu'"
-          />
-        </div>
-        <nav class="category-nav" *ngIf="menuCategories.length">
-          <button type="button" *ngFor="let category of menuCategories" (click)="scrollTo(category.anchor)">
-            {{ category.name }}
-          </button>
+        <nav class="category-nav" *ngIf="menuCategories.length || searchTerm">
+          <div class="category-nav-buttons" *ngIf="menuCategories.length">
+            <button type="button" *ngFor="let category of menuCategories" (click)="scrollTo(category.anchor)">
+              {{ category.name }}
+            </button>
+          </div>
+          <div class="menu-search">
+            <svg class="menu-search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+              <line
+                x1="16"
+                y1="16"
+                x2="20.5"
+                y2="20.5"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              ></line>
+            </svg>
+            <input
+              type="search"
+              id="restaurant-menu-search"
+              [value]="searchTerm"
+              (input)="onSearchTermChange($any($event.target).value)"
+              [attr.placeholder]="'restaurantDetail.searchMenuPlaceholder' | translate: 'Search menu items'"
+              [attr.aria-label]="'restaurantDetail.searchMenu' | translate: 'Search menu'"
+            />
+          </div>
         </nav>
         <section class="menu-section" *ngFor="let category of menuCategories" [attr.id]="category.anchor">
           <h4>{{ category.name }}</h4>
