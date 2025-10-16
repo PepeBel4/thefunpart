@@ -80,7 +80,7 @@ export interface MenuItemCategory {
   name_translations?: Record<string, string>;
 }
 
-export interface MenuItem {
+export interface MenuItem { 
   id: number;
   restaurant_id: number;
   name: string;
@@ -91,6 +91,14 @@ export interface MenuItem {
   categories?: MenuItemCategory[];
   allergens?: Allergen[];
   photos?: RestaurantPhoto[];
+}
+
+export interface MenuOption {
+  id: number;
+  restaurant_id: number;
+  name: string;
+  description?: string | null;
+  price_cents?: number | null;
 }
 
 export interface AiSuggestedMenuItem {
