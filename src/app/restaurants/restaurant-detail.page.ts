@@ -859,7 +859,7 @@ export class RestaurantDetailPage implements OnDestroy {
   }
 
   private isHighlightedMenuItem(item: MenuItem): boolean {
-    return Boolean(item.highlighted);
+    return Boolean(item.is_highlighted);
   }
 
   private scheduleHighlightScroll(menuItemId: number) {
@@ -1062,6 +1062,8 @@ export class RestaurantDetailPage implements OnDestroy {
 
     const highlightedItems = items.filter(item => this.isHighlightedMenuItem(item));
 
+    console.log(highlightedItems);
+    
     if (highlightedItems.length) {
       const cartCategoriesByItemId: Record<number, CartCategorySelection | null> = {};
 
@@ -1080,6 +1082,8 @@ export class RestaurantDetailPage implements OnDestroy {
         cartCategoriesByItemId,
       });
     }
+
+    console.log(result);
 
     return result;
   }

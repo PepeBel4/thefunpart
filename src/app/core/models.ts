@@ -77,7 +77,7 @@ export interface MenuItem {
   name: string;
   price_cents: number; // integer cents from Rails
   discounted_price_cents?: number | null;
-  highlighted?: boolean | null;
+  is_highlighted?: boolean | null;
   description?: string;
   categories?: MenuItemCategory[];
   allergens?: Allergen[];
