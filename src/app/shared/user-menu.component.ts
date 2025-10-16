@@ -9,21 +9,27 @@ import { TranslatePipe } from './translate.pipe';
   standalone: true,
   imports: [NgIf, RouterLink, TranslatePipe],
   template: `
-    <div class="user-menu-root">
+    <div class="user-menu-root" [class.open]="isOpen()">
       <button
         type="button"
         class="user-toggle"
         (click)="toggleMenu()"
-        aria-haspopup="true"
+        aria-haspopup="menu"
         [attr.aria-expanded]="isOpen()"
+        [attr.aria-controls]="isOpen() ? panelId : null"
         [attr.aria-label]="'nav.account' | translate: 'Account'"
       >
         <span aria-hidden="true" class="user-icon">👤</span>
-        <span class="user-label">
-          {{ 'nav.account' | translate: 'Account' }}
-        </span>
+        <span class="user-label">{{ 'nav.account' | translate: 'Account' }}</span>
+        <span aria-hidden="true" class="chevron">▾</span>
       </button>
-      <div *ngIf="isOpen()" class="menu-panel" role="menu">
+      <div
+        *ngIf="isOpen()"
+        class="menu-panel"
+        role="menu"
+        [attr.id]="panelId"
+        [attr.aria-label]="'nav.accountMenu' | translate: 'Account menu'"
+      >
         <ng-container *ngIf="auth.isLoggedIn(); else loggedOutMenu">
           <a routerLink="/profile" role="menuitem" (click)="closeMenu()">
             {{ 'nav.profile' | translate: 'Profile' }}
@@ -55,32 +61,46 @@ import { TranslatePipe } from './translate.pipe';
       .user-menu-root {
         position: relative;
         display: inline-flex;
+        align-items: center;
       }
 
       .user-toggle {
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
-        padding: 0.5rem 1rem;
+        padding: 0.45rem 0.85rem;
         border-radius: 999px;
         border: 0;
         cursor: pointer;
         background: rgba(255, 255, 255, 0.12);
         color: rgba(255, 255, 255, 0.92);
         font-weight: 600;
-        transition: background 0.2s ease, transform 0.2s ease;
+        transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
       }
 
       .user-toggle:hover,
       .user-toggle:focus-visible {
         background: rgba(255, 255, 255, 0.18);
-        transform: translateY(-1px);
+        color: #fff;
         outline: none;
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.14);
+      }
+
+      .user-menu-root.open .user-toggle {
+        background: rgba(255, 255, 255, 0.16);
+        color: #fff;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
       }
 
       .user-icon {
         font-size: 1.1rem;
         line-height: 1;
+      }
+
+      .chevron {
+        font-size: 0.75rem;
+        line-height: 1;
+        margin-left: -0.2rem;
       }
 
       .menu-panel {
@@ -125,7 +145,7 @@ import { TranslatePipe } from './translate.pipe';
 
       @media (max-width: 640px) {
         .user-toggle {
-          padding: 0.45rem 0.75rem;
+          padding: 0.4rem 0.6rem;
         }
 
         .user-label {
@@ -140,11 +160,12 @@ import { TranslatePipe } from './translate.pipe';
           border: 0;
         }
 
+        .chevron {
+          display: none;
+        }
+
         .menu-panel {
-          position: static;
-          margin-top: 0.75rem;
-          width: 100%;
-          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
+          min-width: 160px;
         }
       }
     `,
@@ -153,7 +174,8 @@ import { TranslatePipe } from './translate.pipe';
 export class UserMenuComponent {
   protected auth = inject(AuthService);
   protected isOpen = signal(false);
-  private host = inject(ElementRef<HTMLElement>);
+  protected panelId = `user-menu-${Math.random().toString(36).slice(2, 9)}`;
+  protected host = inject(ElementRef<HTMLElement>);
 
   toggleMenu() {
     this.isOpen.update((open) => !open);
