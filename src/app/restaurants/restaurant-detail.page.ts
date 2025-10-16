@@ -14,6 +14,7 @@ import { CardService } from '../cards/card.service';
 import { CardSpotlightEntry, CardSpotlightService } from '../cards/card-spotlight.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { normalizeRestaurantCuisines } from './cuisines';
+import { BrandColorService } from '../core/brand-color.service';
 
 type MenuCategoryGroup = {
   name: string;
@@ -209,15 +210,15 @@ type PendingCartAddition = {
       content: '';
       position: absolute;
       inset: 0;
-      background: linear-gradient(135deg, rgba(6, 193, 103, 0.12), transparent 60%);
+      background: linear-gradient(135deg, rgba(var(--brand-green-rgb, 6, 193, 103), 0.12), transparent 60%);
       opacity: 0;
       transition: opacity 0.2s ease;
       pointer-events: none;
     }
 
     .card.highlighted {
-      border-color: rgba(6, 193, 103, 0.4);
-      box-shadow: 0 0 0 3px rgba(6, 193, 103, 0.14), var(--shadow-soft);
+      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.4);
+      box-shadow: 0 0 0 3px rgba(var(--brand-green-rgb, 6, 193, 103), 0.14), var(--shadow-soft);
     }
 
     .card:hover::after {
@@ -280,8 +281,8 @@ type PendingCartAddition = {
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      color: #056333;
-      background: #06c16724;
+      color: color-mix(in srgb, var(--brand-green) 65%, black);
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.14);
       padding: 0.3rem 0.6rem;
       border-radius: 999px;
     }
@@ -293,7 +294,7 @@ type PendingCartAddition = {
       padding: 0.5rem 0.75rem;
       border: 1px solid var(--border-soft);
       border-radius: 999px;
-      background: rgba(6, 193, 103, 0.08);
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.08);
       color: var(--text-primary);
       font-weight: 600;
       width: fit-content;
@@ -322,7 +323,7 @@ type PendingCartAddition = {
 
     .quantity-controls .quantity-button:not(:disabled):hover,
     .quantity-controls .quantity-button:not(:disabled):focus {
-      background: rgba(6, 193, 103, 0.18);
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.18);
       outline: none;
     }
 
@@ -339,19 +340,19 @@ type PendingCartAddition = {
     .card button {
       align-self: flex-start;
       background: var(--brand-green);
-      color: #042f1a;
+      color: var(--brand-on-primary);
       border: 0;
       border-radius: 12px;
       padding: 0.6rem 1.1rem;
       font-weight: 600;
       cursor: pointer;
-      box-shadow: 0 12px 24px rgba(6, 193, 103, 0.24);
+      box-shadow: 0 12px 24px rgba(var(--brand-green-rgb, 6, 193, 103), 0.24);
       transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
     .card button:hover {
       transform: translateY(-2px);
-      box-shadow: 0 16px 32px rgba(6, 193, 103, 0.28);
+      box-shadow: 0 16px 32px rgba(var(--brand-green-rgb, 6, 193, 103), 0.28);
     }
 
     .modal-backdrop {
@@ -407,24 +408,24 @@ type PendingCartAddition = {
 
     .modal-button.primary {
       background: var(--brand-green);
-      color: #042f1a;
+      color: var(--brand-on-primary);
       border: none;
-      box-shadow: 0 16px 32px #06c16747;
+      box-shadow: 0 16px 32px rgba(var(--brand-green-rgb, 6, 193, 103), 0.28);
     }
 
     .modal-button.primary:hover {
       transform: translateY(-1px);
-      box-shadow: 0 20px 40px #06c16752;
+      box-shadow: 0 20px 40px rgba(var(--brand-green-rgb, 6, 193, 103), 0.32);
     }
 
     .modal-button.secondary {
       background: transparent;
       color: var(--text-secondary);
-      border: 1px solid #042f1a2d;
+      border: 1px solid rgba(var(--brand-green-rgb, 6, 193, 103), 0.18);
     }
 
     .modal-button.secondary:hover {
-      background: #06c16719;
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.1);
     }
 
     @media (max-width: 720px) {
@@ -588,6 +589,7 @@ export class RestaurantDetailPage implements OnDestroy {
   private i18n = inject(TranslationService);
   private cards = inject(CardService);
   private cardSpotlight = inject(CardSpotlightService);
+  private brandColor = inject(BrandColorService);
   private highlightMenuItemId$ = this.route.queryParamMap.pipe(
     map(params => this.parseHighlightParam(params.get('highlightItem'))),
     startWith(this.parseHighlightParam(this.route.snapshot.queryParamMap.get('highlightItem')))
@@ -600,7 +602,8 @@ export class RestaurantDetailPage implements OnDestroy {
   restaurant$: Observable<Restaurant> = this.rSvc.get(this.id).pipe(shareReplay({ bufferSize: 1, refCount: true }));
   menuCategories$: Observable<MenuCategoryGroup[]> = this.createMenuCategoriesStream();
 
-  defaultHeroBackground = 'linear-gradient(135deg, rgba(6, 193, 103, 0.32), rgba(4, 47, 26, 0.68))';
+  defaultHeroBackground =
+    'linear-gradient(135deg, color-mix(in srgb, var(--brand-green) 32%, transparent), color-mix(in srgb, var(--brand-green) 68%, black))';
   heroBackground$: Observable<string> = this.restaurant$.pipe(
     switchMap(restaurant => {
       const photos = restaurant.photos?.map(photo => photo.url).filter(Boolean) ?? [];
@@ -642,6 +645,8 @@ export class RestaurantDetailPage implements OnDestroy {
         } else {
           this.cardSpotlight.clear();
         }
+
+        this.brandColor.setOverride(restaurant.primary_color ?? null);
       });
 
     let initial = true;
@@ -656,6 +661,7 @@ export class RestaurantDetailPage implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.brandColor.reset();
     this.cardSpotlight.clear();
     if (this.highlightScrollTimeout) {
       clearTimeout(this.highlightScrollTimeout);
@@ -779,7 +785,11 @@ export class RestaurantDetailPage implements OnDestroy {
   ) {
     const cartRestaurant = this.cart.restaurant();
     const incomingRestaurantName = this.getRestaurantName(restaurant);
-    const incomingRestaurant: CartRestaurant = { id: restaurant.id, name: incomingRestaurantName };
+    const incomingRestaurant: CartRestaurant = {
+      id: restaurant.id,
+      name: incomingRestaurantName,
+      primaryColor: restaurant.primary_color ?? null,
+    };
 
     if (cartRestaurant && cartRestaurant.id !== restaurant.id) {
       const currentName =

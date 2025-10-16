@@ -24,9 +24,9 @@ type IconPath = {
       align-items: center;
       gap: 1rem;
       padding: 0.75rem 1rem;
-      background: linear-gradient(135deg, rgba(6, 193, 103, 0.08), rgba(6, 193, 103, 0));
+      background: linear-gradient(135deg, rgba(var(--brand-green-rgb, 6, 193, 103), 0.08), rgba(var(--brand-green-rgb, 6, 193, 103), 0));
       border-radius: var(--radius-card);
-      border: 1px solid rgba(6, 193, 103, 0.15);
+      border: 1px solid rgba(var(--brand-green-rgb, 6, 193, 103), 0.15);
     }
 
     .steps {
@@ -57,7 +57,7 @@ type IconPath = {
       left: -50%;
       width: 100%;
       height: 2px;
-      background: linear-gradient(90deg, rgba(6, 193, 103, 0.15), rgba(6, 193, 103, 0.05));
+      background: linear-gradient(90deg, rgba(var(--brand-green-rgb, 6, 193, 103), 0.15), rgba(var(--brand-green-rgb, 6, 193, 103), 0.05));
       z-index: 0;
     }
 
@@ -66,22 +66,22 @@ type IconPath = {
     }
 
     .step.completed::before {
-      background: linear-gradient(90deg, rgba(6, 193, 103, 0.6), rgba(6, 193, 103, 0.3));
+      background: linear-gradient(90deg, rgba(var(--brand-green-rgb, 6, 193, 103), 0.6), rgba(var(--brand-green-rgb, 6, 193, 103), 0.3));
     }
 
     .step.active::before {
-      background: linear-gradient(90deg, rgba(6, 193, 103, 0.6), rgba(6, 193, 103, 0.2));
+      background: linear-gradient(90deg, rgba(var(--brand-green-rgb, 6, 193, 103), 0.6), rgba(var(--brand-green-rgb, 6, 193, 103), 0.2));
     }
 
     .dot {
       width: 2.25rem;
       height: 2.25rem;
       border-radius: 999px;
-      border: 2px solid rgba(6, 193, 103, 0.4);
+      border: 2px solid rgba(var(--brand-green-rgb, 6, 193, 103), 0.4);
       background: var(--surface);
       display: grid;
       place-items: center;
-      color: rgba(6, 193, 103, 0.7);
+      color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.7);
       z-index: 1;
       transition: background 200ms ease, border-color 200ms ease, color 200ms ease;
     }
@@ -96,7 +96,7 @@ type IconPath = {
       background: var(--brand-green);
       border-color: var(--brand-green);
       color: #fff;
-      box-shadow: 0 8px 18px rgba(6, 193, 103, 0.25);
+      box-shadow: 0 8px 18px rgba(var(--brand-green-rgb, 6, 193, 103), 0.25);
     }
 
     .step.completed .dot svg {
@@ -110,7 +110,7 @@ type IconPath = {
     .step.active .dot {
       border-color: var(--brand-green);
       color: var(--brand-green);
-      box-shadow: 0 6px 14px rgba(6, 193, 103, 0.2);
+      box-shadow: 0 6px 14px rgba(var(--brand-green-rgb, 6, 193, 103), 0.2);
     }
 
     .label {

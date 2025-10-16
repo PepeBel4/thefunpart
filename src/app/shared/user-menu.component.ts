@@ -118,7 +118,7 @@ import { TranslatePipe } from './translate.pipe';
       .menu-panel a:focus-visible,
       .menu-panel .panel-action:hover,
       .menu-panel .panel-action:focus-visible {
-        background: rgba(6, 193, 103, 0.12);
+        background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.12);
         outline: none;
       }
 

@@ -70,7 +70,7 @@ import { AuthService } from '../core/auth.service';
     input:focus-visible,
     select:focus-visible {
       border-color: var(--brand-green);
-      box-shadow: 0 0 0 3px rgba(6, 193, 103, 0.2);
+      box-shadow: 0 0 0 3px rgba(var(--brand-green-rgb, 6, 193, 103), 0.2);
       outline: none;
     }
 
@@ -95,12 +95,12 @@ import { AuthService } from '../core/auth.service';
       border: 0;
       border-radius: 999px;
       background: var(--brand-green);
-      color: #042f1a;
+      color: var(--brand-on-primary);
       padding: 0.7rem 1.6rem;
       font-weight: 600;
       cursor: pointer;
       transition: transform 0.2s ease, box-shadow 0.2s ease;
-      box-shadow: 0 12px 25px rgba(6, 193, 103, 0.28);
+      box-shadow: 0 12px 25px rgba(var(--brand-green-rgb, 6, 193, 103), 0.28);
     }
 
     button[type='submit']:disabled {
@@ -111,7 +111,7 @@ import { AuthService } from '../core/auth.service';
 
     button[type='submit']:not(:disabled):hover {
       transform: translateY(-1px);
-      box-shadow: 0 16px 35px rgba(6, 193, 103, 0.32);
+      box-shadow: 0 16px 35px rgba(var(--brand-green-rgb, 6, 193, 103), 0.32);
     }
 
     .status {

@@ -1,5 +1,5 @@
 import { CurrencyPipe, NgFor, NgIf } from '@angular/common';
-import { Component, effect, inject } from '@angular/core';
+import { Component, OnDestroy, effect, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
@@ -7,6 +7,7 @@ import { CartService, type CartLine } from '../cart/cart.service';
 import { OrderService } from '../orders/order.service';
 import { AiSuggestedMenuItem, Order } from '../core/models';
 import { RestaurantAiSuggestionsService } from '../restaurants/restaurant-ai-suggestions.service';
+import { BrandColorService } from '../core/brand-color.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 
 @Component({
@@ -45,20 +46,20 @@ import { TranslatePipe } from '../shared/translate.pipe';
     button {
       align-self: flex-start;
       background: var(--brand-green);
-      color: #042f1a;
+      color: var(--brand-on-primary);
       border: 0;
       border-radius: 14px;
       padding: 0.9rem 1.6rem;
       font-size: 1rem;
       font-weight: 700;
       cursor: pointer;
-      box-shadow: 0 18px 32px rgba(6, 193, 103, 0.28);
+      box-shadow: 0 18px 32px rgba(var(--brand-green-rgb, 6, 193, 103), 0.28);
       transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
     button:hover:enabled {
       transform: translateY(-2px);
-      box-shadow: 0 22px 40px rgba(6, 193, 103, 0.32);
+      box-shadow: 0 22px 40px rgba(var(--brand-green-rgb, 6, 193, 103), 0.32);
     }
 
     button:disabled {
@@ -213,11 +214,12 @@ import { TranslatePipe } from '../shared/translate.pipe';
     </div>
   `
 })
-export class CheckoutPage {
+export class CheckoutPage implements OnDestroy {
   cart = inject(CartService);
   private orders = inject(OrderService);
   private router = inject(Router);
   private aiSuggestionsService = inject(RestaurantAiSuggestionsService);
+  private brandColor = inject(BrandColorService);
   isPlacingOrder = false;
   aiSuggestions: AiSuggestedMenuItem[] = [];
   isLoadingSuggestions = false;
@@ -253,6 +255,19 @@ export class CheckoutPage {
     this.suggestionKey = key;
     void this.fetchAiSuggestions(restaurantId, selectedIds);
   });
+
+  private brandColorEffect = effect(() => {
+    const restaurant = this.cart.restaurant();
+    if (restaurant?.primaryColor) {
+      this.brandColor.setOverride(restaurant.primaryColor);
+    } else {
+      this.brandColor.reset();
+    }
+  });
+
+  ngOnDestroy(): void {
+    this.brandColor.reset();
+  }
 
   async placeOrder(){
     const lines = this.cart.lines();

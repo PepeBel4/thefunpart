@@ -46,20 +46,20 @@ import { TranslatePipe } from '../shared/translate.pipe';
       margin-top: 0.5rem;
       width: 100%;
       background: var(--brand-green);
-      color: #042f1a;
+      color: var(--brand-on-primary);
       border: 0;
       padding: 0.9rem;
       border-radius: 14px;
       font-weight: 700;
       font-size: 1rem;
       cursor: pointer;
-      box-shadow: 0 18px 30px rgba(6, 193, 103, 0.28);
+      box-shadow: 0 18px 30px rgba(var(--brand-green-rgb, 6, 193, 103), 0.28);
       transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
     button:hover {
       transform: translateY(-1px);
-      box-shadow: 0 22px 40px rgba(6, 193, 103, 0.32);
+      box-shadow: 0 22px 40px rgba(var(--brand-green-rgb, 6, 193, 103), 0.32);
     }
   `],
   template: `

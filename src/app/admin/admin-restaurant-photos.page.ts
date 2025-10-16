@@ -78,19 +78,19 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
 
     .upload-controls button {
       background: var(--brand-green);
-      color: #042f1a;
+      color: var(--brand-on-primary);
       border: 0;
       border-radius: 999px;
       padding: 0.65rem 1.4rem;
       font-weight: 600;
       cursor: pointer;
-      box-shadow: 0 12px 24px rgba(6, 193, 103, 0.24);
+      box-shadow: 0 12px 24px rgba(var(--brand-green-rgb, 6, 193, 103), 0.24);
       transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
     .upload-controls button:hover {
       transform: translateY(-1px);
-      box-shadow: 0 16px 32px rgba(6, 193, 103, 0.28);
+      box-shadow: 0 16px 32px rgba(var(--brand-green-rgb, 6, 193, 103), 0.28);
     }
 
     .upload-controls button[disabled] {

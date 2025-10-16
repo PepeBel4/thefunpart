@@ -11,6 +11,7 @@ export interface CartLine { item: MenuItem; quantity: number; category?: CartCat
 export interface CartRestaurant {
   id: number;
   name?: string | null;
+  primaryColor?: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -70,8 +71,15 @@ export class CartService {
 
     if (!currentRestaurant) {
       this._restaurant.set(normalizedRestaurant);
-    } else if (normalizedRestaurant.name && normalizedRestaurant.name !== currentRestaurant.name) {
-      this._restaurant.set({ ...currentRestaurant, name: normalizedRestaurant.name });
+    } else {
+      const next: CartRestaurant = { ...currentRestaurant };
+      if (normalizedRestaurant.name && normalizedRestaurant.name !== currentRestaurant.name) {
+        next.name = normalizedRestaurant.name;
+      }
+      if (normalizedRestaurant.primaryColor !== currentRestaurant.primaryColor) {
+        next.primaryColor = normalizedRestaurant.primaryColor ?? null;
+      }
+      this._restaurant.set(next);
     }
 
     const found = lines.find(
@@ -166,13 +174,37 @@ export class CartService {
     return { id, label: label ?? null };
   }
 
-  private normalizeRestaurant(restaurant: CartRestaurant | null | undefined, fallbackId: number): CartRestaurant {
+  private normalizeRestaurant(
+    restaurant: CartRestaurant | null | undefined,
+    fallbackId: number
+  ): CartRestaurant {
     const id = restaurant?.id ?? fallbackId;
     const name = restaurant?.name?.trim();
+    const color = this.normalizeColor(restaurant?.primaryColor ?? null);
 
     return {
       id,
       name: name?.length ? name : null,
+      primaryColor: color,
     };
+  }
+
+  private normalizeColor(color: string | null): string | null {
+    const value = color?.trim();
+    if (!value) {
+      return null;
+    }
+
+    const match = value.match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (!match) {
+      return null;
+    }
+
+    const hex = match[1];
+    const normalized = hex.length === 3
+      ? `#${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}`
+      : `#${hex}`;
+
+    return normalized.toLowerCase();
   }
 }

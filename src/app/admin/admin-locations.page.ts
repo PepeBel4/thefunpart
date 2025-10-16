@@ -110,7 +110,7 @@ interface LocationsViewState {
       font-weight: 600;
       padding: 0.3rem 0.65rem;
       border-radius: 999px;
-      background: rgba(6, 193, 103, 0.16);
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.16);
       color: #046032;
     }
 
@@ -144,8 +144,8 @@ interface LocationsViewState {
 
     button.action.primary {
       background: var(--brand-green);
-      color: #042f1a;
-      box-shadow: 0 12px 24px rgba(6, 193, 103, 0.2);
+      color: var(--brand-on-primary);
+      box-shadow: 0 12px 24px rgba(var(--brand-green-rgb, 6, 193, 103), 0.2);
     }
 
     button.action.danger {

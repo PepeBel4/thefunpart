@@ -35,7 +35,7 @@ interface Step {
       gap: 1.5rem;
       padding: 3.5rem clamp(1rem, 4vw, 4rem);
       border-radius: 28px;
-      background: radial-gradient(circle at top left, rgba(6, 193, 103, 0.18), transparent 55%),
+      background: radial-gradient(circle at top left, rgba(var(--brand-green-rgb, 6, 193, 103), 0.18), transparent 55%),
         linear-gradient(135deg, #0a0a0a, #1a3b28);
       color: #f7fdf9;
       box-shadow: 0 28px 60px rgba(10, 10, 10, 0.28);
@@ -94,13 +94,13 @@ interface Step {
       font-weight: 600;
       letter-spacing: -0.01em;
       text-decoration: none;
-      box-shadow: 0 18px 35px rgba(6, 193, 103, 0.35);
+      box-shadow: 0 18px 35px rgba(var(--brand-green-rgb, 6, 193, 103), 0.35);
       transition: transform 0.25s ease, box-shadow 0.25s ease;
     }
 
     .hero-cta:hover {
       transform: translateY(-2px);
-      box-shadow: 0 24px 40px rgba(6, 193, 103, 0.42);
+      box-shadow: 0 24px 40px rgba(var(--brand-green-rgb, 6, 193, 103), 0.42);
     }
 
     .benefits {
@@ -151,7 +151,7 @@ interface Step {
       align-items: center;
       justify-content: center;
       font-size: 1.7rem;
-      background: rgba(6, 193, 103, 0.16);
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.16);
       color: var(--brand-black);
     }
 
@@ -179,8 +179,8 @@ interface Step {
       gap: 0.5rem;
       padding: 1.5rem;
       border-radius: 20px;
-      background: linear-gradient(135deg, rgba(6, 193, 103, 0.1), rgba(6, 193, 103, 0.02));
-      border: 1px solid rgba(6, 193, 103, 0.18);
+      background: linear-gradient(135deg, rgba(var(--brand-green-rgb, 6, 193, 103), 0.1), rgba(var(--brand-green-rgb, 6, 193, 103), 0.02));
+      border: 1px solid rgba(var(--brand-green-rgb, 6, 193, 103), 0.18);
     }
 
     .proof-card strong {
@@ -283,12 +283,12 @@ interface Step {
     .cta-primary {
       background: var(--brand-green);
       color: #05240f;
-      box-shadow: 0 18px 35px rgba(6, 193, 103, 0.3);
+      box-shadow: 0 18px 35px rgba(var(--brand-green-rgb, 6, 193, 103), 0.3);
     }
 
     .cta-primary:hover {
       transform: translateY(-1px);
-      box-shadow: 0 22px 40px rgba(6, 193, 103, 0.36);
+      box-shadow: 0 22px 40px rgba(var(--brand-green-rgb, 6, 193, 103), 0.36);
     }
 
     .cta-secondary {
