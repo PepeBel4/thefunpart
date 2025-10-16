@@ -229,9 +229,26 @@ type DiscountHighlight = {
       display: flex;
       align-items: center;
       justify-content: center;
+      --logo-size: 3.1rem;
     }
 
-    .card-media img {
+    .card-media::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: calc(var(--logo-size) + 1.8rem);
+      height: calc(var(--logo-size) + 1.8rem);
+      background: var(--surface);
+      border-top-right-radius: calc(var(--radius-card) - 6px);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .card-media img,
+    .card-media .placeholder {
+      position: relative;
+      z-index: 0;
       width: 100%;
       height: 100%;
       object-fit: cover;
@@ -239,6 +256,9 @@ type DiscountHighlight = {
     }
 
     .card-media .placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 2rem;
       font-weight: 700;
       color: rgba(10, 10, 10, 0.6);
@@ -252,50 +272,56 @@ type DiscountHighlight = {
 
     .card-header {
       display: flex;
-      align-items: flex-start;
-      gap: 0.9rem;
-    }
-
-    .card-logo {
-      flex-shrink: 0;
-      align-self: flex-start;
-      width: 3.25rem;
-      height: 3.25rem;
-      border-radius: 14px;
-      background: rgba(10, 10, 10, 0.08);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
-
-    .card-logo img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    .card-logo.placeholder {
-      font-weight: 700;
-      font-size: 1.1rem;
-      color: rgba(10, 10, 10, 0.65);
-      letter-spacing: 0.02em;
-    }
-
-    .card-text {
-      display: flex;
       flex-direction: column;
       gap: 0.25rem;
     }
 
-    .card-text h3 {
+    .card-header h3 {
       margin: 0;
     }
 
-    .card-text p {
+    .card-header p {
       margin: 0;
       color: var(--text-secondary);
+    }
+
+    .card-logo {
+      position: absolute;
+      left: 0.85rem;
+      bottom: 0.85rem;
+      width: calc(var(--logo-size) + 0.7rem);
+      height: calc(var(--logo-size) + 0.7rem);
+      padding: 0.35rem;
+      border-radius: 18px;
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 14px 32px rgba(15, 23, 42, 0.18);
+      z-index: 2;
+    }
+
+    .card-logo img,
+    .card-logo-initial {
+      width: var(--logo-size);
+      height: var(--logo-size);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card-logo img {
+      object-fit: cover;
+    }
+
+    .card-logo-initial {
+      background: rgba(10, 10, 10, 0.08);
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: rgba(10, 10, 10, 0.65);
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
     }
 
     .cuisine-tags {
@@ -407,21 +433,21 @@ type DiscountHighlight = {
           <ng-template #placeholder>
             <span class="placeholder">{{ getRestaurantInitial(r) }}</span>
           </ng-template>
+          <ng-container *ngIf="r.logo_url as logoUrl; else logoFallback">
+            <div class="card-logo">
+              <img [src]="logoUrl" [alt]="getRestaurantName(r) + ' logo'" loading="lazy" />
+            </div>
+          </ng-container>
+          <ng-template #logoFallback>
+            <div class="card-logo">
+              <div class="card-logo-initial">{{ getRestaurantInitial(r) }}</div>
+            </div>
+          </ng-template>
         </div>
           <div class="card-body">
             <div class="card-header">
-              <ng-container *ngIf="r.logo_url as logoUrl; else logoFallback">
-                <div class="card-logo">
-                  <img [src]="logoUrl" [alt]="getRestaurantName(r) + ' logo'" loading="lazy" />
-                </div>
-              </ng-container>
-              <ng-template #logoFallback>
-                <div class="card-logo placeholder">{{ getRestaurantInitial(r) }}</div>
-              </ng-template>
-              <div class="card-text">
-                <h3>{{ getRestaurantName(r) }}</h3>
-                <p>{{ getRestaurantDescription(r) }}</p>
-              </div>
+              <h3>{{ getRestaurantName(r) }}</h3>
+              <p>{{ getRestaurantDescription(r) }}</p>
             </div>
             <ul class="cuisine-tags" *ngIf="r.cuisines?.length">
               <li *ngFor="let cuisine of r.cuisines">{{ cuisine | titlecase }}</li>
