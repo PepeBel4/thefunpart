@@ -8,12 +8,15 @@ export class RestaurantService {
   private api = inject(ApiService);
 
   private normalizeRestaurant(restaurant: RestaurantApiResponse): Restaurant {
-    const { chain, chains, ...rest } = restaurant;
+    const { chain, chains, logo, ...rest } = restaurant;
 
     const normalizedChain = chain ?? (Array.isArray(chains) ? chains.find(item => !!item) ?? null : null);
+    const normalizedLogoUrl = rest.logo_url ?? logo?.url ?? null;
 
     return {
       ...rest,
+      logo: logo ?? null,
+      logo_url: normalizedLogoUrl,
       chain: normalizedChain ?? null,
     };
   }
