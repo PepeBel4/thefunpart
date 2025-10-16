@@ -984,7 +984,9 @@ export class MenuDiscountManagerComponent implements OnDestroy {
         return;
       }
 
-      this.menuItems = items;
+      this.menuItems = items
+        .map(item => this.normalizeMenuItem(item))
+        .filter((item): item is MenuItem => item !== null);
       this.replaceDiscounts(discounts);
       this.replaceAssignments(assignments);
       this.loading = false;
@@ -1106,6 +1108,18 @@ export class MenuDiscountManagerComponent implements OnDestroy {
       ...discount,
       menu_item_ids: menuItemIds,
       menu_items: mergedMenuItems.map(item => ({ ...item })),
+    };
+  }
+
+  private normalizeMenuItem(item: MenuItem): MenuItem | null {
+    const restaurantId = this.parseNumber(item.restaurant_id);
+    if (restaurantId === null) {
+      return null;
+    }
+
+    return {
+      ...item,
+      restaurant_id: restaurantId,
     };
   }
 
