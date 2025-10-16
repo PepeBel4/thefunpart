@@ -12,12 +12,19 @@ export interface MenuOptionItemInput {
   price_modifier_percentage: number | null;
 }
 
+export interface MenuOptionAssignmentInput {
+  id?: number;
+  menu_item_option_id?: number;
+  menu_item_id: number;
+}
+
 export interface MenuOptionInput {
   title: string;
   category_id: number;
   min_selections: number;
   max_selections: number;
   option_items?: MenuOptionItemInput[];
+  option_assignments?: MenuOptionAssignmentInput[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -35,6 +42,9 @@ export class MenuOptionsService {
     if (!option.option_items || !option.option_items.length) {
       delete option.option_items;
     }
+    if (!option.option_assignments) {
+      delete option.option_assignments;
+    }
 
     return this.api.post<MenuOption>('/options', { option });
   }
@@ -43,6 +53,9 @@ export class MenuOptionsService {
     const option: MenuOptionInput = { ...payload };
     if (!option.option_items || !option.option_items.length) {
       delete option.option_items;
+    }
+    if (!option.option_assignments) {
+      delete option.option_assignments;
     }
 
     return this.api.put<MenuOption>(`/options/${id}`, { option });
