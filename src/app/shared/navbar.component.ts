@@ -140,6 +140,9 @@ import { FormsModule } from '@angular/forms';
     }
 
     .cart-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
       text-decoration: none;
       background: var(--brand-green);
       color: #042f1a;
@@ -148,6 +151,20 @@ import { FormsModule } from '@angular/forms';
       font-weight: 600;
       box-shadow: 0 12px 25px rgba(6, 193, 103, 0.28);
       transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .cart-icon {
+      font-size: 1.2rem;
+    }
+
+    .cart-count {
+      min-width: 1.75rem;
+      padding: 0.1rem 0.45rem;
+      border-radius: 999px;
+      background: rgba(4, 47, 26, 0.12);
+      color: inherit;
+      font-variant-numeric: tabular-nums;
+      text-align: center;
     }
 
     .cart-pill:hover {
@@ -265,7 +282,11 @@ import { FormsModule } from '@angular/forms';
         </select>
       </label>
       <a routerLink="/checkout" class="cart-pill">
-        {{ 'nav.cart' | translate: 'Cart ({{count}})': { count: cart.count() } }}
+        <span aria-hidden="true" class="cart-icon">🛒</span>
+        <span class="cart-count">{{ cart.count() }}</span>
+        <span class="sr-only">
+          {{ 'nav.cart' | translate: 'Cart with {{count}} items': { count: cart.count() } }}
+        </span>
       </a>
       <button *ngIf="auth.isLoggedIn(); else login" (click)="auth.logout()">
         {{ 'nav.logout' | translate: 'Logout' }}
