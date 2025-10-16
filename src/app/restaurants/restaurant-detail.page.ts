@@ -19,6 +19,7 @@ type MenuCategoryGroup = {
   anchor: string;
   items: MenuItem[];
   cartCategory: CartCategorySelection | null;
+  cartCategoriesByItemId?: Record<number, CartCategorySelection | null>;
 };
 
 type PendingCartAddition = {
@@ -505,7 +506,10 @@ type PendingCartAddition = {
                   +
                 </button>
               </div>
-              <button type="button" (click)="addToCart(m, category.cartCategory, r, getQuantity(m.id))">
+              <button
+                type="button"
+                (click)="addToCart(m, resolveCartCategory(category, m), r, getQuantity(m.id))"
+              >
                 {{ 'restaurantDetail.addToCart' | translate: 'Add to cart' }}
               </button>
             </div>
@@ -839,8 +843,23 @@ export class RestaurantDetailPage implements OnDestroy {
     return this.buildMenuItemAnchorById(item.id);
   }
 
+  resolveCartCategory(group: MenuCategoryGroup, item: MenuItem): CartCategorySelection | null {
+    if (group.cartCategoriesByItemId) {
+      const key = item.id;
+      if (Object.prototype.hasOwnProperty.call(group.cartCategoriesByItemId, key)) {
+        return group.cartCategoriesByItemId[key] ?? null;
+      }
+    }
+
+    return group.cartCategory ?? null;
+  }
+
   shouldHighlightMenuItem(item: MenuItem): boolean {
-    return this.highlightMenuItemId === item.id;
+    return this.highlightMenuItemId === item.id || this.isHighlightedMenuItem(item);
+  }
+
+  private isHighlightedMenuItem(item: MenuItem): boolean {
+    return Boolean(item.highlighted);
   }
 
   private scheduleHighlightScroll(menuItemId: number) {
@@ -982,12 +1001,15 @@ export class RestaurantDetailPage implements OnDestroy {
   private organizeMenu(items: MenuItem[]): MenuCategoryGroup[] {
     const grouped = new Map<string, MenuCategoryGroup>();
     const fallback: MenuItem[] = [];
+    const primaryCategoryByItem = new Map<number, CartCategorySelection | null>();
 
     items.forEach(item => {
-      if (item.categories?.length) {
+      const categories = item.categories;
+
+      if (categories?.length) {
         let assignedToCategory = false;
 
-        item.categories.forEach(category => {
+        categories.forEach(category => {
           const label = this.getCategoryLabel(category);
 
           if (!label) {
@@ -1007,13 +1029,23 @@ export class RestaurantDetailPage implements OnDestroy {
 
           grouped.get(key)!.items.push(item);
           assignedToCategory = true;
+
+          if (!primaryCategoryByItem.has(item.id)) {
+            primaryCategoryByItem.set(item.id, { id: category.id ?? null, label });
+          }
         });
 
         if (!assignedToCategory) {
           fallback.push(item);
+          if (!primaryCategoryByItem.has(item.id)) {
+            primaryCategoryByItem.set(item.id, null);
+          }
         }
       } else {
         fallback.push(item);
+        if (!primaryCategoryByItem.has(item.id)) {
+          primaryCategoryByItem.set(item.id, null);
+        }
       }
     });
 
@@ -1025,6 +1057,27 @@ export class RestaurantDetailPage implements OnDestroy {
         anchor: 'category-uncategorized',
         items: fallback,
         cartCategory: null,
+      });
+    }
+
+    const highlightedItems = items.filter(item => this.isHighlightedMenuItem(item));
+
+    if (highlightedItems.length) {
+      const cartCategoriesByItemId: Record<number, CartCategorySelection | null> = {};
+
+      highlightedItems.forEach(item => {
+        const selection = primaryCategoryByItem.has(item.id)
+          ? primaryCategoryByItem.get(item.id) ?? null
+          : null;
+        cartCategoriesByItemId[item.id] = selection;
+      });
+
+      result.unshift({
+        name: this.i18n.translate('restaurantDetail.highlightedHeading', 'Highlights'),
+        anchor: 'category-highlighted',
+        items: highlightedItems,
+        cartCategory: null,
+        cartCategoriesByItemId,
       });
     }
 
