@@ -3,9 +3,15 @@ import { map, Observable } from 'rxjs';
 
 import { ApiService } from '../core/api.service';
 import { AiSuggestedMenuItem } from '../core/models';
+import { environment } from '../../environments/environment';
 
 type AiSuggestionResponse = {
   ai_suggested_menu_items?: AiSuggestionApiItem[] | null;
+};
+
+type AiSuggestionApiPhoto = {
+  id?: number;
+  url?: string | null;
 };
 
 type AiSuggestionApiItem = {
@@ -17,7 +23,7 @@ type AiSuggestionApiItem = {
   reason?: string | null;
   photo_url?: string | null;
   photo_urls?: (string | null | undefined)[] | null;
-  photos?: { url?: string | null }[] | null;
+  photos?: AiSuggestionApiPhoto[] | null;
   menu_item?: {
     id?: number;
     name?: string;
@@ -26,13 +32,17 @@ type AiSuggestionApiItem = {
     description?: string | null;
     photo_url?: string | null;
     photo_urls?: (string | null | undefined)[] | null;
-    photos?: { url?: string | null }[] | null;
+    photos?: AiSuggestionApiPhoto[] | null;
   } | null;
 };
 
 @Injectable({ providedIn: 'root' })
 export class RestaurantAiSuggestionsService {
   private api = inject(ApiService);
+  private readonly mediaBaseOrigin = this.computeMediaBaseOrigin();
+  private readonly normalizedMediaBaseOrigin =
+    this.mediaBaseOrigin?.replace(/\/+$/, '') ?? null;
+  private readonly defaultProtocol = this.computeDefaultProtocol();
 
   fetch(
     restaurantId: number,
@@ -118,31 +128,87 @@ export class RestaurantAiSuggestionsService {
   }
 
   private extractPhotoUrl(
-    photos?: ReadonlyArray<{ url?: string | null }> | null,
+    photos?: ReadonlyArray<AiSuggestionApiPhoto | null | undefined> | null,
     photoUrls?: ReadonlyArray<string | null | undefined> | null,
     directPhotoUrl?: string | null | undefined
   ): string | null {
     if (photos?.length) {
       for (const photo of photos) {
-        if (typeof photo?.url === 'string' && photo.url.trim()) {
-          return photo.url;
+        const normalized = this.normalizePhotoUrl(photo?.url);
+        if (normalized) {
+          return normalized;
         }
       }
     }
 
     if (photoUrls?.length) {
       for (const url of photoUrls) {
-        if (typeof url === 'string' && url.trim()) {
-          return url;
+        const normalized = this.normalizePhotoUrl(url);
+        if (normalized) {
+          return normalized;
         }
       }
     }
 
-    if (typeof directPhotoUrl === 'string' && directPhotoUrl.trim()) {
-      return directPhotoUrl;
+    return this.normalizePhotoUrl(directPhotoUrl);
+  }
+
+  private normalizePhotoUrl(url: string | null | undefined): string | null {
+    const trimmed = url?.trim();
+    if (!trimmed) {
+      return null;
     }
 
-    return null;
+    try {
+      return new URL(trimmed).toString();
+    } catch {
+      // Intentionally continue so we can resolve relative URLs below.
+    }
+
+    if (trimmed.startsWith('//')) {
+      return `${this.defaultProtocol}${trimmed}`;
+    }
+
+    const base = this.normalizedMediaBaseOrigin;
+
+    if (!base) {
+      return trimmed;
+    }
+
+    if (trimmed.startsWith('/')) {
+      return `${base}${trimmed}`;
+    }
+
+    const normalizedPath = trimmed.replace(/^\/+/, '');
+    return `${base}/${normalizedPath}`;
+  }
+
+  private computeMediaBaseOrigin(): string | null {
+    const candidate = environment.apiBaseUrl;
+
+    if (typeof window !== 'undefined') {
+      try {
+        const absolute = new URL(candidate, window.location.origin);
+        return absolute.origin;
+      } catch {
+        return window.location.origin;
+      }
+    }
+
+    try {
+      const absolute = new URL(candidate);
+      return absolute.origin;
+    } catch {
+      return null;
+    }
+  }
+
+  private computeDefaultProtocol(): string {
+    if (typeof window !== 'undefined' && window.location?.protocol) {
+      return window.location.protocol;
+    }
+
+    return 'https:';
   }
 }
 
