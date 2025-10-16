@@ -155,6 +155,10 @@ type CounterLocationViewModel = {
       justify-content: center;
       cursor: pointer;
       transition: background 0.2s ease, transform 0.2s ease;
+      position: absolute;
+      top: clamp(2rem, 5vw, 3.5rem);
+      right: clamp(2rem, 5vw, 3.5rem);
+      z-index: 2;
     }
 
     .hero-info-button:hover,
@@ -468,6 +472,7 @@ type CounterLocationViewModel = {
       gap: 1.25rem;
     }
 
+
     .modal h3 {
       margin: 0;
       font-size: 1.5rem;
@@ -484,6 +489,7 @@ type CounterLocationViewModel = {
       display: flex;
       flex-direction: column;
       gap: 0.75rem;
+      flex-shrink: 0;
     }
 
     .modal-button {
@@ -533,6 +539,8 @@ type CounterLocationViewModel = {
       .hero-info-button {
         width: 40px;
         height: 40px;
+        top: 1.5rem;
+        right: 1.5rem;
       }
 
       .menu-grid {
@@ -675,57 +683,59 @@ type CounterLocationViewModel = {
             aria-describedby="restaurant-info-modal-description"
             (click)="$event.stopPropagation()"
           >
-            <h3 id="restaurant-info-modal-title">{{ getRestaurantName(r) }}</h3>
-            <p id="restaurant-info-modal-description" class="info-modal-description">
-              {{ getRestaurantDescription(r) }}
-            </p>
-            <section class="info-modal-section">
-              <h4>{{ 'restaurantDetail.counterLocationTitle' | translate: 'Counter location' }}</h4>
-              <ng-container *ngIf="counterLocationVm$ | async as counterLocation; else counterLocationEmpty">
-                <p class="info-location-name">
-                  {{ getCounterLocationDisplayName(counterLocation, r) }}
-                </p>
-                <ng-container *ngIf="counterLocation.hasDetails; else counterLocationEmpty">
-                  <dl class="info-location-details">
-                    <div *ngIf="counterLocation.telephone as telephone">
-                      <dt>{{ 'restaurantDetail.counterLocationPhone' | translate: 'Telephone' }}</dt>
-                      <dd><a [href]="buildTelephoneLink(telephone)">{{ telephone }}</a></dd>
-                    </div>
-                    <div *ngIf="counterLocation.email as email">
-                      <dt>{{ 'restaurantDetail.counterLocationEmail' | translate: 'Email' }}</dt>
-                      <dd><a [href]="buildEmailLink(email)">{{ email }}</a></dd>
-                    </div>
-                    <div *ngIf="counterLocation.addressLines.length">
-                      <dt>{{ 'restaurantDetail.counterLocationAddress' | translate: 'Address' }}</dt>
-                      <dd>
-                        <div *ngFor="let line of counterLocation.addressLines">{{ line }}</div>
-                      </dd>
-                    </div>
-                    <div *ngIf="counterLocation.mapUrl as mapUrl">
-                      <dt>{{ 'restaurantDetail.counterLocationMapLabel' | translate: 'Map view' }}</dt>
-                      <dd>
-                        <div class="info-location-map">
-                          <iframe
-                            [src]="mapUrl"
-                            loading="lazy"
-                            referrerpolicy="no-referrer-when-downgrade"
-                            title="{{ 'restaurantDetail.counterLocationTitle' | translate: 'Counter location' }}"
-                          ></iframe>
-                          <a
-                            class="map-link"
-                            [href]="buildMapLink(counterLocation.location)"
-                            target="_blank"
-                            rel="noopener"
-                          >
-                            {{ 'restaurantDetail.counterLocationDirections' | translate: 'Open in OpenStreetMap' }}
-                          </a>
-                        </div>
-                      </dd>
-                    </div>
-                  </dl>
+            <div class="info-modal-body">
+              <h3 id="restaurant-info-modal-title">{{ getRestaurantName(r) }}</h3>
+              <p id="restaurant-info-modal-description" class="info-modal-description">
+                {{ getRestaurantDescription(r) }}
+              </p>
+              <section class="info-modal-section">
+                <h4>{{ 'restaurantDetail.counterLocationTitle' | translate: 'Counter location' }}</h4>
+                <ng-container *ngIf="counterLocationVm$ | async as counterLocation; else counterLocationEmpty">
+                  <p class="info-location-name">
+                    {{ getCounterLocationDisplayName(counterLocation, r) }}
+                  </p>
+                  <ng-container *ngIf="counterLocation.hasDetails; else counterLocationEmpty">
+                    <dl class="info-location-details">
+                      <div *ngIf="counterLocation.telephone as telephone">
+                        <dt>{{ 'restaurantDetail.counterLocationPhone' | translate: 'Telephone' }}</dt>
+                        <dd><a [href]="buildTelephoneLink(telephone)">{{ telephone }}</a></dd>
+                      </div>
+                      <div *ngIf="counterLocation.email as email">
+                        <dt>{{ 'restaurantDetail.counterLocationEmail' | translate: 'Email' }}</dt>
+                        <dd><a [href]="buildEmailLink(email)">{{ email }}</a></dd>
+                      </div>
+                      <div *ngIf="counterLocation.addressLines.length">
+                        <dt>{{ 'restaurantDetail.counterLocationAddress' | translate: 'Address' }}</dt>
+                        <dd>
+                          <div *ngFor="let line of counterLocation.addressLines">{{ line }}</div>
+                        </dd>
+                      </div>
+                      <div *ngIf="counterLocation.mapUrl as mapUrl">
+                        <dt>{{ 'restaurantDetail.counterLocationMapLabel' | translate: 'Map view' }}</dt>
+                        <dd>
+                          <div class="info-location-map">
+                            <iframe
+                              [src]="mapUrl"
+                              loading="lazy"
+                              referrerpolicy="no-referrer-when-downgrade"
+                              title="{{ 'restaurantDetail.counterLocationTitle' | translate: 'Counter location' }}"
+                            ></iframe>
+                            <a
+                              class="map-link"
+                              [href]="buildMapLink(counterLocation.location)"
+                              target="_blank"
+                              rel="noopener"
+                            >
+                              {{ 'restaurantDetail.counterLocationDirections' | translate: 'Open in OpenStreetMap' }}
+                            </a>
+                          </div>
+                        </dd>
+                      </div>
+                    </dl>
+                  </ng-container>
                 </ng-container>
-              </ng-container>
-            </section>
+              </section>
+            </div>
             <div class="modal-actions">
               <button type="button" class="modal-button primary" (click)="closeInfoModal()">
                 {{ 'restaurantDetail.infoModalClose' | translate: 'Close' }}

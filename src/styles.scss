@@ -51,6 +51,20 @@ button {
 .modal.info-modal {
   text-align: left;
   gap: 1.5rem;
+  width: min(90vw, 720px);
+  max-width: min(90vw, 720px);
+  max-height: 75vh;
+  overflow: hidden;
+}
+
+.modal.info-modal .info-modal-body {
+  display: grid;
+  gap: 1.5rem;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-right: 0.5rem;
+  scrollbar-gutter: stable both-edges;
 }
 
 .modal.info-modal .info-modal-description {
