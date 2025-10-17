@@ -325,11 +325,13 @@ type ReadyViewModel = Extract<ViewModel, { state: 'ready' }>;
         display: flex;
         flex-direction: column;
         gap: 1rem;
+        position: relative;
       }
 
       .chart-card canvas {
         width: 100%;
-        min-height: 240px;
+        height: 280px;
+        flex: 0 0 280px;
       }
 
       .chart-card header h3 {
