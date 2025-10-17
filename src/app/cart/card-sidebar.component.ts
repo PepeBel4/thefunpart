@@ -526,7 +526,7 @@ import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
       </header>
 
       <div class="cart-lines" *ngIf="cart.lines().length; else empty">
-        <div class="line" *ngFor="let l of cart.lines(); let i = index">
+        <div class="line" *ngFor="let l of cart.lines(); let i = index; trackBy: trackLine">
           <div>
             <div class="line-name">{{ l.item.name }}</div>
             <div class="line-price">
@@ -613,6 +613,11 @@ export class CartSidebarComponent {
   cart = inject(CartService);
   scenarios = this.cart.scenarioOptions;
   targetTimeTypes = this.cart.targetTimeTypeOptions;
+
+  trackLine(_index: number, line: CartLine): string | number {
+    const categoryId = line.category?.id ?? 'none';
+    return `${line.item.id}-${categoryId}`;
+  }
 
   setScenario(scenario: OrderScenario) {
     this.cart.setScenario(scenario);
