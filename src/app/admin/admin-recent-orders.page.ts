@@ -1,6 +1,6 @@
 import { AsyncPipe, CurrencyPipe, DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, inject } from '@angular/core';
-import { map, switchMap } from 'rxjs';
+import { BehaviorSubject, combineLatest, map, shareReplay, switchMap, tap } from 'rxjs';
 import { OrderService } from '../orders/order.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { AdminRestaurantContextService } from './admin-restaurant-context.service';
@@ -18,16 +18,31 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
       border: 1px solid rgba(10, 10, 10, 0.05);
       display: flex;
       flex-direction: column;
-      gap: 1.25rem;
+      gap: clamp(1.25rem, 3vw, 1.75rem);
     }
 
-    .orders-list {
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+      gap: clamp(1.25rem, 3vw, 2rem);
+      align-items: flex-start;
+    }
+
+    .orders-panel,
+    .details-panel {
       display: flex;
       flex-direction: column;
       gap: 1rem;
     }
 
+    .orders-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
     .order-card {
+      appearance: none;
       background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.05);
       border-radius: 1rem;
       padding: 1.25rem;
@@ -35,6 +50,24 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
+      text-align: left;
+      cursor: pointer;
+      transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease,
+        background-color 150ms ease;
+    }
+
+    .order-card:hover,
+    .order-card:focus-visible {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 18px rgba(var(--brand-green-rgb, 6, 193, 103), 0.15);
+      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.35);
+      outline: none;
+    }
+
+    .order-card.selected {
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.12);
+      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.5);
+      box-shadow: 0 10px 22px rgba(var(--brand-green-rgb, 6, 193, 103), 0.18);
     }
 
     .order-card header {
@@ -49,42 +82,178 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
       color: var(--text-secondary);
       font-size: 0.9rem;
     }
+
+    .details-card {
+      background: var(--surface);
+      border-radius: var(--radius-card);
+      padding: clamp(1.5rem, 3vw, 2.25rem);
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(10, 10, 10, 0.05);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(1rem, 2.5vw, 1.5rem);
+    }
+
+    .details-card h2 {
+      font-size: clamp(1.75rem, 3vw, 2.4rem);
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .items-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .items-list li {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-soft);
+    }
+
+    .items-list li:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .total {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+
+    .empty-details {
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: var(--text-secondary);
+      border: 1px dashed var(--border-soft);
+      border-radius: var(--radius-card);
+      padding: clamp(2rem, 4vw, 3rem);
+      background: rgba(10, 10, 10, 0.02);
+    }
+
+    @media (max-width: 960px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .orders-panel {
+        order: 2;
+      }
+
+      .details-panel {
+        order: 1;
+      }
+    }
   `],
   template: `
     <section class="card" *ngIf="orders$ | async as orders">
       <header>
         <h3>{{ 'admin.orders.heading' | translate: 'Recent orders' }}</h3>
-        <p>{{ 'admin.orders.description' | translate: 'Review recent activity to keep operations running smoothly.' }}</p>
+        <p>
+          {{
+            'admin.orders.description'
+              | translate: 'Review recent activity to keep operations running smoothly.'
+          }}
+        </p>
       </header>
 
-      <ng-container *ngIf="orders.length; else emptyOrders">
-        <div class="orders-list">
-          <article class="order-card" *ngFor="let order of orders">
-            <header>
-              <span>
-                #{{ order.id }} ·
-                {{ order.restaurant?.name || ('admin.orders.unknownRestaurant' | translate: 'Unknown restaurant') }}
-              </span>
-              <span>{{ order.total_cents / 100 | currency:'EUR' }}</span>
-            </header>
-            <div class="meta">
-              {{
-                'admin.orders.meta'
-                  | translate: 'Placed {{date}} · Status: {{status}}': {
-                      date: (order.created_at | date:'medium') || '',
-                      status: order.status
-                    }
-              }}
+      <ng-container *ngIf="selectedOrder$ | async as selected">
+        <ng-container *ngIf="orders.length; else emptyOrders">
+          <div class="layout">
+            <div class="orders-panel">
+              <div class="orders-list" role="list">
+                <button
+                  type="button"
+                  class="order-card"
+                  role="listitem"
+                  *ngFor="let order of orders; trackBy: trackByOrderId"
+                  (click)="selectOrder(order.id)"
+                  [class.selected]="selected?.id === order.id"
+                >
+                  <header>
+                    <span>
+                      #{{ order.id }} ·
+                      {{
+                        order.restaurant?.name
+                          || ('admin.orders.unknownRestaurant' | translate: 'Unknown restaurant')
+                      }}
+                    </span>
+                    <span>{{ order.total_cents / 100 | currency:'EUR' }}</span>
+                  </header>
+                  <div class="meta">
+                    {{
+                      'admin.orders.meta'
+                        | translate: 'Placed {{date}} · Status: {{status}}': {
+                            date: (order.created_at | date:'medium') || '',
+                            status: order.status
+                          }
+                    }}
+                  </div>
+                  <div class="meta" *ngIf="order.user?.email">
+                    {{
+                      'admin.orders.customer'
+                        | translate: 'Customer: {{email}}': { email: order.user?.email || '' }
+                    }}
+                  </div>
+                </button>
+              </div>
             </div>
-            <div class="meta" *ngIf="order.user?.email">
-              {{ 'admin.orders.customer' | translate: 'Customer: {{email}}': { email: order.user?.email || '' } }}
-            </div>
-          </article>
-        </div>
+            <aside class="details-panel">
+              <ng-container *ngIf="selected; else placeholder">
+                <div class="details-card">
+                  <div>
+                    <h2>
+                      {{ 'orderDetail.title' | translate: 'Order #{{id}}': { id: selected.id } }}
+                    </h2>
+                    <div class="meta">
+                      {{
+                        'orderDetail.subtitle'
+                          | translate: '{{status}} • Placed {{date}}': {
+                              status: selected.status,
+                              date: (selected.created_at | date:'short') || ''
+                            }
+                      }}
+                    </div>
+                  </div>
+                  <div>
+                    <h3>{{ 'orderDetail.itemsHeading' | translate: 'Items' }}</h3>
+                    <ul class="items-list">
+                      <li *ngFor="let item of selected.order_items">
+                        <span>
+                          {{ item.menu_item?.name || ('#' + item.menu_item_id) }} × {{ item.quantity }}
+                        </span>
+                        <span>{{ (item.price_cents / 100) | currency:'EUR' }}</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="total">
+                    <span>{{ 'orderDetail.total' | translate: 'Total' }}</span>
+                    <span>{{ (selected.total_cents / 100) | currency:'EUR' }}</span>
+                  </div>
+                </div>
+              </ng-container>
+            </aside>
+          </div>
+        </ng-container>
       </ng-container>
 
       <ng-template #emptyOrders>
         <p>{{ 'admin.orders.empty' | translate: 'No orders yet.' }}</p>
+      </ng-template>
+
+      <ng-template #placeholder>
+        <div class="empty-details">
+          <p>{{ 'admin.orders.placeholder' | translate: 'Select an order to see its details.' }}</p>
+        </div>
       </ng-template>
     </section>
   `,
@@ -92,6 +261,8 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
 export class AdminRecentOrdersPage {
   private context = inject(AdminRestaurantContextService);
   private orderService = inject(OrderService);
+
+  private selectedOrderId = new BehaviorSubject<number | null>(null);
 
   readonly orders$ = this.context.selectedRestaurant$.pipe(
     switchMap(restaurant =>
@@ -110,8 +281,7 @@ export class AdminRecentOrdersPage {
               return false;
             }
 
-            const normalized =
-              typeof candidate === 'string' ? Number(candidate) : candidate;
+            const normalized = typeof candidate === 'string' ? Number(candidate) : candidate;
 
             if (typeof normalized !== 'number' || Number.isNaN(normalized)) {
               return false;
@@ -121,8 +291,32 @@ export class AdminRecentOrdersPage {
           });
 
           return filtered.sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
+        }),
+        tap(orders => {
+          const current = this.selectedOrderId.getValue();
+          if (!orders.length) {
+            if (current !== null) {
+              this.selectedOrderId.next(null);
+            }
+            return;
+          }
+
+          if (!orders.some(order => order.id === current)) {
+            this.selectedOrderId.next(orders[0]?.id ?? null);
+          }
         })
       )
-    )
+    ),
+    shareReplay({ bufferSize: 1, refCount: true })
   );
+
+  readonly selectedOrder$ = combineLatest([this.orders$, this.selectedOrderId]).pipe(
+    map(([orders, selectedId]) => orders.find(order => order.id === selectedId) ?? null)
+  );
+
+  selectOrder(orderId: number): void {
+    this.selectedOrderId.next(orderId);
+  }
+
+  trackByOrderId = (_: number, order: { id: number }) => order.id;
 }
