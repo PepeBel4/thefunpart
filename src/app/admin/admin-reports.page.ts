@@ -48,6 +48,8 @@ type ViewModel =
   | { state: 'error' }
   | ({ state: 'ready' } & AggregatedDataset);
 
+type ReadyViewModel = Extract<ViewModel, { state: 'ready' }>;
+
 @Component({
   standalone: true,
   selector: 'app-admin-reports',
@@ -351,15 +353,35 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
   private reloadTrigger$ = new BehaviorSubject<void>(undefined);
 
   private latestOrders: Order[] = [];
+  private latestDataset: ReadyViewModel | null = null;
   private salesChart: Chart | null = null;
   private scenarioChart: Chart | null = null;
   private itemsChart: Chart | null = null;
 
+  private salesChartElement?: ElementRef<HTMLCanvasElement>;
+  private scenarioChartElement?: ElementRef<HTMLCanvasElement>;
+  private itemsChartElement?: ElementRef<HTMLCanvasElement>;
+  private renderQueued = false;
+
   private exportingSignal = signal(false);
 
-  @ViewChild('salesChart') private salesChartRef?: ElementRef<HTMLCanvasElement>;
-  @ViewChild('scenarioChart') private scenarioChartRef?: ElementRef<HTMLCanvasElement>;
-  @ViewChild('itemsChart') private itemsChartRef?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('salesChart')
+  set salesChartRef(ref: ElementRef<HTMLCanvasElement> | undefined) {
+    this.salesChartElement = ref;
+    this.scheduleRender();
+  }
+
+  @ViewChild('scenarioChart')
+  set scenarioChartRef(ref: ElementRef<HTMLCanvasElement> | undefined) {
+    this.scenarioChartElement = ref;
+    this.scheduleRender();
+  }
+
+  @ViewChild('itemsChart')
+  set itemsChartRef(ref: ElementRef<HTMLCanvasElement> | undefined) {
+    this.itemsChartElement = ref;
+    this.scheduleRender();
+  }
 
   readonly exporting = this.exportingSignal.asReadonly();
 
@@ -393,9 +415,11 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
         tap(vm => {
           if (vm.state === 'ready') {
             this.latestOrders = vm.orders;
-            this.renderCharts(vm);
+            this.latestDataset = vm;
+            this.scheduleRender();
           } else {
             this.latestOrders = [];
+            this.latestDataset = null;
             this.destroyCharts();
           }
         })
@@ -593,9 +617,9 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
   }
 
   private renderCharts(dataset: AggregatedDataset): void {
-    const salesCtx = this.salesChartRef?.nativeElement.getContext('2d');
-    const scenarioCtx = this.scenarioChartRef?.nativeElement.getContext('2d');
-    const itemsCtx = this.itemsChartRef?.nativeElement.getContext('2d');
+    const salesCtx = this.salesChartElement?.nativeElement.getContext('2d');
+    const scenarioCtx = this.scenarioChartElement?.nativeElement.getContext('2d');
+    const itemsCtx = this.itemsChartElement?.nativeElement.getContext('2d');
 
     if (salesCtx) {
       this.salesChart?.destroy();
@@ -623,6 +647,26 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
     this.salesChart = null;
     this.scenarioChart = null;
     this.itemsChart = null;
+  }
+
+  private scheduleRender(): void {
+    if (this.renderQueued) {
+      return;
+    }
+
+    this.renderQueued = true;
+    Promise.resolve().then(() => {
+      this.renderQueued = false;
+
+      if (!this.latestDataset) {
+        return;
+      }
+
+      if (!this.salesChartElement || !this.scenarioChartElement) {
+        return;
+      }
+      this.renderCharts(this.latestDataset);
+    });
   }
 
   private buildLineChartConfig(data: { label: string; total: number }[]): ChartConfiguration<'line'> {
