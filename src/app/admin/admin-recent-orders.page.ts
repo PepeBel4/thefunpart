@@ -29,7 +29,6 @@ type SelectedOrderState = {
 type OrderFilterFormValue = {
   id: string;
   status: string;
-  state: string;
   paymentState: string;
   scenario: string;
   targetTimeType: string;
@@ -151,6 +150,17 @@ type OrderFilterFormValue = {
       display: flex;
       flex-direction: column;
       gap: 0.75rem;
+    }
+
+    .empty-orders {
+      display: grid;
+      place-items: center;
+      padding: 1.5rem;
+      border-radius: 0.9rem;
+      border: 1px dashed var(--border-soft);
+      color: var(--text-secondary);
+      background: rgba(10, 10, 10, 0.02);
+      text-align: center;
     }
 
     .order-card {
@@ -283,86 +293,79 @@ type OrderFilterFormValue = {
       </header>
 
       <ng-container *ngIf="selectedOrderState$ | async as selectedState">
-        <ng-container *ngIf="orders.length; else emptyOrders">
-          <div class="layout">
-            <div class="orders-panel">
-              <form class="filters" [formGroup]="filterForm" (submit)="$event.preventDefault()">
-                <div class="filters-grid">
-                  <label>
-                    <span>{{ 'admin.orders.filters.orderId' | translate: 'Order ID' }}</span>
-                    <input type="number" inputmode="numeric" formControlName="id" placeholder="e.g. 1201" />
-                  </label>
-                  <label>
-                    <span>{{ 'admin.orders.filters.status' | translate: 'Status' }}</span>
-                    <select formControlName="status">
-                      <option *ngFor="let option of statusOptions" [value]="option.value">
-                        {{ option.labelKey | translate: option.fallback }}
-                      </option>
-                    </select>
-                  </label>
-                  <label>
-                    <span>{{ 'admin.orders.filters.state' | translate: 'Order state' }}</span>
-                    <select formControlName="state">
-                      <option *ngFor="let option of stateOptions" [value]="option.value">
-                        {{ option.labelKey | translate: option.fallback }}
-                      </option>
-                    </select>
-                  </label>
-                  <label>
-                    <span>{{ 'admin.orders.filters.paymentState' | translate: 'Payment state' }}</span>
-                    <input type="text" formControlName="paymentState" placeholder="e.g. paid" />
-                  </label>
-                  <label>
-                    <span>{{ 'admin.orders.filters.scenario' | translate: 'Scenario' }}</span>
-                    <select formControlName="scenario">
-                      <option *ngFor="let option of scenarioOptions" [value]="option.value">
-                        {{ option.labelKey | translate: option.fallback }}
-                      </option>
-                    </select>
-                  </label>
-                  <label>
-                    <span>{{ 'admin.orders.filters.timing' | translate: 'Target time' }}</span>
-                    <select formControlName="targetTimeType">
-                      <option *ngFor="let option of targetTimeTypeOptions" [value]="option.value">
-                        {{ option.labelKey | translate: option.fallback }}
-                      </option>
-                    </select>
-                  </label>
-                  <label>
-                    <span>{{ 'admin.orders.filters.customer' | translate: 'Customer email' }}</span>
-                    <input type="email" formControlName="userEmail" placeholder="name@example.com" />
-                  </label>
-                  <label>
-                    <span>{{ 'admin.orders.filters.minTotal' | translate: 'Minimum total (€)' }}</span>
-                    <input type="number" formControlName="minTotal" step="0.01" min="0" placeholder="0.00" />
-                  </label>
-                  <label>
-                    <span>{{ 'admin.orders.filters.maxTotal' | translate: 'Maximum total (€)' }}</span>
-                    <input type="number" formControlName="maxTotal" step="0.01" min="0" placeholder="0.00" />
-                  </label>
-                  <label>
-                    <span>{{ 'admin.orders.filters.dateFrom' | translate: 'From date' }}</span>
-                    <input type="date" formControlName="dateFrom" />
-                  </label>
-                  <label>
-                    <span>{{ 'admin.orders.filters.dateTo' | translate: 'To date' }}</span>
-                    <input type="date" formControlName="dateTo" />
-                  </label>
-                  <label>
-                    <span>{{ 'admin.orders.filters.sort' | translate: 'Sort by' }}</span>
-                    <select formControlName="sort">
-                      <option *ngFor="let option of sortOptions" [value]="option.value">
-                        {{ option.labelKey | translate: option.fallback }}
-                      </option>
-                    </select>
-                  </label>
-                </div>
-                <div class="filters-actions">
-                  <button type="button" (click)="clearFilters()">
-                    {{ 'admin.orders.filters.reset' | translate: 'Reset filters' }}
-                  </button>
-                </div>
-              </form>
+        <div class="layout">
+          <div class="orders-panel">
+            <form class="filters" [formGroup]="filterForm" (submit)="$event.preventDefault()">
+              <div class="filters-grid">
+                <label>
+                  <span>{{ 'admin.orders.filters.orderId' | translate: 'Order ID' }}</span>
+                  <input type="number" inputmode="numeric" formControlName="id" placeholder="e.g. 1201" />
+                </label>
+                <label>
+                  <span>{{ 'admin.orders.filters.status' | translate: 'Status' }}</span>
+                  <select formControlName="status">
+                    <option *ngFor="let option of statusOptions" [value]="option.value">
+                      {{ option.labelKey | translate: option.fallback }}
+                    </option>
+                  </select>
+                </label>
+                <label>
+                  <span>{{ 'admin.orders.filters.paymentState' | translate: 'Payment state' }}</span>
+                  <input type="text" formControlName="paymentState" placeholder="e.g. paid" />
+                </label>
+                <label>
+                  <span>{{ 'admin.orders.filters.scenario' | translate: 'Scenario' }}</span>
+                  <select formControlName="scenario">
+                    <option *ngFor="let option of scenarioOptions" [value]="option.value">
+                      {{ option.labelKey | translate: option.fallback }}
+                    </option>
+                  </select>
+                </label>
+                <label>
+                  <span>{{ 'admin.orders.filters.timing' | translate: 'Target time' }}</span>
+                  <select formControlName="targetTimeType">
+                    <option *ngFor="let option of targetTimeTypeOptions" [value]="option.value">
+                      {{ option.labelKey | translate: option.fallback }}
+                    </option>
+                  </select>
+                </label>
+                <label>
+                  <span>{{ 'admin.orders.filters.customer' | translate: 'Customer email' }}</span>
+                  <input type="email" formControlName="userEmail" placeholder="name@example.com" />
+                </label>
+                <label>
+                  <span>{{ 'admin.orders.filters.minTotal' | translate: 'Minimum total (€)' }}</span>
+                  <input type="number" formControlName="minTotal" step="0.01" min="0" placeholder="0.00" />
+                </label>
+                <label>
+                  <span>{{ 'admin.orders.filters.maxTotal' | translate: 'Maximum total (€)' }}</span>
+                  <input type="number" formControlName="maxTotal" step="0.01" min="0" placeholder="0.00" />
+                </label>
+                <label>
+                  <span>{{ 'admin.orders.filters.dateFrom' | translate: 'From date' }}</span>
+                  <input type="date" formControlName="dateFrom" />
+                </label>
+                <label>
+                  <span>{{ 'admin.orders.filters.dateTo' | translate: 'To date' }}</span>
+                  <input type="date" formControlName="dateTo" />
+                </label>
+                <label>
+                  <span>{{ 'admin.orders.filters.sort' | translate: 'Sort by' }}</span>
+                  <select formControlName="sort">
+                    <option *ngFor="let option of sortOptions" [value]="option.value">
+                      {{ option.labelKey | translate: option.fallback }}
+                    </option>
+                  </select>
+                </label>
+              </div>
+              <div class="filters-actions">
+                <button type="button" (click)="clearFilters()">
+                  {{ 'admin.orders.filters.reset' | translate: 'Reset filters' }}
+                </button>
+              </div>
+            </form>
+
+            <ng-container *ngIf="orders.length; else emptyOrders">
               <div class="orders-list" role="list">
                 <button
                   type="button"
@@ -399,59 +402,61 @@ type OrderFilterFormValue = {
                   </div>
                 </button>
               </div>
-            </div>
-            <aside class="details-panel">
-              <ng-container *ngIf="selectedState.orderId !== null; else placeholder">
-                <ng-container *ngIf="selectedState.loading; else detailsOrError">
-                  <div class="empty-details">
-                    <p>{{ 'admin.orders.loading' | translate: 'Loading order details…' }}</p>
-                  </div>
-                </ng-container>
-                <ng-template #detailsOrError>
-                  <ng-container *ngIf="!selectedState.error && selectedState.order as selected; else error">
-                    <div class="details-card">
-                      <div>
-                        <h2>
-                          {{ 'orderDetail.title' | translate: 'Order #{{id}}': { id: selected.id } }}
-                        </h2>
-                        <div class="meta">
-                          {{
-                            'orderDetail.subtitle'
-                              | translate: '{{status}} • Placed {{date}}': {
-                                  status: selected.status,
-                                  date: (selected.created_at | date:'short') || ''
-                                }
-                          }}
-                        </div>
-                      </div>
-                      <div>
-                        <h3>{{ 'orderDetail.itemsHeading' | translate: 'Items' }}</h3>
-                        <ul class="items-list">
-                          <li *ngFor="let item of selected.order_items">
-                            <span>
-                              {{ item.menu_item?.name || ('#' + item.menu_item_id) }} × {{ item.quantity }}
-                            </span>
-                            <span>
-                              {{ ((item.price_cents * item.quantity) / 100) | currency:'EUR' }}
-                            </span>
-                          </li>
-                        </ul>
-                      </div>
-                      <div class="total">
-                        <span>{{ 'orderDetail.total' | translate: 'Total' }}</span>
-                        <span>{{ (selected.total_cents / 100) | currency:'EUR' }}</span>
+            </ng-container>
+          </div>
+          <aside class="details-panel">
+            <ng-container *ngIf="selectedState.orderId !== null; else placeholder">
+              <ng-container *ngIf="selectedState.loading; else detailsOrError">
+                <div class="empty-details">
+                  <p>{{ 'admin.orders.loading' | translate: 'Loading order details…' }}</p>
+                </div>
+              </ng-container>
+              <ng-template #detailsOrError>
+                <ng-container *ngIf="!selectedState.error && selectedState.order as selected; else error">
+                  <div class="details-card">
+                    <div>
+                      <h2>
+                        {{ 'orderDetail.title' | translate: 'Order #{{id}}': { id: selected.id } }}
+                      </h2>
+                      <div class="meta">
+                        {{
+                          'orderDetail.subtitle'
+                            | translate: '{{status}} • Placed {{date}}': {
+                                status: selected.status,
+                                date: (selected.created_at | date:'short') || ''
+                              }
+                        }}
                       </div>
                     </div>
-                  </ng-container>
-                </ng-template>
-              </ng-container>
-            </aside>
-          </div>
-        </ng-container>
+                    <div>
+                      <h3>{{ 'orderDetail.itemsHeading' | translate: 'Items' }}</h3>
+                      <ul class="items-list">
+                        <li *ngFor="let item of selected.order_items">
+                          <span>
+                            {{ item.menu_item?.name || ('#' + item.menu_item_id) }} × {{ item.quantity }}
+                          </span>
+                          <span>
+                            {{ ((item.price_cents * item.quantity) / 100) | currency:'EUR' }}
+                          </span>
+                        </li>
+                      </ul>
+                    </div>
+                    <div class="total">
+                      <span>{{ 'orderDetail.total' | translate: 'Total' }}</span>
+                      <span>{{ (selected.total_cents / 100) | currency:'EUR' }}</span>
+                    </div>
+                  </div>
+                </ng-container>
+              </ng-template>
+            </ng-container>
+          </aside>
+        </div>
       </ng-container>
 
       <ng-template #emptyOrders>
-        <p>{{ 'admin.orders.empty' | translate: 'No orders yet.' }}</p>
+        <div class="empty-orders">
+          <p>{{ 'admin.orders.empty' | translate: 'No orders yet.' }}</p>
+        </div>
       </ng-template>
 
       <ng-template #placeholder>
@@ -481,7 +486,6 @@ export class AdminRecentOrdersPage {
   private readonly defaultFilters: OrderFilterFormValue = {
     id: '',
     status: '',
-    state: '',
     paymentState: '',
     scenario: '',
     targetTimeType: '',
@@ -496,7 +500,6 @@ export class AdminRecentOrdersPage {
   readonly filterForm = this.fb.nonNullable.group({
     id: this.defaultFilters.id,
     status: this.defaultFilters.status,
-    state: this.defaultFilters.state,
     paymentState: this.defaultFilters.paymentState,
     scenario: this.defaultFilters.scenario,
     targetTimeType: this.defaultFilters.targetTimeType,
@@ -514,12 +517,6 @@ export class AdminRecentOrdersPage {
     { value: 'confirmed', labelKey: 'admin.orders.filters.status.confirmed', fallback: 'Confirmed' },
     { value: 'preparing', labelKey: 'admin.orders.filters.status.preparing', fallback: 'Preparing' },
     { value: 'delivered', labelKey: 'admin.orders.filters.status.delivered', fallback: 'Delivered' },
-  ];
-
-  readonly stateOptions: ReadonlyArray<{ value: string; labelKey: string; fallback: string }> = [
-    { value: '', labelKey: 'admin.orders.filters.state.any', fallback: 'Any state' },
-    { value: 'composing', labelKey: 'admin.orders.filters.state.composing', fallback: 'Composing' },
-    { value: 'sent', labelKey: 'admin.orders.filters.state.sent', fallback: 'Sent' },
   ];
 
   readonly scenarioOptions: ReadonlyArray<{ value: '' | OrderScenario; labelKey: string; fallback: string }> = [
@@ -648,10 +645,6 @@ export class AdminRecentOrdersPage {
 
     if (value.status) {
       q['status_eq'] = value.status;
-    }
-
-    if (value.state) {
-      q['state_eq'] = value.state;
     }
 
     const paymentState = value.paymentState?.trim() ?? '';
