@@ -28,9 +28,11 @@
     "@angular/forms": "^20.3.0",
     "@angular/platform-browser": "^20.3.0",
     "@angular/router": "^20.3.0",
+    "jspdf": "^2.5.2",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "uuid": "^13.0.0",
+    "xlsx": "^0.18.5",
     "zone.js": "^0.15.1"
   },
   "devDependencies": {
