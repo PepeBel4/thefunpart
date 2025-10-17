@@ -94,6 +94,24 @@ const CUISINE_ICON_PATHS = new Map<string, string>([
   ['grocery', ICON_BASKET],
 ]);
 
+const POPULAR_CUISINES = new Set<string>([
+  'pizza',
+  'burgers',
+  'sushi',
+  'mexican',
+  'thai',
+  'indian',
+  'korean',
+  'bbq',
+  'comfort food',
+  'desserts',
+  'vegan',
+  'healthy',
+  'seafood',
+  'coffee',
+  'ice cream',
+]);
+
 @Component({
   standalone: true,
   selector: 'app-restaurant-list',
@@ -119,63 +137,38 @@ const CUISINE_ICON_PATHS = new Map<string, string>([
     .filters-panel {
       display: flex;
       flex-direction: column;
-      gap: 1rem;
-      padding: 1.4rem 1.6rem;
+      gap: 1.5rem;
+      padding: 1.5rem;
       border-radius: var(--radius-card);
       background: var(--surface);
       border: 1px solid rgba(10, 10, 10, 0.05);
       box-shadow: var(--shadow-soft);
     }
 
-    .filters-panel .filters-header {
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-    }
-
-    .filters-panel .filters-body {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-
-    .cuisine-filters {
+    .filters-toolbar {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.5rem;
+      justify-content: space-between;
+      gap: 1.25rem;
+      align-items: flex-start;
     }
 
-    .filter-chip {
-      appearance: none;
-      border: 1px solid rgba(10, 10, 10, 0.1);
-      background: rgba(10, 10, 10, 0.02);
-      color: inherit;
-      padding: 0.45rem 0.9rem;
-      border-radius: 999px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      cursor: pointer;
-      transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.45rem;
+    .filters-header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      max-width: 32rem;
     }
 
-    .filter-chip:hover {
-      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.4);
+    .filters-header h3 {
+      margin: 0;
     }
 
-    .filter-chip.active {
-      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.16);
-      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.5);
-      color: var(--brand-green);
-    }
-
-    .filter-chip svg {
-      width: 1rem;
-      height: 1rem;
+    .filters-subtitle {
+      color: var(--text-secondary);
+      font-size: 0.92rem;
+      line-height: 1.45;
+      margin: 0;
     }
 
     .filters-actions {
@@ -195,6 +188,62 @@ const CUISINE_ICON_PATHS = new Map<string, string>([
       font-weight: 600;
       cursor: pointer;
       padding: 0;
+    }
+
+    .filters-body {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .filters-layout {
+      display: grid;
+      gap: 1.5rem;
+      grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
+      align-items: start;
+    }
+
+    .filter-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .filter-section h4 {
+      margin: 0;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+    }
+
+    .grouped-cuisines {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    }
+
+    .cuisine-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+
+    .group-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-tertiary, rgba(10, 10, 10, 0.45));
+    }
+
+    .empty-state {
+      padding: 1.5rem;
+      text-align: center;
+      border-radius: var(--radius-card);
+      background: rgba(10, 10, 10, 0.02);
+      color: var(--text-secondary);
+      font-size: 0.95rem;
     }
 
     .sort-group {
@@ -225,28 +274,41 @@ const CUISINE_ICON_PATHS = new Map<string, string>([
       color: var(--status-danger, #d14343);
     }
 
-    @media (min-width: 768px) {
+    .filters-footer {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    @media (max-width: 1024px) {
       .filters-panel {
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
+        padding: 1.25rem;
       }
 
-      .filters-panel .filters-body {
-        flex-direction: row;
-        align-items: center;
+      .filters-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .filters-panel {
+        gap: 1.25rem;
       }
 
-      .filters-panel .filters-body > * {
-        flex: none;
+      .filters-toolbar {
+        flex-direction: column;
+        align-items: stretch;
       }
 
-      .filters-panel .filters-body .cuisine-filters {
-        max-width: 600px;
+      .filters-layout {
+        gap: 1.25rem;
       }
 
-      .sort-group {
-        text-align: right;
+      .filters-footer {
+        flex-direction: column;
+        align-items: stretch;
       }
     }
 
@@ -620,43 +682,147 @@ const CUISINE_ICON_PATHS = new Map<string, string>([
     </a>
     <ng-container *ngIf="availableCuisines$ | async as cuisines">
       <section class="filters-panel" *ngIf="cuisines.length">
-        <div class="filters-body">
+        <div class="filters-toolbar">
           <div class="filters-header">
             <h3>{{ 'restaurants.filters.title' | translate: 'Filter restaurants' }}</h3>
-            <div class="filters-actions" *ngIf="hasActiveCuisineFilters()">
-              <span>{{ 'restaurants.filters.active' | translate: 'Filters applied' }}</span>
-              <button type="button" (click)="clearCuisineFilters()">
-                {{ 'restaurants.filters.clear' | translate: 'Clear cuisines' }}
-              </button>
-            </div>
+            <p class="filters-subtitle">
+              {{
+                'restaurants.filters.subtitle'
+                  | translate: 'Search by cuisine or browse popular picks to find exactly what you\'re craving.'
+              }}
+            </p>
           </div>
-          <div class="cuisine-filters">
-            <button
-              type="button"
-              class="filter-chip"
-              [class.active]="isCuisineSelected(cuisine)"
-              (click)="toggleCuisine(cuisine)"
-              *ngFor="let cuisine of cuisines"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path [attr.d]="getCuisineIconPath(cuisine)" fill="currentColor" />
-              </svg>
-              <span>{{ cuisine | titlecase }}</span>
+          <div class="filters-actions" *ngIf="hasActiveCuisineFilters()">
+            <span>{{ 'restaurants.filters.active' | translate: 'Filters applied' }}</span>
+            <button type="button" (click)="clearCuisineFilters()">
+              {{ 'restaurants.filters.clear' | translate: 'Clear cuisines' }}
             </button>
           </div>
         </div>
-        <div class="sort-group">
-          <label for="restaurant-sort">{{ 'restaurants.sort.label' | translate: 'Sort by' }}</label>
-          <select id="restaurant-sort" [value]="getSortOrder()" (change)="onSortChange($any($event.target).value)">
-            <option value="recommended">
-              {{ 'restaurants.sort.recommended' | translate: 'Recommended' }}
-            </option>
-            <option value="nameAsc">{{ 'restaurants.sort.nameAsc' | translate: 'Name (A-Z)' }}</option>
-            <option value="nameDesc">{{ 'restaurants.sort.nameDesc' | translate: 'Name (Z-A)' }}</option>
-            <option value="distance">{{ 'restaurants.sort.distance' | translate: 'Distance' }}</option>
-          </select>
-          <div class="distance-hint" *ngIf="shouldShowDistanceHint()" [class.error]="isDistanceHintError()">
-            {{ getDistanceHintMessage() }}
+        <div class="filters-body">
+          <div class="filters-search">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path
+                d="M11 4a7 7 0 1 1-4.95 11.95l-3.5 3.5-1.06-1.06 3.5-3.5A7 7 0 0 1 11 4m0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"
+                fill="currentColor"
+              />
+            </svg>
+            <input
+              type="search"
+              autocomplete="off"
+              [value]="cuisineSearch()"
+              (input)="onCuisineSearch($any($event.target).value)"
+              [placeholder]="
+                'restaurants.filters.searchPlaceholder' | translate: 'Search cuisines (e.g. Thai, Vegan)'
+              "
+              [attr.aria-label]="'restaurants.filters.searchLabel' | translate: 'Search cuisines'"
+            />
+            <button type="button" class="clear-search" *ngIf="isSearching()" (click)="clearCuisineSearch()">
+              {{ 'restaurants.filters.searchClear' | translate: 'Clear' }}
+            </button>
+          </div>
+          <ng-container *ngIf="isSearching(); else defaultCuisineView">
+            <ng-container *ngIf="getCuisineSearchResults(cuisines) as results; else noCuisineMatches">
+              <div class="filter-section" *ngIf="results.length; else noCuisineMatches">
+                <h4>{{ 'restaurants.filters.searchResults' | translate: 'Matching cuisines' }}</h4>
+                <div class="chip-list">
+                  <button
+                    type="button"
+                    class="filter-chip"
+                    [class.active]="isCuisineSelected(cuisine)"
+                    (click)="toggleCuisine(cuisine)"
+                    *ngFor="let cuisine of results"
+                    [attr.aria-pressed]="isCuisineSelected(cuisine)"
+                  >
+                    <span class="chip-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" focusable="false">
+                        <path [attr.d]="getCuisineIconPath(cuisine)" fill="currentColor" />
+                      </svg>
+                    </span>
+                    <span class="chip-label">{{ cuisine | titlecase }}</span>
+                  </button>
+                </div>
+              </div>
+            </ng-container>
+          </ng-container>
+          <ng-template #defaultCuisineView>
+            <div class="filters-layout">
+              <ng-container *ngIf="getPopularCuisines(cuisines) as popular">
+                <div class="filter-section" *ngIf="popular.length">
+                  <h4>{{ 'restaurants.filters.popular' | translate: 'Popular choices' }}</h4>
+                  <div class="chip-list">
+                    <button
+                      type="button"
+                      class="filter-chip"
+                      [class.active]="isCuisineSelected(cuisine)"
+                      (click)="toggleCuisine(cuisine)"
+                      *ngFor="let cuisine of popular"
+                      [attr.aria-pressed]="isCuisineSelected(cuisine)"
+                    >
+                      <span class="chip-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false">
+                          <path [attr.d]="getCuisineIconPath(cuisine)" fill="currentColor" />
+                        </svg>
+                      </span>
+                      <span class="chip-label">{{ cuisine | titlecase }}</span>
+                    </button>
+                  </div>
+                </div>
+              </ng-container>
+              <div class="filter-section">
+                <h4>{{ 'restaurants.filters.all' | translate: 'All cuisines' }}</h4>
+                <ng-container *ngIf="getCuisineGroups(cuisines) as groups">
+                  <div class="grouped-cuisines" *ngIf="groups.length">
+                    <div class="cuisine-group" *ngFor="let group of groups">
+                      <span class="group-title">{{ group.label }}</span>
+                      <div class="chip-list">
+                        <button
+                          type="button"
+                          class="filter-chip"
+                          [class.active]="isCuisineSelected(cuisine)"
+                          (click)="toggleCuisine(cuisine)"
+                          *ngFor="let cuisine of group.cuisines"
+                          [attr.aria-pressed]="isCuisineSelected(cuisine)"
+                        >
+                          <span class="chip-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" focusable="false">
+                              <path [attr.d]="getCuisineIconPath(cuisine)" fill="currentColor" />
+                            </svg>
+                          </span>
+                          <span class="chip-label">{{ cuisine | titlecase }}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </ng-container>
+              </div>
+            </div>
+          </ng-template>
+          <ng-template #noCuisineMatches>
+            <div class="empty-state">
+              <p>
+                {{
+                  'restaurants.filters.noMatches'
+                    | translate: 'No cuisines match your search. Try a different term.'
+                }}
+              </p>
+            </div>
+          </ng-template>
+        </div>
+        <div class="filters-footer">
+          <div class="sort-group">
+            <label for="restaurant-sort">{{ 'restaurants.sort.label' | translate: 'Sort by' }}</label>
+            <select id="restaurant-sort" [value]="getSortOrder()" (change)="onSortChange($any($event.target).value)">
+              <option value="recommended">
+                {{ 'restaurants.sort.recommended' | translate: 'Recommended' }}
+              </option>
+              <option value="nameAsc">{{ 'restaurants.sort.nameAsc' | translate: 'Name (A-Z)' }}</option>
+              <option value="nameDesc">{{ 'restaurants.sort.nameDesc' | translate: 'Name (Z-A)' }}</option>
+              <option value="distance">{{ 'restaurants.sort.distance' | translate: 'Distance' }}</option>
+            </select>
+            <div class="distance-hint" *ngIf="shouldShowDistanceHint()" [class.error]="isDistanceHintError()">
+              {{ getDistanceHintMessage() }}
+            </div>
           </div>
         </div>
       </section>
@@ -719,6 +885,7 @@ export class RestaurantListPage {
     loading: false,
     profile: null,
   });
+  cuisineSearch = signal('');
 
   constructor() {
     effect(() => {
@@ -775,6 +942,78 @@ export class RestaurantListPage {
     this.selectedCuisinesSubject.next([]);
   }
 
+  onCuisineSearch(value: string): void {
+    this.cuisineSearch.set(value ?? '');
+  }
+
+  clearCuisineSearch(): void {
+    this.cuisineSearch.set('');
+  }
+
+  isSearching(): boolean {
+    return this.getCuisineSearchTerm().length > 0;
+  }
+
+  getCuisineSearchResults(cuisines: string[]): string[] {
+    if (!Array.isArray(cuisines)) {
+      return [];
+    }
+
+    const query = this.getCuisineSearchTerm();
+    if (!query) {
+      return cuisines.slice();
+    }
+
+    return cuisines.filter(cuisine => this.matchesCuisineQuery(cuisine, query));
+  }
+
+  getPopularCuisines(cuisines: string[]): string[] {
+    if (!Array.isArray(cuisines)) {
+      return [];
+    }
+
+    const query = this.getCuisineSearchTerm();
+
+    return cuisines.filter(
+      cuisine => POPULAR_CUISINES.has(cuisine) && this.matchesCuisineQuery(cuisine, query),
+    );
+  }
+
+  getCuisineGroups(cuisines: string[]): { label: string; cuisines: string[] }[] {
+    if (!Array.isArray(cuisines) || !cuisines.length) {
+      return [];
+    }
+
+    const query = this.getCuisineSearchTerm();
+    const includePopular = query.length > 0;
+    const groups = new Map<string, string[]>();
+
+    for (const cuisine of cuisines) {
+      if (!this.matchesCuisineQuery(cuisine, query)) {
+        continue;
+      }
+
+      if (!includePopular && POPULAR_CUISINES.has(cuisine)) {
+        continue;
+      }
+
+      const label = this.getCuisineGroupLabel(cuisine);
+      const list = groups.get(label);
+      if (list) {
+        list.push(cuisine);
+      } else {
+        groups.set(label, [cuisine]);
+      }
+    }
+
+    return Array.from(groups.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([label, list]) => ({
+        label,
+        cuisines: list.slice().sort((a, b) => a.localeCompare(b)),
+      }));
+  }
+
   getCuisineIconPath(cuisine: string): string {
     const key = (cuisine ?? '').trim().toLowerCase();
     if (!key) {
@@ -820,6 +1059,23 @@ export class RestaurantListPage {
   isDistanceHintError(): boolean {
     const status = this.geolocationState().status;
     return status === 'denied' || status === 'unsupported' || status === 'error';
+  }
+
+  private getCuisineSearchTerm(): string {
+    return this.cuisineSearch().trim().toLowerCase();
+  }
+
+  private matchesCuisineQuery(cuisine: string, query: string = this.getCuisineSearchTerm()): boolean {
+    if (!query) {
+      return true;
+    }
+
+    return (cuisine ?? '').toLowerCase().includes(query);
+  }
+
+  private getCuisineGroupLabel(cuisine: string): string {
+    const first = (cuisine ?? '').trim().charAt(0).toUpperCase();
+    return first && /[A-Z]/.test(first) ? first : '#';
   }
 
   private isRestaurantSortOption(value: string): value is RestaurantSortOption {

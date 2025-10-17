@@ -451,3 +451,114 @@ app-restaurant-detail .quantity-controls .quantity-display {
   text-align: center;
 }
 
+.filters-panel .chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.filters-panel .filter-chip {
+  appearance: none;
+  border: 1px solid rgba(10, 10, 10, 0.1);
+  background: rgba(10, 10, 10, 0.02);
+  color: inherit;
+  padding: 0.45rem 0.9rem 0.45rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.filters-panel .filter-chip:hover {
+  border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.4);
+  background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.08);
+}
+
+.filters-panel .filter-chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--brand-green-rgb, 6, 193, 103), 0.2);
+  border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.6);
+}
+
+.filters-panel .filter-chip.active {
+  background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.16);
+  border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.6);
+  color: var(--brand-green);
+}
+
+.filters-panel .chip-icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: rgba(10, 10, 10, 0.06);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  transition: background 0.2s ease;
+}
+
+.filters-panel .filter-chip svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.filters-panel .filter-chip.active .chip-icon {
+  background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.2);
+}
+
+.filters-panel .chip-label {
+  white-space: nowrap;
+}
+
+.filters-panel .filters-search {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(10, 10, 10, 0.12);
+  background: rgba(10, 10, 10, 0.02);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.filters-panel .filters-search:focus-within {
+  border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.5);
+  box-shadow: 0 0 0 4px rgba(var(--brand-green-rgb, 6, 193, 103), 0.12);
+}
+
+.filters-panel .filters-search svg {
+  width: 1rem;
+  height: 1rem;
+  color: var(--text-secondary);
+}
+
+.filters-panel .filters-search input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.95rem;
+  flex: 1 1 auto;
+  color: inherit;
+}
+
+.filters-panel .filters-search input::placeholder {
+  color: rgba(10, 10, 10, 0.45);
+}
+
+.filters-panel .clear-search {
+  appearance: none;
+  border: none;
+  background: none;
+  color: var(--brand-green);
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0;
+}
+
