@@ -10,10 +10,14 @@ import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
   standalone: true,
   imports: [NgFor, CurrencyPipe, NgIf, RouterLink, TranslatePipe, NgClass],
   styles: [`
-    aside {
+    :host {
+      display: block;
       position: sticky;
       top: var(--cart-sticky-offset, 2rem);
       align-self: start;
+    }
+
+    aside {
       background: var(--surface);
       border-radius: var(--radius-card);
       box-shadow: var(--shadow-soft);
@@ -325,8 +329,11 @@ import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
     }
 
     @media (max-width: 980px) {
-      aside {
+      :host {
         position: static;
+      }
+
+      aside {
         min-width: unset;
         max-height: none;
         overflow: visible;
