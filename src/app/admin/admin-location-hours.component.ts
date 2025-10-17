@@ -767,9 +767,10 @@ export class AdminLocationHoursComponent implements OnChanges {
     const payload = this.buildOpeningHourPayload(this.openingHourEditForm);
 
     try {
-      await firstValueFrom(
+      const updatedHour = await firstValueFrom(
         this.locations.updateOpeningHour(this.locationId, hourId, payload)
       );
+      this.upsertOpeningHour(updatedHour);
       this.setOpeningHourStatus(
         'success',
         this.i18n.translate('admin.locations.hours.updated', 'Opening hours updated.')
