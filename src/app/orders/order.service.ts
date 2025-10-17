@@ -7,6 +7,7 @@ import {
   OrderItemInput,
   OrderPaymentResponse,
   OrderScenario,
+  OrderStatus,
   OrderTargetTimeType,
 } from '../core/models';
 
@@ -33,7 +34,7 @@ export class OrderService {
       order: {
         restaurant_id: payload.restaurantId,
         order_items: payload.items,
-        state: 'composing',
+        status: 'composing',
         scenario: payload.scenario,
         target_time_type: payload.targetTimeType,
         target_time_at: payload.targetTimeAt
@@ -43,10 +44,10 @@ export class OrderService {
     return this.api.post<Order>('/orders', body);
   }
 
-  updateState(orderId: number, state: 'composing' | 'sent'): Observable<Order> {
+  updateStatus(orderId: number, status: OrderStatus): Observable<Order> {
     const body = {
       order: {
-        state,
+        status,
       },
     };
 
