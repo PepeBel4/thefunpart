@@ -1,4 +1,4 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, effect } from '@angular/core';
 import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
 
 export interface CartCategorySelection {
@@ -16,6 +16,9 @@ export interface CartRestaurant {
 
 @Injectable({ providedIn: 'root' })
 export class CartService {
+  private readonly storageKey = 'cart-state';
+  private readonly storage = this.getStorage();
+
   private _lines = signal<CartLine[]>([]);
   lines = computed(() => this._lines());
   count = computed(() => this._lines().reduce((a, l) => a + l.quantity, 0));
@@ -53,6 +56,50 @@ export class CartService {
 
   requiresTargetTime = computed(() => this._targetTimeType() === 'scheduled');
   hasValidTargetTime = computed(() => !this.requiresTargetTime() || this.targetTime() !== null);
+
+  constructor() {
+    this.restore();
+
+    if (this.storage) {
+      effect(
+        () => {
+          const storage = this.storage;
+          if (!storage) {
+            return;
+          }
+
+          const payload = {
+            lines: this._lines().map(line => ({
+              item: line.item,
+              quantity: line.quantity,
+              category: line.category ?? null,
+            })),
+            scenario: this._scenario(),
+            targetTimeType: this._targetTimeType(),
+            targetTimeInput: this._targetTimeInput(),
+            restaurant: this._restaurant(),
+          };
+
+          try {
+            if (
+              !payload.lines.length &&
+              payload.scenario === 'takeaway' &&
+              payload.targetTimeType === 'asap' &&
+              payload.targetTimeInput === null &&
+              (payload.restaurant === null || payload.restaurant === undefined)
+            ) {
+              storage.removeItem(this.storageKey);
+            } else {
+              storage.setItem(this.storageKey, JSON.stringify(payload));
+            }
+          } catch (error) {
+            // Ignore storage write errors (e.g. quota exceeded)
+          }
+        },
+        { allowSignalWrites: true }
+      );
+    }
+  }
 
   add(
     item: MenuItem,
@@ -152,6 +199,7 @@ export class CartService {
     this._targetTimeType.set('asap');
     this._targetTimeInput.set(null);
     this._restaurant.set(null);
+
   }
 
   private getPriceCents(item: MenuItem): number {
@@ -206,5 +254,91 @@ export class CartService {
       : `#${hex}`;
 
     return normalized.toLowerCase();
+  }
+
+  private restore() {
+    if (!this.storage) {
+      return;
+    }
+
+    const raw = this.storage.getItem(this.storageKey);
+    if (!raw) {
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as Partial<{
+        lines: CartLine[];
+        scenario: OrderScenario;
+        targetTimeType: OrderTargetTimeType;
+        targetTimeInput: string | null;
+        restaurant: CartRestaurant | null;
+      }>;
+
+      let restoredLines: CartLine[] | null = null;
+
+      if (Array.isArray(parsed.lines)) {
+        restoredLines = parsed.lines
+          .filter(line => line?.item && Number.isFinite(line.quantity))
+          .map(line => ({
+            item: line.item,
+            quantity: Math.max(1, Math.floor(line.quantity ?? 1)),
+            category: this.normalizeCategory(line.category) ?? undefined,
+          }));
+
+        if (restoredLines.length) {
+          this._lines.set(restoredLines);
+        }
+      }
+
+      let restoredRestaurant: CartRestaurant | null = null;
+      if (parsed.restaurant && typeof parsed.restaurant.id === 'number') {
+        restoredRestaurant = this.normalizeRestaurant(
+          parsed.restaurant,
+          parsed.restaurant.id
+        );
+        this._restaurant.set(restoredRestaurant);
+      }
+
+      if (!restoredRestaurant && restoredLines?.length) {
+        const firstLine = restoredLines[0];
+        this._restaurant.set(
+          this.normalizeRestaurant(parsed.restaurant ?? null, firstLine.item.restaurant_id)
+        );
+      }
+
+      if (parsed.scenario && this.scenarioOptions.includes(parsed.scenario)) {
+        this._scenario.set(parsed.scenario);
+      }
+
+      if (
+        parsed.targetTimeType &&
+        this.targetTimeTypeOptions.includes(parsed.targetTimeType)
+      ) {
+        this._targetTimeType.set(parsed.targetTimeType);
+      }
+
+      if (typeof parsed.targetTimeInput === 'string' || parsed.targetTimeInput === null) {
+        this._targetTimeInput.set(parsed.targetTimeInput);
+      }
+    } catch (error) {
+      // Ignore malformed storage data
+    }
+  }
+
+  private getStorage(): Storage | null {
+    if (typeof globalThis === 'undefined') {
+      return null;
+    }
+
+    try {
+      const storage = globalThis.localStorage;
+      const testKey = '__cart_service_test__';
+      storage.setItem(testKey, '1');
+      storage.removeItem(testKey);
+      return storage;
+    } catch (error) {
+      return null;
+    }
   }
 }
