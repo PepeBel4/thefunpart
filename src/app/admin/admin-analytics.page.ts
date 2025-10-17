@@ -275,6 +275,62 @@ interface NormalizedTimeframe {
       background: rgba(10, 118, 255, 0.65);
     }
 
+    .category-item .bar-track {
+      background: rgba(10, 10, 10, 0.06);
+    }
+
+    .menu-items-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+
+    .menu-item-card {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      padding: 0.85rem 1rem;
+      border-radius: 0.9rem;
+      background: rgba(10, 10, 10, 0.04);
+      border: 1px solid rgba(10, 10, 10, 0.06);
+    }
+
+    .menu-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 0.75rem;
+      font-weight: 600;
+    }
+
+    .menu-item-header span.meta {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+
+    .menu-item-bars {
+      display: grid;
+      gap: 0.55rem;
+    }
+
+    .menu-item-bar {
+      display: grid;
+      gap: 0.35rem;
+    }
+
+    .menu-item-bar-label {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .bar-fill.quantity {
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.75);
+    }
+
     table.simple-table {
       width: 100%;
       border-collapse: collapse;
@@ -486,6 +542,71 @@ interface NormalizedTimeframe {
         </div>
       </section>
 
+      <section class="card" *ngIf="reportData.category_revenue?.length">
+        <header>
+          <h4 class="section-title">
+            {{ 'admin.analytics.categoryRevenue' | translate: 'Revenue by category' }}
+          </h4>
+          <p>
+            {{ 'admin.analytics.categoryRevenue.helper' | translate: 'See which menu categories drive revenue.' }}
+          </p>
+        </header>
+        <div class="breakdown-list">
+          <div class="breakdown-item category-item" *ngFor="let item of reportData.category_revenue">
+            <div class="breakdown-header">
+              <span>{{ item.category_name }}</span>
+              <span>{{ item.revenue_cents / 100 | currency:'EUR' }}</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill revenue" [style.width.%]="barWidth(item.revenue_cents, maxCategoryRevenue)"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" *ngIf="reportData.top_menu_items?.length">
+        <header>
+          <h4 class="section-title">
+            {{ 'admin.analytics.topMenuItems' | translate: 'Top menu items' }}
+          </h4>
+          <p>
+            {{ 'admin.analytics.topMenuItems.helper' | translate: 'Identify your best-selling menu items.' }}
+          </p>
+        </header>
+        <div class="menu-items-list">
+          <div class="menu-item-card" *ngFor="let item of reportData.top_menu_items">
+            <div class="menu-item-header">
+              <strong>{{ item.menu_item_name }}</strong>
+              <span class="meta">
+                {{ item.quantity | number }}
+                {{ 'admin.analytics.topMenuItems.soldLabel' | translate: 'sold' }} ·
+                {{ item.revenue_cents / 100 | currency:'EUR' }}
+              </span>
+            </div>
+            <div class="menu-item-bars">
+              <div class="menu-item-bar">
+                <div class="menu-item-bar-label">
+                  <span>{{ 'admin.analytics.table.quantity' | translate: 'Quantity' }}</span>
+                  <span>{{ item.quantity | number }}</span>
+                </div>
+                <div class="bar-track">
+                  <div class="bar-fill quantity" [style.width.%]="barWidth(item.quantity, maxMenuItemQuantity)"></div>
+                </div>
+              </div>
+              <div class="menu-item-bar">
+                <div class="menu-item-bar-label">
+                  <span>{{ 'admin.analytics.table.revenue' | translate: 'Revenue' }}</span>
+                  <span>{{ item.revenue_cents / 100 | currency:'EUR' }}</span>
+                </div>
+                <div class="bar-track">
+                  <div class="bar-fill revenue" [style.width.%]="barWidth(item.revenue_cents, maxMenuItemRevenue)"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="card">
         <header>
           <h4 class="section-title">
@@ -536,6 +657,9 @@ export class AdminAnalyticsPage {
   maxStatusProgression = 0;
   maxDailyOrders = 0;
   maxDailyRevenue = 0;
+  maxCategoryRevenue = 0;
+  maxMenuItemQuantity = 0;
+  maxMenuItemRevenue = 0;
 
   private normalizedTimeframe: NormalizedTimeframe = this.normalizeTimeframe(
     this.timeframeForm.getRawValue()
@@ -582,6 +706,9 @@ export class AdminAnalyticsPage {
           this.maxStatusProgression = 0;
           this.maxDailyOrders = 0;
           this.maxDailyRevenue = 0;
+          this.maxCategoryRevenue = 0;
+          this.maxMenuItemQuantity = 0;
+          this.maxMenuItemRevenue = 0;
         }
       });
   }
@@ -664,6 +791,26 @@ export class AdminAnalyticsPage {
     });
     lines.push([]);
 
+    if (report.category_revenue.length) {
+      lines.push(['Category', 'Revenue (EUR)']);
+      report.category_revenue.forEach(item => {
+        lines.push([item.category_name, (item.revenue_cents / 100).toFixed(2)]);
+      });
+      lines.push([]);
+    }
+
+    if (report.top_menu_items.length) {
+      lines.push(['Menu item', 'Quantity', 'Revenue (EUR)']);
+      report.top_menu_items.forEach(item => {
+        lines.push([
+          item.menu_item_name,
+          item.quantity.toString(),
+          (item.revenue_cents / 100).toFixed(2),
+        ]);
+      });
+      lines.push([]);
+    }
+
     lines.push(['Date', 'Order count', 'Revenue (EUR)']);
     report.daily_totals.forEach(day => {
       lines.push([day.date, day.order_count.toString(), (day.revenue_cents / 100).toFixed(2)]);
@@ -743,6 +890,33 @@ export class AdminAnalyticsPage {
         ),
         'Target times'
       );
+
+      if (report.category_revenue.length) {
+        utils.book_append_sheet(
+          workbook,
+          utils.json_to_sheet(
+            report.category_revenue.map(item => ({
+              Category: item.category_name,
+              'Revenue (EUR)': (item.revenue_cents / 100).toFixed(2),
+            }))
+          ),
+          'Category revenue'
+        );
+      }
+
+      if (report.top_menu_items.length) {
+        utils.book_append_sheet(
+          workbook,
+          utils.json_to_sheet(
+            report.top_menu_items.map(item => ({
+              'Menu item': item.menu_item_name,
+              Quantity: item.quantity,
+              'Revenue (EUR)': (item.revenue_cents / 100).toFixed(2),
+            }))
+          ),
+          'Top menu items'
+        );
+      }
 
       utils.book_append_sheet(
         workbook,
@@ -834,6 +1008,24 @@ export class AdminAnalyticsPage {
         'Target time breakdown',
         report.target_time_type_breakdown.map(item => [item.target_time_type, item.order_count.toString()])
       );
+      if (report.category_revenue.length) {
+        addList(
+          'Category revenue',
+          report.category_revenue.map(item => [
+            item.category_name,
+            `EUR ${(item.revenue_cents / 100).toFixed(2)}`,
+          ])
+        );
+      }
+      if (report.top_menu_items.length) {
+        addList(
+          'Top menu items',
+          report.top_menu_items.map(item => [
+            item.menu_item_name,
+            `${item.quantity} sold, EUR ${(item.revenue_cents / 100).toFixed(2)}`,
+          ])
+        );
+      }
       addList(
         'Daily totals',
         report.daily_totals.map(day => [
@@ -857,6 +1049,18 @@ export class AdminAnalyticsPage {
     );
     this.maxDailyRevenue = report.daily_totals.reduce(
       (max, day) => Math.max(max, day.revenue_cents),
+      0
+    );
+    this.maxCategoryRevenue = report.category_revenue.reduce(
+      (max, category) => Math.max(max, category.revenue_cents),
+      0
+    );
+    this.maxMenuItemQuantity = report.top_menu_items.reduce(
+      (max, item) => Math.max(max, item.quantity),
+      0
+    );
+    this.maxMenuItemRevenue = report.top_menu_items.reduce(
+      (max, item) => Math.max(max, item.revenue_cents),
       0
     );
   }

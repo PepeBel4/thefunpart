@@ -361,6 +361,17 @@ export interface SalesPipelineReport {
   scenario_breakdown: { scenario: OrderScenario; order_count: number }[];
   target_time_type_breakdown: { target_time_type: OrderTargetTimeType; order_count: number }[];
   daily_totals: { date: string; order_count: number; revenue_cents: number }[];
+  top_menu_items: {
+    menu_item_id: number;
+    menu_item_name: string;
+    quantity: number;
+    revenue_cents: number;
+  }[];
+  category_revenue: {
+    category_id: number;
+    category_name: string;
+    revenue_cents: number;
+  }[];
 }
 
 export interface Payment {
