@@ -711,7 +711,10 @@ export class AdminLocationHoursComponent implements OnChanges {
     const payload = this.buildOpeningHourPayload(this.openingHourCreateForm);
 
     try {
-      await firstValueFrom(this.locations.createOpeningHour(this.locationId, payload));
+      const createdHour = await firstValueFrom(
+        this.locations.createOpeningHour(this.locationId, payload)
+      );
+      this.upsertOpeningHour(createdHour);
       this.setOpeningHourStatus(
         'success',
         this.i18n.translate('admin.locations.hours.created', 'Opening hours added.')
@@ -980,9 +983,10 @@ export class AdminLocationHoursComponent implements OnChanges {
     this.openingHoursError = '';
 
     try {
-      this.openingHours = await firstValueFrom(
+      const hours = await firstValueFrom(
         this.locations.listOpeningHours(this.locationId)
       );
+      this.openingHours = this.sortOpeningHours(hours);
     } catch (error) {
       console.error('Failed to load opening hours', error);
       this.openingHoursError = this.i18n.translate(
@@ -1183,6 +1187,24 @@ export class AdminLocationHoursComponent implements OnChanges {
   private normalizeString(value: string): string | undefined {
     const trimmed = value.trim();
     return trimmed ? trimmed : undefined;
+  }
+
+  private upsertOpeningHour(hour: LocationOpeningHour) {
+    const remaining = this.openingHours.filter(item => item.id !== hour.id);
+    this.openingHours = this.sortOpeningHours([...remaining, hour]);
+  }
+
+  private sortOpeningHours(hours: LocationOpeningHour[]): LocationOpeningHour[] {
+    return [...hours].sort((a, b) => {
+      const dayDiff = a.day_of_week - b.day_of_week;
+      if (dayDiff !== 0) {
+        return dayDiff;
+      }
+
+      const aMinutes = this.timeToMinutes(a.opens_at) ?? 0;
+      const bMinutes = this.timeToMinutes(b.opens_at) ?? 0;
+      return aMinutes - bMinutes;
+    });
   }
 
   private timeToMinutes(value: string): number | null {
