@@ -314,22 +314,9 @@ import { TranslatePipe } from '../shared/translate.pipe';
       </span>
     </ng-template>
 
-    <section class="card selection-card">
-      <header>
-        <h3>{{ 'admin.manage.heading' | translate: 'Manage restaurant' }}</h3>
-        <p>{{ 'admin.manage.description' | translate: "Choose which location you'd like to update." }}</p>
-      </header>
-
-      <ng-container *ngIf="restaurants$ | async as restaurants">
-        <ng-container *ngIf="!restaurants.length">
-          <p class="empty-state">{{ 'admin.manage.empty' | translate: 'No restaurants found.' }}</p>
-        </ng-container>
-      </ng-container>
-
-      <p *ngIf="loading" class="empty-state">
-        {{ 'admin.manage.loading' | translate: 'Loading restaurants…' }}
-      </p>
-    </section>
+    <p *ngIf="loading" class="empty-state">
+      {{ 'admin.manage.loading' | translate: 'Loading restaurants…' }}
+    </p>
 
     <div class="modal-backdrop" *ngIf="showCreateModal">
       <div class="modal" role="dialog" aria-modal="true">
