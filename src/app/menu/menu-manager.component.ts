@@ -1,7 +1,8 @@
 import { CurrencyPipe, NgFor, NgIf } from '@angular/common';
 import { Component, EventEmitter, Input, Output, inject, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { firstValueFrom } from 'rxjs';
+import { Subject, Subscription, firstValueFrom } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 import {
   Allergen,
   MenuItem,
@@ -18,6 +19,10 @@ import { AllergensService } from './allergens.service';
 import { AllergenIconComponent } from '../shared/allergen-icon.component';
 import { MenuOptionsService } from './menu-options.service';
 import { MenuOptionAssignmentsService } from './menu-option-assignments.service';
+import {
+  MenuItemAiAssistantService,
+  MenuItemAiSuggestions,
+} from './menu-item-ai-assistant.service';
 
 interface CategoryFormModel {
   id?: number;
@@ -79,6 +84,39 @@ interface OptionAssignmentChangeSet {
       color: var(--text-secondary);
     }
 
+    .ai-suggestion-banner {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.65rem 0.75rem;
+      border-radius: 10px;
+      font-size: 0.85rem;
+    }
+
+    .ai-suggestion-banner.loading {
+      background: rgba(10, 10, 10, 0.04);
+      color: var(--text-secondary);
+    }
+
+    .ai-suggestion-banner.success {
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.12);
+      color: #036239;
+    }
+
+    .ai-suggestion-banner.info {
+      background: rgba(10, 10, 10, 0.04);
+      color: var(--text-primary);
+    }
+
+    .ai-suggestion-banner.error {
+      background: rgba(229, 62, 62, 0.12);
+      color: #8f1e1e;
+    }
+
+    .ai-suggestion-banner button.link {
+      margin-left: auto;
+    }
+
     form {
       display: grid;
       gap: 0.75rem;
@@ -102,6 +140,12 @@ interface OptionAssignmentChangeSet {
     textarea {
       min-height: 72px;
       resize: vertical;
+    }
+
+    .ai-price-band {
+      margin: 0.35rem 0 0;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
     }
 
     .actions {
@@ -453,6 +497,7 @@ interface OptionAssignmentChangeSet {
           <input
             id="new-name"
             [(ngModel)]="newItem.name"
+            (ngModelChange)="onNewItemNameChange($event)"
             name="newName"
             required
             [attr.placeholder]="'menu.form.namePlaceholder' | translate: 'e.g. Spicy Tuna Roll'"
@@ -463,9 +508,44 @@ interface OptionAssignmentChangeSet {
           <textarea
             id="new-description"
             [(ngModel)]="newItem.description"
+            (ngModelChange)="onNewItemDescriptionChange($event)"
             name="newDescription"
             [attr.placeholder]="'menu.form.descriptionPlaceholder' | translate: 'Optional description'"
           ></textarea>
+        </div>
+        <div class="ai-suggestion-banner loading" *ngIf="aiSuggestionStatus === 'loading'">
+          {{ 'menu.aiAssist.loading' | translate: 'Analyzing item details…' }}
+        </div>
+        <div class="ai-suggestion-banner success" *ngIf="aiSuggestionStatus === 'applied'">
+          {{
+            'menu.aiAssist.applied'
+              | translate: 'AI suggestions applied to categories and allergens.'
+          }}
+        </div>
+        <div class="ai-suggestion-banner info" *ngIf="aiSuggestionStatus === 'ready'">
+          <span>{{ 'menu.aiAssist.ready' | translate: 'AI suggestions are ready to apply.' }}</span>
+          <button
+            type="button"
+            class="link apply"
+            *ngIf="canApplyAiSuggestions"
+            (click)="applyPendingAiSuggestions()"
+          >
+            {{ 'menu.aiAssist.apply' | translate: 'Apply suggestions' }}
+          </button>
+        </div>
+        <div class="ai-suggestion-banner error" *ngIf="aiSuggestionStatus === 'error'">
+          <span>
+            {{
+              aiSuggestionError
+                || (
+                  'menu.aiAssist.error'
+                    | translate: 'Unable to suggest details right now. Please try again.'
+                )
+            }}
+          </span>
+          <button type="button" class="link retry" (click)="retryAiSuggestions()">
+            {{ 'menu.aiAssist.retry' | translate: 'Try again' }}
+          </button>
         </div>
         <div>
           <label for="new-price">{{ 'menu.form.priceLabel' | translate: 'Price (EUR)' }}</label>
@@ -477,6 +557,12 @@ interface OptionAssignmentChangeSet {
             required
             [attr.placeholder]="'menu.form.pricePlaceholder' | translate: '9.50'"
           />
+          <p class="ai-price-band" *ngIf="aiSuggestionPriceBand">
+            {{
+              'menu.aiAssist.priceBand'
+                | translate: 'Suggested price band: {{band}}': { band: aiSuggestionPriceBand }
+            }}
+          </p>
         </div>
         <div class="category-section">
           <label>Categories</label>
@@ -841,8 +927,18 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
   private allergens = inject(AllergensService);
   private options = inject(MenuOptionsService);
   private optionAssignments = inject(MenuOptionAssignmentsService);
+  private aiAssistant = inject(MenuItemAiAssistantService);
 
   private loadToken = 0;
+
+  private aiSuggestionTrigger = new Subject<{ name: string; description: string }>();
+  private aiSuggestionSubscription: Subscription | null = null;
+  private aiSuggestionRequestId = 0;
+  private pendingAiSuggestions: MenuItemAiSuggestions | null = null;
+  private suppressNewCategoryTracking = false;
+  private suppressNewAllergenTracking = false;
+  private newCategoriesManuallyEdited = false;
+  private newAllergensManuallyEdited = false;
 
   menuItems: MenuItem[] = [];
   availableCategories: MenuItemCategory[] = [];
@@ -860,10 +956,18 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
   editPhotos: QueuedPhoto[] = [];
   removingPhotoId: number | null = null;
   assignmentError = '';
+  aiSuggestionStatus: 'idle' | 'loading' | 'ready' | 'applied' | 'error' = 'idle';
+  aiSuggestionError = '';
+  aiSuggestionPriceBand: string | null = null;
 
   private originalOptionAssignments: MenuOptionAssignment[] = [];
 
   ngOnInit() {
+    this.aiSuggestionSubscription = this.aiSuggestionTrigger
+      .pipe(debounceTime(600))
+      .subscribe(payload => {
+        void this.fetchAiSuggestions(payload);
+      });
     void this.fetchCategories();
     void this.fetchAllergens();
     void this.fetchOptions();
@@ -872,6 +976,8 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
   ngOnDestroy() {
     this.releaseQueuedPhotos(this.newPhotos);
     this.releaseQueuedPhotos(this.editPhotos);
+    this.aiSuggestionSubscription?.unsubscribe();
+    this.aiSuggestionTrigger.complete();
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -895,6 +1001,7 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
       this.availableCategories = categories ?? [];
       this.syncCategoryList('new');
       this.syncCategoryList('edit');
+      this.applyAiSuggestionsIfAllowed();
     } catch (err) {
       console.error('Could not load categories', err);
       this.availableCategories = [];
@@ -907,6 +1014,7 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
       this.availableAllergens = allergens ?? [];
       this.syncAllergenList('new');
       this.syncAllergenList('edit');
+      this.applyAiSuggestionsIfAllowed();
     } catch (err) {
       console.error('Could not load allergens', err);
       this.availableAllergens = [];
@@ -1048,6 +1156,7 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
       this.releaseQueuedPhotos(this.newPhotos);
       this.newPhotos = [];
       this.newItem = this.createEmptyForm();
+      this.resetAiSuggestionState();
       this.creationStatus = this.i18n.translate('menu.form.status', 'Menu item added!');
       await this.loadMenu(true);
       await this.fetchCategories();
@@ -1274,11 +1383,328 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
     this.editOptionAssignments = [];
     this.originalOptionAssignments = [];
     this.assignmentError = '';
+    this.resetAiSuggestionState();
     this.loadToken++;
+  }
+
+  onNewItemNameChange(value: string) {
+    this.newItem = { ...this.newItem, name: value };
+    this.onNewItemTextChanged();
+  }
+
+  onNewItemDescriptionChange(value: string) {
+    this.newItem = { ...this.newItem, description: value };
+    this.onNewItemTextChanged();
+  }
+
+  applyPendingAiSuggestions() {
+    if (!this.pendingAiSuggestions) { return; }
+    this.newCategoriesManuallyEdited = false;
+    this.newAllergensManuallyEdited = false;
+    this.applyAiSuggestionsIfAllowed();
+  }
+
+  retryAiSuggestions() {
+    const trimmedName = this.newItem.name?.trim() ?? '';
+    if (trimmedName.length < 3 || this.restaurantId == null) { return; }
+
+    const trimmedDescription = this.newItem.description?.trim() ?? '';
+    void this.fetchAiSuggestions({ name: trimmedName, description: trimmedDescription });
+  }
+
+  get canApplyAiSuggestions(): boolean {
+    const suggestions = this.pendingAiSuggestions;
+    if (!suggestions) { return false; }
+
+    const needsCategoryApply = suggestions.categories.length > 0 && this.newCategoriesManuallyEdited;
+    const needsAllergenApply = suggestions.allergens.length > 0 && this.newAllergensManuallyEdited;
+
+    return needsCategoryApply || needsAllergenApply;
+  }
+
+  private onNewItemTextChanged() {
+    const trimmedName = this.newItem.name?.trim() ?? '';
+    const trimmedDescription = this.newItem.description?.trim() ?? '';
+
+    if (trimmedName.length < 3) {
+      this.clearAiSuggestions();
+      return;
+    }
+
+    if (this.restaurantId == null) { return; }
+
+    this.aiSuggestionTrigger.next({ name: trimmedName, description: trimmedDescription });
+  }
+
+  private async fetchAiSuggestions(input: { name: string; description: string }) {
+    if (this.restaurantId == null) { return; }
+
+    const requestId = ++this.aiSuggestionRequestId;
+    this.aiSuggestionStatus = 'loading';
+    this.aiSuggestionError = '';
+
+    try {
+      const suggestions = await firstValueFrom(
+        this.aiAssistant.suggest(this.restaurantId, {
+          name: input.name,
+          description: input.description,
+        })
+      );
+
+      if (this.aiSuggestionRequestId !== requestId) { return; }
+
+      this.pendingAiSuggestions = suggestions;
+      this.applyAiSuggestionsIfAllowed();
+    } catch (error) {
+      if (this.aiSuggestionRequestId !== requestId) { return; }
+      console.error('Failed to fetch AI menu item details', error);
+      this.aiSuggestionStatus = 'error';
+      this.aiSuggestionError = this.i18n.translate(
+        'menu.aiAssist.error',
+        'Unable to suggest details right now. Please try again.'
+      );
+    }
+  }
+
+  private applyAiSuggestionsIfAllowed() {
+    const suggestions = this.pendingAiSuggestions;
+
+    if (!suggestions) {
+      this.aiSuggestionPriceBand = null;
+      if (this.aiSuggestionStatus !== 'loading') {
+        this.aiSuggestionStatus = 'idle';
+      }
+      return;
+    }
+
+    this.aiSuggestionPriceBand = suggestions.priceBand ?? null;
+
+    let applied = false;
+    let blocked = false;
+
+    if (suggestions.categories.length) {
+      if (this.newCategoriesManuallyEdited) {
+        blocked = true;
+      } else {
+        const result = this.setNewCategoriesFromSuggestions(suggestions.categories);
+        if (result === 'applied' || result === 'unchanged') {
+          applied = true;
+        } else if (result === 'unavailable') {
+          blocked = true;
+        }
+      }
+    }
+
+    if (suggestions.allergens.length) {
+      if (this.newAllergensManuallyEdited) {
+        blocked = true;
+      } else {
+        const result = this.setNewAllergensFromSuggestions(suggestions.allergens);
+        if (result === 'applied' || result === 'unchanged') {
+          applied = true;
+        } else if (result === 'unavailable') {
+          blocked = true;
+        }
+      }
+    }
+
+    if (applied) {
+      this.aiSuggestionStatus = 'applied';
+      this.aiSuggestionError = '';
+    } else if (blocked) {
+      this.aiSuggestionStatus = 'ready';
+    } else if (suggestions.priceBand) {
+      if (this.aiSuggestionStatus !== 'loading') {
+        this.aiSuggestionStatus = 'idle';
+      }
+    } else if (this.aiSuggestionStatus !== 'loading') {
+      this.aiSuggestionStatus = 'idle';
+    }
+  }
+
+  private setNewCategoriesFromSuggestions(
+    suggested: MenuItemAiSuggestions['categories']
+  ): 'applied' | 'unchanged' | 'unavailable' {
+    if (!suggested.length) { return 'unchanged'; }
+
+    const normalized = this.normalizeSuggestedCategories(suggested);
+    if (!normalized.length) { return 'unavailable'; }
+
+    const current = this.getCategoryList('new');
+    if (this.areCategoryFormsEqual(current, normalized)) {
+      this.newCategoriesManuallyEdited = false;
+      return 'unchanged';
+    }
+
+    this.suppressNewCategoryTracking = true;
+    this.newItem = {
+      ...this.newItem,
+      categories: normalized,
+    };
+    this.suppressNewCategoryTracking = false;
+    this.newCategoriesManuallyEdited = false;
+    this.syncCategoryList('new');
+    return 'applied';
+  }
+
+  private normalizeSuggestedCategories(
+    suggested: MenuItemAiSuggestions['categories']
+  ): CategoryFormModel[] {
+    const seen = new Set<string>();
+    const result: CategoryFormModel[] = [];
+
+    for (const suggestion of suggested) {
+      const resolved = this.resolveCategorySuggestion(suggestion);
+      if (!resolved) { continue; }
+
+      const key = `${resolved.id ?? ''}::${resolved.name.toLowerCase()}`;
+      if (seen.has(key)) { continue; }
+      seen.add(key);
+      result.push(resolved);
+    }
+
+    return result;
+  }
+
+  private resolveCategorySuggestion(
+    suggestion: MenuItemAiSuggestions['categories'][number]
+  ): CategoryFormModel | null {
+    if (!suggestion) { return null; }
+
+    if (suggestion.id != null) {
+      const byId = this.availableCategories.find(category => category.id === suggestion.id);
+      if (byId) {
+        return { id: byId.id, name: this.resolveCategoryName(byId) };
+      }
+    }
+
+    const label = suggestion.name?.trim();
+    if (!label) {
+      return null;
+    }
+
+    const match = this.findMatchingCategory(label);
+    if (match) {
+      return { id: match.id, name: this.resolveCategoryName(match) };
+    }
+
+    return { name: label };
+  }
+
+  private areCategoryFormsEqual(a: CategoryFormModel[], b: CategoryFormModel[]): boolean {
+    if (a.length !== b.length) { return false; }
+
+    for (let i = 0; i < a.length; i++) {
+      const left = `${a[i].id ?? ''}::${(a[i].name ?? '').toLowerCase()}`;
+      const right = `${b[i].id ?? ''}::${(b[i].name ?? '').toLowerCase()}`;
+      if (left !== right) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private setNewAllergensFromSuggestions(
+    suggested: MenuItemAiSuggestions['allergens']
+  ): 'applied' | 'unchanged' | 'unavailable' {
+    if (!suggested.length) { return 'unchanged'; }
+
+    const normalized = this.normalizeSuggestedAllergens(suggested);
+    if (!normalized.length) { return 'unavailable'; }
+
+    const current = this.getAllergenList('new');
+    if (this.areAllergenListsEqual(current, normalized)) {
+      this.newAllergensManuallyEdited = false;
+      return 'unchanged';
+    }
+
+    this.suppressNewAllergenTracking = true;
+    this.newItem = {
+      ...this.newItem,
+      allergens: normalized,
+    };
+    this.suppressNewAllergenTracking = false;
+    this.newAllergensManuallyEdited = false;
+    return 'applied';
+  }
+
+  private normalizeSuggestedAllergens(
+    suggested: MenuItemAiSuggestions['allergens']
+  ): Allergen[] {
+    const seen = new Set<number>();
+    const result: Allergen[] = [];
+
+    for (const suggestion of suggested) {
+      if (!suggestion) { continue; }
+
+      let resolved: Allergen | undefined;
+
+      if (suggestion.id != null) {
+        resolved = this.findAllergenById(suggestion.id);
+      }
+
+      if (!resolved) {
+        const label = suggestion.name?.trim();
+        if (!label) { continue; }
+        resolved = this.availableAllergens.find(
+          allergen => this.resolveAllergenName(allergen).toLowerCase() === label.toLowerCase()
+        );
+      }
+
+      if (!resolved) { continue; }
+      if (seen.has(resolved.id)) { continue; }
+      seen.add(resolved.id);
+      result.push(resolved);
+    }
+
+    return result;
+  }
+
+  private areAllergenListsEqual(a: Allergen[], b: Allergen[]): boolean {
+    if (a.length !== b.length) { return false; }
+
+    const idsA = [...a.map(item => item.id)].sort((first, second) => first - second);
+    const idsB = [...b.map(item => item.id)].sort((first, second) => first - second);
+
+    return idsA.every((id, index) => id === idsB[index]);
+  }
+
+  private markCategoryEdited(target: 'new' | 'edit') {
+    if (target !== 'new' || this.suppressNewCategoryTracking) { return; }
+    this.newCategoriesManuallyEdited = true;
+    if (this.pendingAiSuggestions?.categories.length) {
+      this.aiSuggestionStatus = 'ready';
+    }
+  }
+
+  private markAllergenEdited(target: 'new' | 'edit') {
+    if (target !== 'new' || this.suppressNewAllergenTracking) { return; }
+    this.newAllergensManuallyEdited = true;
+    if (this.pendingAiSuggestions?.allergens.length) {
+      this.aiSuggestionStatus = 'ready';
+    }
+  }
+
+  private clearAiSuggestions() {
+    this.pendingAiSuggestions = null;
+    this.aiSuggestionStatus = 'idle';
+    this.aiSuggestionError = '';
+    this.aiSuggestionPriceBand = null;
+    this.aiSuggestionRequestId++;
+  }
+
+  private resetAiSuggestionState() {
+    this.clearAiSuggestions();
+    this.newCategoriesManuallyEdited = false;
+    this.newAllergensManuallyEdited = false;
+    this.suppressNewCategoryTracking = false;
+    this.suppressNewAllergenTracking = false;
   }
 
   addCategory(target: 'new' | 'edit') {
     this.getCategoryList(target).push(this.createEmptyCategory());
+    this.markCategoryEdited(target);
   }
 
   removeCategory(target: 'new' | 'edit', index: number) {
@@ -1287,6 +1713,7 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
     if (!list.length) {
       list.push(this.createEmptyCategory());
     }
+    this.markCategoryEdited(target);
   }
 
   addOptionAssignment() {
@@ -1361,6 +1788,7 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
     } else {
       list.splice(index, 1);
     }
+    this.markAllergenEdited(target);
   }
 
   isAllergenSelected(target: 'new' | 'edit', allergenId: number | undefined): boolean {
@@ -1502,6 +1930,7 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
 
     entry.name = value;
     this.applyCategoryMatch(entry);
+    this.markCategoryEdited(target);
   }
 
   private applyCategoryMatch(entry: CategoryFormModel, preserveExistingId = false) {
