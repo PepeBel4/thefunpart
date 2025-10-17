@@ -8,7 +8,11 @@ export class AdminRestaurantContextService {
   private restaurantService = inject(RestaurantService);
 
   private restaurantsSubject = new BehaviorSubject<Restaurant[]>([]);
-  private selectedRestaurantIdSubject = new BehaviorSubject<number | null>(null);
+  private readonly storageKey = 'admin.selectedRestaurantId';
+  private readonly storage = this.resolveStorage();
+  private selectedRestaurantIdSubject = new BehaviorSubject<number | null>(
+    this.restoreSelectedRestaurantId()
+  );
 
   readonly restaurants$ = this.restaurantsSubject.asObservable();
   readonly selectedRestaurantId$ = this.selectedRestaurantIdSubject.asObservable();
@@ -27,13 +31,13 @@ export class AdminRestaurantContextService {
     } catch (err) {
       console.error('Failed to load restaurants', err);
       this.restaurantsSubject.next([]);
-      this.selectedRestaurantIdSubject.next(null);
+      this.setSelectedRestaurantId(null);
     }
   }
 
   selectRestaurant(id: number | null): void {
     if (id === null || Number.isNaN(id)) {
-      this.selectedRestaurantIdSubject.next(null);
+      this.setSelectedRestaurantId(null);
       return;
     }
 
@@ -43,19 +47,19 @@ export class AdminRestaurantContextService {
     if (!exists) {
       void this.loadRestaurants().then(() => {
         if (this.restaurantsSubject.value.some(restaurant => restaurant.id === id)) {
-          this.selectedRestaurantIdSubject.next(id);
+          this.setSelectedRestaurantId(id);
         }
       });
       return;
     }
 
-    this.selectedRestaurantIdSubject.next(id);
+    this.setSelectedRestaurantId(id);
   }
 
   refreshSelectedRestaurant(): void {
     const current = this.selectedRestaurantIdSubject.value;
     if (current !== null) {
-      this.selectedRestaurantIdSubject.next(current);
+      this.setSelectedRestaurantId(current);
     }
   }
 
@@ -78,7 +82,7 @@ export class AdminRestaurantContextService {
       const restaurant = await firstValueFrom(this.restaurantService.create(payload));
       const restaurants = this.restaurantsSubject.value;
       this.restaurantsSubject.next([...restaurants, restaurant]);
-      this.selectedRestaurantIdSubject.next(restaurant.id);
+      this.setSelectedRestaurantId(restaurant.id);
       return restaurant;
     } catch (error) {
       console.error('Failed to create restaurant', error);
@@ -88,24 +92,79 @@ export class AdminRestaurantContextService {
 
   private ensureSelectedRestaurant(restaurants: Restaurant[]): void {
     if (!restaurants.length) {
-      this.selectedRestaurantIdSubject.next(null);
+      this.setSelectedRestaurantId(null);
       return;
     }
 
     const current = this.selectedRestaurantIdSubject.value;
 
     if (current === null) {
-      this.selectedRestaurantIdSubject.next(restaurants[0].id);
+      this.setSelectedRestaurantId(restaurants[0].id);
       return;
     }
 
     const stillExists = restaurants.some(restaurant => restaurant.id === current);
     if (!stillExists) {
-      this.selectedRestaurantIdSubject.next(restaurants[0].id);
+      this.setSelectedRestaurantId(restaurants[0].id);
     }
   }
 
   get selectedRestaurantId(): number | null {
     return this.selectedRestaurantIdSubject.value;
+  }
+
+  private setSelectedRestaurantId(id: number | null): void {
+    this.selectedRestaurantIdSubject.next(id);
+    this.persistSelectedRestaurantId(id);
+  }
+
+  private persistSelectedRestaurantId(id: number | null): void {
+    if (!this.storage) {
+      return;
+    }
+
+    try {
+      if (id === null) {
+        this.storage.removeItem(this.storageKey);
+      } else {
+        this.storage.setItem(this.storageKey, String(id));
+      }
+    } catch (error) {
+      // Ignore storage persistence errors
+    }
+  }
+
+  private restoreSelectedRestaurantId(): number | null {
+    if (!this.storage) {
+      return null;
+    }
+
+    try {
+      const storedValue = this.storage.getItem(this.storageKey);
+      if (storedValue === null) {
+        return null;
+      }
+
+      const parsed = Number(storedValue);
+      return Number.isNaN(parsed) ? null : parsed;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  private resolveStorage(): Storage | null {
+    if (typeof globalThis === 'undefined') {
+      return null;
+    }
+
+    try {
+      const storage = globalThis.localStorage;
+      const testKey = '__admin_restaurant_context__';
+      storage.setItem(testKey, '1');
+      storage.removeItem(testKey);
+      return storage;
+    } catch (error) {
+      return null;
+    }
   }
 }
