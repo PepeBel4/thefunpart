@@ -43,7 +43,17 @@ export class OrderService {
     return this.api.post<Order>('/orders', body);
   }
 
-  updateState(orderId: number, state: 'composing' | 'sent'): Observable<Order> {
+  updateState(
+    orderId: number,
+    state:
+      | 'composing'
+      | 'sent'
+      | 'received'
+      | 'printed'
+      | 'preparing'
+      | 'prepared'
+      | 'distributed'
+  ): Observable<Order> {
     const body = {
       order: {
         state,

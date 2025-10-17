@@ -269,8 +269,27 @@ export interface OrderItemInput {
 export interface Order {
   id: number;
   total_cents: number;
-  status: 'pending' | 'confirmed' | 'preparing' | 'delivered' | string;
-  state?: 'composing' | 'sent' | string;
+  status:
+    | 'pending'
+    | 'confirmed'
+    | 'preparing'
+    | 'delivered'
+    | 'composing'
+    | 'sent'
+    | 'received'
+    | 'printed'
+    | 'prepared'
+    | 'distributed'
+    | string;
+  state?:
+    | 'composing'
+    | 'sent'
+    | 'received'
+    | 'printed'
+    | 'preparing'
+    | 'prepared'
+    | 'distributed'
+    | string;
   payment_state?: string;
   paid_cents?: number;
   remaining_balance_cents?: number;
