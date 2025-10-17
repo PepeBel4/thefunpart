@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe, DecimalPipe, NgFor, NgIf } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
@@ -544,6 +544,7 @@ interface StatusChartEntry {
 export class AdminReportsPage implements OnInit {
   private context = inject(AdminRestaurantContextService);
   private salesPipeline = inject(AdminSalesPipelineService);
+  private destroyRef = inject(DestroyRef);
 
   report: SalesPipelineReport | null = null;
   loading = false;
@@ -561,7 +562,7 @@ export class AdminReportsPage implements OnInit {
     this.applyDefaultRange();
 
     this.context.selectedRestaurantId$
-      .pipe(takeUntilDestroyed())
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(id => {
         this.restaurantId = id;
         if (id !== null) {
