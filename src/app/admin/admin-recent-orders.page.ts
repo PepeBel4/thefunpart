@@ -256,7 +256,9 @@ type SelectedOrderState = {
                             <span>
                               {{ item.menu_item?.name || ('#' + item.menu_item_id) }} × {{ item.quantity }}
                             </span>
-                            <span>{{ (item.price_cents / 100) | currency:'EUR' }}</span>
+                            <span>
+                              {{ ((item.price_cents * item.quantity) / 100) | currency:'EUR' }}
+                            </span>
                           </li>
                         </ul>
                       </div>
