@@ -16,16 +16,93 @@ import { TranslatePipe } from '../shared/translate.pipe';
       gap: 2.5rem;
     }
 
-    header h2 {
+    header.page-header {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    @media (min-width: 768px) {
+      header.page-header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1.5rem;
+      }
+    }
+
+    header.page-header h2 {
       margin: 0;
       font-size: clamp(2.25rem, 4vw, 2.75rem);
       letter-spacing: -0.04em;
     }
 
-    header p {
+    header.page-header p {
       margin: 0.35rem 0 0;
       color: var(--text-secondary);
       max-width: 540px;
+    }
+
+    .header-title {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .header-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.75rem;
+    }
+
+    @media (min-width: 576px) {
+      .header-actions {
+        flex-direction: row;
+        align-items: center;
+        gap: 0.75rem;
+      }
+    }
+
+    .restaurant-select {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .restaurant-select label {
+      font-weight: 600;
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+
+    select {
+      padding: 0.6rem 0.75rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(10, 10, 10, 0.12);
+      font-size: 1rem;
+      background: rgba(255, 255, 255, 0.85);
+    }
+
+    .add-restaurant-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      padding: 0.55rem 1.1rem;
+      border-radius: 999px;
+      border: none;
+      background: var(--brand-green, #06c167);
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .add-restaurant-button:hover {
+      background: color-mix(in srgb, var(--brand-green) 85%, black);
     }
 
     .card {
@@ -37,73 +114,6 @@ import { TranslatePipe } from '../shared/translate.pipe';
       display: flex;
       flex-direction: column;
       gap: 1.25rem;
-    }
-
-    .selection-card label {
-      font-weight: 600;
-      font-size: 0.95rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-
-    select {
-      padding: 0.6rem 0.75rem;
-      border-radius: 0.75rem;
-      border: 1px solid rgba(10, 10, 10, 0.12);
-      font-size: 1rem;
-      background: rgba(255, 255, 255, 0.85);
-    }
-
-    .create-form {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-      margin-top: 1rem;
-      padding-top: 1rem;
-      border-top: 1px solid rgba(10, 10, 10, 0.08);
-    }
-
-    .create-form label {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      font-weight: 600;
-      font-size: 0.95rem;
-    }
-
-    .create-form input {
-      padding: 0.6rem 0.75rem;
-      border-radius: 0.75rem;
-      border: 1px solid rgba(10, 10, 10, 0.12);
-      font-size: 1rem;
-      background: rgba(255, 255, 255, 0.9);
-    }
-
-    .create-form button {
-      align-self: flex-start;
-      padding: 0.55rem 1.1rem;
-      border-radius: 999px;
-      border: none;
-      background: var(--brand-green, #06c167);
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s ease;
-    }
-
-    .create-form button:disabled {
-      cursor: not-allowed;
-      background: rgba(10, 10, 10, 0.2);
-    }
-
-    .create-form button:not(:disabled):hover {
-      background: color-mix(in srgb, var(--brand-green) 85%, black);
-    }
-
-    .error-message {
-      color: var(--brand-red, #c81e1e);
-      margin: 0;
     }
 
     .section-shell {
@@ -146,18 +156,163 @@ import { TranslatePipe } from '../shared/translate.pipe';
     .empty-state {
       color: var(--text-secondary);
     }
+
+    .empty-state.small {
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 10, 10, 0.45);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      z-index: 1000;
+    }
+
+    .modal {
+      background: var(--surface, #fff);
+      border-radius: 1rem;
+      padding: clamp(1.5rem, 3vw, 2rem);
+      width: min(480px, 100%);
+      box-shadow: var(--shadow-soft);
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .modal header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .modal h3 {
+      margin: 0;
+      font-size: 1.4rem;
+    }
+
+    .modal p {
+      margin: 0;
+      color: var(--text-secondary);
+    }
+
+    .modal form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .modal label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .modal input {
+      padding: 0.6rem 0.75rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(10, 10, 10, 0.12);
+      font-size: 1rem;
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .modal-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 0.75rem;
+    }
+
+    .modal-actions button {
+      padding: 0.55rem 1.1rem;
+      border-radius: 999px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .modal-actions button[type='submit'] {
+      background: var(--brand-green, #06c167);
+      color: white;
+    }
+
+    .modal-actions button[type='submit']:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--brand-green) 85%, black);
+    }
+
+    .modal-actions button[type='submit']:disabled {
+      cursor: not-allowed;
+      background: rgba(10, 10, 10, 0.2);
+    }
+
+    .modal-actions .cancel-button {
+      background: rgba(10, 10, 10, 0.08);
+      color: inherit;
+    }
+
+    .modal-actions .cancel-button:hover {
+      background: rgba(10, 10, 10, 0.12);
+    }
+
+    .error-message {
+      color: var(--brand-red, #c81e1e);
+      margin: 0;
+    }
   `],
   template: `
-    <header>
-      <h2>{{ 'admin.title' | translate: 'Restaurant admin' }}</h2>
-      <p>
-        {{
-          'admin.subtitle'
-            | translate:
-                'Upload fresh visuals and keep track of recent orders — all in one convenient place.'
-        }}
-      </p>
+    <header class="page-header">
+      <div class="header-title">
+        <h2>{{ 'admin.title' | translate: 'Restaurant admin' }}</h2>
+        <p>
+          {{
+            'admin.subtitle'
+              | translate:
+                  'Upload fresh visuals and keep track of recent orders — all in one convenient place.'
+          }}
+        </p>
+      </div>
+
+      <div class="header-actions">
+        <ng-container *ngIf="restaurants$ | async as restaurants">
+          <ng-container *ngIf="restaurants.length; else noRestaurantsHeader">
+            <ng-container *ngIf="selectedRestaurantId$ | async as selectedRestaurantId">
+              <div class="restaurant-select">
+                <label for="admin-restaurant-select">
+                  {{ 'admin.manage.select' | translate: 'Choose restaurant' }}
+                </label>
+                <select
+                  id="admin-restaurant-select"
+                  [ngModel]="selectedRestaurantId"
+                  (ngModelChange)="onRestaurantChange($event)"
+                >
+                  <option *ngFor="let restaurant of restaurants" [value]="restaurant.id">
+                    {{ restaurant.name }}
+                  </option>
+                </select>
+              </div>
+            </ng-container>
+          </ng-container>
+        </ng-container>
+
+        <button type="button" class="add-restaurant-button" (click)="openCreateModal()">
+          + {{ 'admin.manage.add.trigger' | translate: 'Add new restaurant' }}
+        </button>
+      </div>
     </header>
+
+    <ng-template #noRestaurantsHeader>
+      <span class="empty-state small">
+        {{ 'admin.manage.empty' | translate: 'No restaurants found.' }}
+      </span>
+    </ng-template>
 
     <section class="card selection-card">
       <header>
@@ -166,53 +321,62 @@ import { TranslatePipe } from '../shared/translate.pipe';
       </header>
 
       <ng-container *ngIf="restaurants$ | async as restaurants">
-        <ng-container *ngIf="restaurants.length; else noRestaurants">
-          <ng-container *ngIf="selectedRestaurantId$ | async as selectedRestaurantId">
-            <label>
-              {{ 'admin.manage.select' | translate: 'Choose restaurant' }}
-              <select [ngModel]="selectedRestaurantId" (ngModelChange)="onRestaurantChange($event)">
-                <option *ngFor="let restaurant of restaurants" [value]="restaurant.id">
-                  {{ restaurant.name }}
-                </option>
-              </select>
-            </label>
-          </ng-container>
+        <ng-container *ngIf="!restaurants.length">
+          <p class="empty-state">{{ 'admin.manage.empty' | translate: 'No restaurants found.' }}</p>
         </ng-container>
       </ng-container>
-
-      <form class="create-form" (ngSubmit)="createRestaurant()">
-        <label>
-          {{ 'admin.manage.add.label' | translate: 'Add a new restaurant' }}
-          <input
-            type="text"
-            name="restaurantName"
-            [(ngModel)]="newRestaurantName"
-            [disabled]="creatingRestaurant"
-            placeholder="{{ 'admin.manage.add.placeholder' | translate: 'Restaurant name' }}"
-            required
-          />
-        </label>
-        <button type="submit" [disabled]="creatingRestaurant || !newRestaurantName.trim()">
-          {{
-            creatingRestaurant
-              ? ('admin.manage.add.creating' | translate: 'Creating…')
-              : ('admin.manage.add.submit' | translate: 'Add restaurant')
-          }}
-        </button>
-      </form>
-
-      <p *ngIf="creationError" class="error-message">
-        {{ 'admin.manage.add.error' | translate: 'Could not create restaurant. Please try again.' }}
-      </p>
-
-      <ng-template #noRestaurants>
-        <p class="empty-state">{{ 'admin.manage.empty' | translate: 'No restaurants found.' }}</p>
-      </ng-template>
 
       <p *ngIf="loading" class="empty-state">
         {{ 'admin.manage.loading' | translate: 'Loading restaurants…' }}
       </p>
     </section>
+
+    <div class="modal-backdrop" *ngIf="showCreateModal">
+      <div class="modal" role="dialog" aria-modal="true">
+        <header>
+          <h3>{{ 'admin.manage.add.title' | translate: 'Create a new restaurant' }}</h3>
+          <p>
+            {{
+              'admin.manage.add.helper'
+                | translate: 'Give your restaurant a name to start managing its details.'
+            }}
+          </p>
+        </header>
+
+        <form (ngSubmit)="createRestaurant()">
+          <label for="new-restaurant-name">
+            {{ 'admin.manage.add.label' | translate: 'Restaurant name' }}
+            <input
+              id="new-restaurant-name"
+              type="text"
+              name="restaurantName"
+              [(ngModel)]="newRestaurantName"
+              [disabled]="creatingRestaurant"
+              placeholder="{{ 'admin.manage.add.placeholder' | translate: 'Restaurant name' }}"
+              required
+              autocomplete="off"
+            />
+          </label>
+
+          <div class="modal-actions">
+            <button type="button" class="cancel-button" (click)="closeCreateModal()" [disabled]="creatingRestaurant">
+              {{ 'common.cancel' | translate: 'Cancel' }}
+            </button>
+            <button type="submit" [disabled]="creatingRestaurant || !newRestaurantName.trim()">
+              {{
+                creatingRestaurant
+                  ? ('admin.manage.add.creating' | translate: 'Creating…')
+                  : ('admin.manage.add.submit' | translate: 'Add restaurant')
+              }}
+            </button>
+          </div>
+        </form>
+
+        <p *ngIf="creationError" class="error-message">
+          {{ 'admin.manage.add.error' | translate: 'Could not create restaurant. Please try again.' }}
+        </p>
+      </div>
+    </div>
 
     <ng-container *ngIf="selectedRestaurantId$ | async as restaurantId; else managePlaceholder">
       <div class="section-shell" *ngIf="restaurantId !== null">
@@ -268,6 +432,7 @@ export class AdminDashboardPage {
   newRestaurantName = '';
   creatingRestaurant = false;
   creationError = false;
+  showCreateModal = false;
 
   constructor() {
     void this.context.loadRestaurants().finally(() => {
@@ -278,6 +443,16 @@ export class AdminDashboardPage {
   onRestaurantChange(value: string | number) {
     const id = Number(value);
     this.context.selectRestaurant(Number.isNaN(id) ? null : id);
+  }
+
+  openCreateModal(): void {
+    this.showCreateModal = true;
+    this.creationError = false;
+  }
+
+  closeCreateModal(): void {
+    this.showCreateModal = false;
+    this.newRestaurantName = '';
   }
 
   async createRestaurant(): Promise<void> {
@@ -291,7 +466,7 @@ export class AdminDashboardPage {
 
     try {
       await this.context.createRestaurant({ name });
-      this.newRestaurantName = '';
+      this.closeCreateModal();
     } catch (error) {
       this.creationError = true;
     } finally {
