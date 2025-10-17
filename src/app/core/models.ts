@@ -25,6 +25,7 @@ export interface Restaurant {
   chain?: Chain | null;
   cuisines?: string[];
   primary_color?: string | null;
+  locations?: Location[] | null;
 }
 
 export interface Location {
