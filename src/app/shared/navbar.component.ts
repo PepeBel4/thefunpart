@@ -27,18 +27,21 @@ type LanguageOption = { code: string; label: string; flag: string };
   styles: [`
     nav {
       position: sticky;
-      top: 0;
+      top: 1.25rem;
       z-index: 10;
       display: flex;
       align-items: center;
-      gap: 1.25rem;
-      padding: 1.1rem clamp(1rem, 4vw, 3rem);
+      gap: 0.75rem;
+      padding: 0.75rem 2rem;
       min-height: var(--navbar-height, 4.5rem);
-      background: var(--brand-black);
-      color: #fefefe;
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      transition: border-color 0.2s ease;
+      max-width: 1100px;
+      width: calc(100% - 2.5rem);
+      margin: 1rem auto 0;
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--text-primary, #1f1f1f);
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      box-shadow: 0 25px 50px -20px rgba(15, 23, 42, 0.4);
     }
 
     .brand {
@@ -62,31 +65,30 @@ type LanguageOption = { code: string; label: string; flag: string };
       justify-content: center;
       width: 40px;
       height: 40px;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      background: rgba(6, 193, 103, 0.1);
+      color: var(--brand-green);
       font-size: 1.35rem;
     }
 
     .menu-toggle {
       display: none;
       align-items: center;
-      gap: 0.55rem;
+      gap: 0.5rem;
       padding: 0.45rem 0.9rem;
       border: 0;
-      border-radius: 0.95rem;
-      background: rgba(255, 255, 255, 0.12);
-      color: rgba(255, 255, 255, 0.9);
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.08);
+      color: rgba(15, 23, 42, 0.75);
       font: inherit;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
     }
 
     .menu-toggle:hover,
     .menu-toggle:focus-visible {
-      background: rgba(255, 255, 255, 0.18);
-      color: #fff;
-      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.14);
+      background: rgba(15, 23, 42, 0.15);
+      color: var(--text-primary, #1f1f1f);
       outline: none;
     }
 
@@ -138,22 +140,21 @@ type LanguageOption = { code: string; label: string; flag: string };
       display: flex;
       align-items: center;
       gap: 0.4rem;
-      transition: opacity 0.2s ease;
     }
 
     .nav-links a {
       padding: 0.45rem 0.9rem;
       border-radius: 999px;
       text-decoration: none;
-      color: rgba(255, 255, 255, 0.85);
+      color: rgba(15, 23, 42, 0.7);
       font-weight: 500;
       transition: background 0.25s ease, color 0.25s ease;
     }
 
     .nav-links a:hover,
     .nav-links a.active {
-      background: rgba(255, 255, 255, 0.16);
-      color: #fff;
+      background: rgba(6, 193, 103, 0.12);
+      color: var(--text-primary, #1f1f1f);
     }
 
     .nav-actions {
@@ -161,7 +162,8 @@ type LanguageOption = { code: string; label: string; flag: string };
       align-items: center;
       gap: 0.65rem;
       margin-left: auto;
-      padding-right: clamp(3.25rem, 8vw, 7.25rem);
+      flex-wrap: wrap;
+      justify-content: flex-end;
     }
 
     .nav-actions > * {
@@ -172,35 +174,28 @@ type LanguageOption = { code: string; label: string; flag: string };
       position: relative;
       display: inline-flex;
       align-items: center;
-      color: rgba(255, 255, 255, 0.85);
+      color: rgba(15, 23, 42, 0.75);
     }
 
     .language-toggle {
       border: 0;
-      background: rgba(255, 255, 255, 0.12);
+      background: rgba(15, 23, 42, 0.06);
       color: inherit;
       font: inherit;
       display: inline-flex;
       align-items: center;
-      gap: 0.45rem;
+      gap: 0.4rem;
       padding: 0.35rem 0.75rem;
       border-radius: 999px;
       cursor: pointer;
-      transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
     }
 
     .language-toggle:hover,
-    .language-toggle:focus-visible {
-      background: rgba(255, 255, 255, 0.18);
-      color: #fff;
-      outline: none;
-      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.14);
-    }
-
+    .language-toggle:focus-visible,
     .language-menu.open .language-toggle {
-      background: rgba(255, 255, 255, 0.16);
-      color: #fff;
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+      background: rgba(15, 23, 42, 0.12);
+      color: var(--text-primary, #1f1f1f);
+      outline: none;
     }
 
     .language-menu .flag {
@@ -230,9 +225,9 @@ type LanguageOption = { code: string; label: string; flag: string };
       flex-direction: column;
       gap: 0.15rem;
       padding: 0.45rem;
-      border-radius: 0.9rem;
-      background: rgba(20, 20, 20, 0.94);
-      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
+      border-radius: 0.85rem;
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 16px 32px rgba(15, 23, 42, 0.18);
       min-width: max-content;
       z-index: 5;
     }
@@ -254,25 +249,11 @@ type LanguageOption = { code: string; label: string; flag: string };
     }
 
     .language-option:hover,
-    .language-option:focus-visible {
-      background: rgba(255, 255, 255, 0.18);
-      color: #fff;
-      outline: none;
-    }
-
+    .language-option:focus-visible,
     .language-option[aria-selected='true'] {
-      background: rgba(255, 255, 255, 0.14);
-      color: #fff;
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
-      cursor: default;
-    }
-
-    @media (max-width: 760px) {
-      .language-options {
-        right: auto;
-        left: 50%;
-        transform: translateX(-50%);
-      }
+      background: rgba(6, 193, 103, 0.12);
+      color: var(--text-primary, #1f1f1f);
+      outline: none;
     }
 
     .sr-only {
@@ -288,163 +269,36 @@ type LanguageOption = { code: string; label: string; flag: string };
     }
 
     .cart-pill {
-      position: fixed;
-      top: calc(env(safe-area-inset-top, 0px) + 0.95rem);
-      right: calc(env(safe-area-inset-right, 0px) + clamp(1rem, 4vw, 3rem));
+      position: relative;
       display: inline-flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.45rem;
       text-decoration: none;
-      background: var(--brand-green);
-      color: var(--brand-on-primary);
-      padding: 0.55rem 1.1rem;
+      background: #ff5a1f;
+      color: #fff;
+      padding: 0.55rem 1.05rem;
       border-radius: 999px;
       font-weight: 600;
-      box-shadow: 0 12px 25px rgba(var(--brand-green-rgb, 6, 193, 103), 0.28);
-      transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-      z-index: 30;
+      box-shadow: 0 16px 28px rgba(255, 90, 31, 0.3);
     }
 
     .cart-icon {
-      font-size: 1.2rem;
+      font-size: 1.1rem;
     }
 
     .cart-count {
-      min-width: 1.75rem;
+      min-width: 1.6rem;
       padding: 0.1rem 0.45rem;
       border-radius: 999px;
-      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.18);
+      background: rgba(255, 255, 255, 0.2);
       color: inherit;
       font-variant-numeric: tabular-nums;
       text-align: center;
     }
 
-    .cart-pill:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 16px 35px rgba(var(--brand-green-rgb, 6, 193, 103), 0.32);
-    }
-
-    @media (max-width: 900px) {
-      nav {
-        flex-wrap: wrap;
-        row-gap: 0.75rem;
-        align-items: flex-start;
-      }
-
-      .nav-actions {
-        order: 4;
-        margin-left: auto;
-        padding-right: clamp(3rem, 10vw, 4.25rem);
-      }
-    }
-
     @media (max-width: 640px) {
       nav {
-        padding-inline: 1.1rem;
-        position: sticky;
-      }
-
-      .nav-links {
-        width: 100%;
-        flex-direction: column;
-        align-items: stretch;
-        justify-content: flex-start;
-        order: 6;
-        gap: 0.35rem;
-        padding: 0.85rem;
-        border-radius: 1rem;
-        background: rgba(255, 255, 255, 0.08);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-        display: none;
-      }
-
-      .nav-links.open {
-        display: flex;
-      }
-
-      .language-toggle {
-        background: rgba(255, 255, 255, 0.08);
-        padding: 0.45rem;
-        gap: 0.35rem;
-      }
-
-      .language-toggle .label {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        padding: 0;
-        margin: -1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        white-space: nowrap;
-        border: 0;
-      }
-
-      .user-menu {
-        order: 5;
-      }
-
-      .cart-pill {
-        order: 6;
-        padding: 0.5rem 0.85rem;
-        top: calc(env(safe-area-inset-top, 0px) + 0.8rem);
-        right: calc(env(safe-area-inset-right, 0px) + 0.9rem);
-      }
-
-      .menu-toggle {
-        margin-right: clamp(3.25rem, 12vw, 4.5rem);
-      }
-
-      .nav-actions {
-        order: 3;
-        margin-left: 0;
-        gap: 0.45rem;
-      }
-
-      .menu-toggle {
-        display: inline-flex;
-        order: 4;
-        margin-left: auto;
-      }
-
-      .nav-links a {
-        width: 100%;
-        text-align: left;
-        background: rgba(255, 255, 255, 0.04);
-      }
-
-      .nav-links a:hover,
-      .nav-links a.active {
-        background: rgba(255, 255, 255, 0.16);
-      }
-
-      .menu-toggle {
-        display: inline-flex;
-      }
-
-      .language-options {
-        left: 50%;
-        right: auto;
-        transform: translate(-50%, 0);
-        padding: 0.35rem;
-        gap: 0.1rem;
-      }
-
-      .language-option {
-        padding: 0.4rem 0.6rem;
-        gap: 0.35rem;
-      }
-
-      .language-option .label {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        padding: 0;
-        margin: -1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        white-space: nowrap;
-        border: 0;
+        width: calc(100% - 1.5rem);
       }
     }
   `],

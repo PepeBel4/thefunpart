@@ -80,24 +80,24 @@ import { TranslatePipe } from './translate.pipe';
         border-radius: 999px;
         border: 0;
         cursor: pointer;
-        background: rgba(255, 255, 255, 0.12);
-        color: rgba(255, 255, 255, 0.92);
+        background: rgba(15, 23, 42, 0.05);
+        color: rgba(15, 23, 42, 0.75);
         font-weight: 600;
         transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
       }
 
       .user-toggle:hover,
       .user-toggle:focus-visible {
-        background: rgba(255, 255, 255, 0.18);
-        color: #fff;
+        background: rgba(15, 23, 42, 0.1);
+        color: var(--text-primary, #1f1f1f);
         outline: none;
-        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.14);
+        box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.08);
       }
 
       .user-menu-root.open .user-toggle {
-        background: rgba(255, 255, 255, 0.16);
-        color: #fff;
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+        background: rgba(15, 23, 42, 0.12);
+        color: var(--text-primary, #1f1f1f);
+        box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
       }
 
       .user-icon {
@@ -120,10 +120,13 @@ import { TranslatePipe } from './translate.pipe';
         flex-direction: column;
         gap: 0.25rem;
         padding: 0.75rem;
-        border-radius: 12px;
-        background: #fff;
-        color: var(--brand-black);
-        box-shadow: 0 16px 35px rgba(0, 0, 0, 0.18);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.97);
+        color: var(--text-primary, #1f1f1f);
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        border: 1px solid rgba(255, 255, 255, 0.7);
         z-index: 20;
       }
 
@@ -147,7 +150,7 @@ import { TranslatePipe } from './translate.pipe';
       .menu-panel a:focus-visible,
       .menu-panel .panel-action:hover,
       .menu-panel .panel-action:focus-visible {
-        background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.12);
+        background: rgba(6, 193, 103, 0.12);
         outline: none;
       }
 
