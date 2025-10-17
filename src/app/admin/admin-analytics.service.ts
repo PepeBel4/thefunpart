@@ -15,6 +15,6 @@ export class AdminAnalyticsService {
   ): Observable<SalesPipelineReport> {
     const params = new HttpParams().set('start_date', startDate).set('end_date', endDate);
 
-    return this.api.get<SalesPipelineReport>(`/restaurants/${restaurantId}/sales_pipeline`, { params });
+    return this.api.get<SalesPipelineReport>(`/restaurants/${restaurantId}/reports/sales_pipeline`, { params });
   }
 }
