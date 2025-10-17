@@ -90,6 +90,7 @@ type CounterLocationExceptionEntry = {
   dateLabel: string;
   statusLabel: string;
   reasonLabel: string | null;
+  state: 'open' | 'closed';
 };
 
 type CounterLocationViewModel = {
@@ -419,21 +420,50 @@ type ScheduledInterval = {
     }
 
     .hero-hours-exception {
-      padding: 0.65rem 0.75rem;
-      border-radius: 10px;
-      background: rgba(0, 0, 0, 0.18);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 0.75rem 0.85rem;
+      border-radius: 12px;
       display: grid;
-      gap: 0.25rem;
+      gap: 0.3rem;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    }
+
+    .hero-hours-exception::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0.92;
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+
+    .hero-hours-exception.open::before {
+      background: linear-gradient(135deg, rgba(46, 204, 149, 0.55), rgba(27, 153, 139, 0.4));
+    }
+
+    .hero-hours-exception.closed::before {
+      background: linear-gradient(135deg, rgba(245, 101, 101, 0.55), rgba(203, 67, 67, 0.35));
     }
 
     .hero-hours-exception strong {
       font-weight: 600;
+      position: relative;
+      z-index: 1;
     }
 
     .hero-hours-exception p {
       margin: 0;
       font-size: 0.9rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-hours-exception p:last-child {
+      font-size: 0.85rem;
+      opacity: 0.9;
     }
 
     .hero-hours-empty {
@@ -788,7 +818,11 @@ type ScheduledInterval = {
                   }}
                 </h4>
                 <div class="hero-hours-exceptions-list">
-                  <div class="hero-hours-exception" *ngFor="let exception of counterLocation.exceptions">
+                  <div
+                    class="hero-hours-exception"
+                    *ngFor="let exception of counterLocation.exceptions"
+                    [ngClass]="exception.state"
+                  >
                     <strong>{{ exception.dateLabel }}</strong>
                     <p>{{ exception.statusLabel }}</p>
                     <p *ngIf="exception.reasonLabel as reasonLabel">{{ reasonLabel }}</p>
@@ -2403,6 +2437,7 @@ export class RestaurantDetailPage implements OnDestroy {
         dateLabel: this.formatExceptionDateLabel(item.date, now),
         statusLabel,
         reasonLabel,
+        state: interval ? 'open' : 'closed',
       };
     });
   }
