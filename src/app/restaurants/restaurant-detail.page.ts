@@ -1,4 +1,4 @@
-import { Component, HostListener, OnDestroy, effect, inject, signal, computed } from '@angular/core';
+import { Component, DestroyRef, HostListener, OnDestroy, effect, inject, signal, computed } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { MenuService } from '../menu/menu.service';
 import { RestaurantService } from './restaurant.service';
@@ -1560,11 +1560,12 @@ export class RestaurantDetailPage implements OnDestroy {
   private modalLockCount = 0;
   private itemQuantities = signal<Record<number, number>>({});
   cartFlights = signal<CartFlightAnimation[]>([]);
+  private readonly destroyRef = inject(DestroyRef);
 
   constructor() {
     this.restaurant$
       .pipe(
-        takeUntilDestroyed(),
+        takeUntilDestroyed(this.destroyRef),
         switchMap(restaurant =>
           this.cards
             .findForRestaurant(restaurant.id, restaurant.chain?.id ?? restaurant.chain_id ?? null)
@@ -1582,7 +1583,7 @@ export class RestaurantDetailPage implements OnDestroy {
       });
 
     this.restaurantReviewForm.valueChanges
-      .pipe(takeUntilDestroyed())
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         if (this.restaurantReviewStatus()) {
           this.restaurantReviewStatus.set('');
@@ -1954,7 +1955,7 @@ export class RestaurantDetailPage implements OnDestroy {
     if (!this.menuItemReviewForms.has(itemId)) {
       const form = this.createReviewForm();
       form.valueChanges
-        .pipe(takeUntilDestroyed())
+        .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe(() => {
           this.clearMenuItemReviewStatus(itemId);
         });
