@@ -12,7 +12,7 @@ import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
   styles: [`
     aside {
       position: sticky;
-      top: 2rem;
+      top: var(--cart-sticky-offset, 2rem);
       align-self: start;
       background: var(--surface);
       border-radius: var(--radius-card);
@@ -22,6 +22,9 @@ import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
       display: flex;
       flex-direction: column;
       gap: 1.5rem;
+      max-height: calc(100vh - var(--cart-sticky-offset, 2rem));
+      overflow-y: auto;
+      scrollbar-gutter: stable;
     }
 
     .cart-restaurant {
@@ -325,6 +328,8 @@ import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
       aside {
         position: static;
         min-width: unset;
+        max-height: none;
+        overflow: visible;
       }
     }
   `],

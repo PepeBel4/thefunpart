@@ -11,6 +11,8 @@
   --radius-card: 18px;
   --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.08);
   --font-family: 'Uber Move Text', 'Uber Move', 'Helvetica Neue', Arial, sans-serif;
+  --navbar-height: 4.5rem;
+  --cart-sticky-offset: calc(var(--navbar-height) + 1.5rem);
   font-family: var(--font-family);
 }
 

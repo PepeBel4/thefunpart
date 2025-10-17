@@ -31,6 +31,7 @@ type LanguageOption = { code: string; label: string; flag: string };
       align-items: center;
       gap: 1.25rem;
       padding: 1.1rem clamp(1rem, 4vw, 3rem);
+      min-height: var(--navbar-height, 4.5rem);
       background: var(--brand-black);
       color: #fefefe;
       box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
