@@ -1,5 +1,17 @@
 import { CurrencyPipe, NgFor, NgIf } from '@angular/common';
-import { Component, EventEmitter, Input, Output, inject, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  Input,
+  Output,
+  ViewRef,
+  inject,
+  OnChanges,
+  OnDestroy,
+  OnInit,
+  SimpleChanges,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Subject, Subscription, firstValueFrom } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
@@ -928,6 +940,7 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
   private options = inject(MenuOptionsService);
   private optionAssignments = inject(MenuOptionAssignmentsService);
   private aiAssistant = inject(MenuItemAiAssistantService);
+  private cdr = inject(ChangeDetectorRef);
 
   private loadToken = 0;
 
@@ -1043,6 +1056,7 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
     if (!preserveExisting) {
       this.loading = true;
       this.menuItems = [];
+      this.triggerChangeDetection();
     }
     this.error = '';
 
@@ -1052,17 +1066,27 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
         const enriched = await this.enrichMenuItemsWithOptionAssignments(items ?? []);
         if (token === this.loadToken) {
           this.menuItems = enriched;
+          this.triggerChangeDetection();
         }
       }
     } catch (err) {
       console.error(err);
       if (token === this.loadToken) {
         this.error = this.i18n.translate('menu.form.error.load', 'Could not load menu items. Please try again.');
+        this.triggerChangeDetection();
       }
     } finally {
       if (token === this.loadToken) {
         this.loading = false;
+        this.triggerChangeDetection();
       }
+    }
+  }
+
+  private triggerChangeDetection() {
+    const viewRef = this.cdr as ViewRef;
+    if (!viewRef.destroyed) {
+      viewRef.detectChanges();
     }
   }
 
