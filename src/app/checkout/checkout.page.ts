@@ -302,7 +302,7 @@ export class CheckoutPage implements OnDestroy {
       const isSuccess = status === 'succeeded' || status === 'paid' || status === 'successful';
 
       if (isSuccess) {
-        await firstValueFrom(this.orders.updateState(order.id, 'sent'));
+        await firstValueFrom(this.orders.updateStatus(order.id, 'sent'));
         this.cart.clear();
         await this.router.navigate(['/orders', order.id]);
         return;

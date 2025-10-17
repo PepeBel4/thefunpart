@@ -302,10 +302,25 @@ export interface OrderItemInput {
   category_id?: number | null;
 }
 
+export type OrderStatus =
+  | 'composing'
+  | 'sent'
+  | 'received'
+  | 'printed'
+  | 'preparing'
+  | 'prepared'
+  | 'distributed';
+
 export interface Order {
   id: number;
   total_cents: number;
-  status: 'pending' | 'confirmed' | 'preparing' | 'delivered' | string;
+  status:
+    | 'pending'
+    | 'confirmed'
+    | 'preparing'
+    | 'delivered'
+    | OrderStatus
+    | string;
   state?: 'composing' | 'sent' | string;
   payment_state?: string;
   paid_cents?: number;

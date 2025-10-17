@@ -3,9 +3,8 @@ import { Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import {
   BehaviorSubject,
-  combineLatest,
   catchError,
-  debounceTime,
+  combineLatest,
   distinctUntilChanged,
   map,
   of,
@@ -13,8 +12,9 @@ import {
   startWith,
   switchMap,
   tap,
+  debounceTime
 } from 'rxjs';
-import { Order, OrderScenario, OrderTargetTimeType } from '../core/models';
+import { Order, OrderStatus, OrderScenario, OrderTargetTimeType } from '../core/models';
 import { OrderService } from '../orders/order.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { AdminRestaurantContextService } from './admin-restaurant-context.service';
@@ -205,6 +205,133 @@ type OrderFilterFormValue = {
       font-size: 0.9rem;
     }
 
+    .status-current {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border-radius: 999px;
+      padding: 0.35rem 0.85rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.18);
+      color: var(--brand-green, #06c167);
+      align-self: flex-start;
+    }
+
+    .status-timeline {
+      list-style: none;
+      margin: clamp(0.75rem, 2vw, 1rem) 0 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(0.75rem, 2vw, 1rem);
+    }
+
+    .status-timeline-step {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      column-gap: 0.75rem;
+      align-items: flex-start;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .status-marker {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      width: 1rem;
+      min-height: 1rem;
+    }
+
+    .status-dot {
+      width: 0.75rem;
+      height: 0.75rem;
+      border-radius: 50%;
+      border: 2px solid var(--border-soft);
+      background: var(--surface);
+      box-sizing: border-box;
+      transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+    }
+
+    .status-connector {
+      position: absolute;
+      left: 50%;
+      top: 0.75rem;
+      bottom: calc(-1 * clamp(0.75rem, 2vw, 1rem));
+      width: 2px;
+      transform: translateX(-50%);
+      background: var(--border-soft);
+      transition: background-color 150ms ease;
+    }
+
+    .status-label {
+      display: block;
+      line-height: 1.2;
+    }
+
+    .status-timeline-step.completed .status-dot {
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.95);
+      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.65);
+    }
+
+    .status-timeline-step.completed .status-connector {
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.35);
+    }
+
+    .status-timeline-step.completed .status-label {
+      color: var(--text-primary);
+    }
+
+    .status-timeline-step.current .status-dot {
+      background: var(--brand-green, #06c167);
+      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.65);
+      box-shadow: 0 0 0 4px rgba(var(--brand-green-rgb, 6, 193, 103), 0.2);
+    }
+
+    .status-timeline-step.current .status-label {
+      color: var(--brand-green, #06c167);
+    }
+
+    .advance-status-button {
+      align-self: flex-start;
+      border: none;
+      border-radius: 999px;
+      padding: 0.45rem 0.85rem;
+      font-weight: 600;
+      background: var(--brand-green, #06c167);
+      color: white;
+      cursor: pointer;
+      transition: transform 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .advance-status-button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .advance-status-button:not(:disabled):hover,
+    .advance-status-button:not(:disabled):focus-visible {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(var(--brand-green-rgb, 6, 193, 103), 0.25);
+      outline: none;
+    }
+
+    .advance-status-button small {
+      font-weight: 500;
+      opacity: 0.85;
+    }
+
     .details-card {
       background: var(--surface);
       border-radius: var(--radius-card);
@@ -277,6 +404,11 @@ type OrderFilterFormValue = {
         max-height: none;
         overflow: visible;
         padding-right: 0;
+      }
+
+      .advance-status-button {
+        width: 100%;
+        justify-content: center;
       }
     }
   `],
@@ -367,12 +499,14 @@ type OrderFilterFormValue = {
 
             <ng-container *ngIf="orders.length; else emptyOrders">
               <div class="orders-list" role="list">
-                <button
-                  type="button"
+                <div
                   class="order-card"
                   role="listitem"
+                  tabindex="0"
                   *ngFor="let order of orders; trackBy: trackByOrderId"
                   (click)="selectOrder(order.id)"
+                  (keydown.enter)="selectOrder(order.id)"
+                  (keydown.space)="selectOrder(order.id); $event.preventDefault()"
                   [class.selected]="selectedState.orderId === order.id"
                 >
                   <header>
@@ -388,19 +522,37 @@ type OrderFilterFormValue = {
                   <div class="meta">
                     {{
                       'admin.orders.meta'
-                        | translate: 'Placed {{date}} · Status: {{status}}': {
-                            date: (order.created_at | date:'medium') || '',
-                            status: order.status
+                        | translate: 'Placed {{date}}': {
+                            date: (order.created_at | date:'medium') || ''
                           }
                     }}
                   </div>
+                  <div class="status-current" aria-label="Current status">
+                    {{
+                      formatStatus(resolveStatus(order))
+                        || ('admin.orders.statusUnknown' | translate: 'Status unknown')
+                    }}
+                  </div>
+                  <button
+                    type="button"
+                    class="advance-status-button"
+                    *ngIf="getNextStatus(resolveStatus(order)) as nextStatus"
+                    (click)="advanceOrderStatus(order, nextStatus, $event)"
+                    [disabled]="isUpdating(order.id)"
+                  >
+                    {{
+                      'admin.orders.advance'
+                        | translate: 'Mark as'
+                    }}
+                    <small>{{ formatStatus(nextStatus) }}</small>
+                  </button>
                   <div class="meta" *ngIf="order.user?.email">
                     {{
                       'admin.orders.customer'
                         | translate: 'Customer: {{email}}': { email: order.user?.email || '' }
                     }}
                   </div>
-                </button>
+                </div>
               </div>
             </ng-container>
           </div>
@@ -427,6 +579,32 @@ type OrderFilterFormValue = {
                               }
                         }}
                       </div>
+
+                      <ol class="status-timeline" aria-label="Order status progression">
+                          <li
+                            class="status-timeline-step"
+                            *ngFor="let status of statusFlow; let last = last"
+                            [class.completed]="isStatusCompleted(resolveStatus(selected), status)"
+                            [class.current]="isCurrentStatus(resolveStatus(selected), status)"
+                          >
+                            <div class="status-marker">
+                              <span class="status-dot"></span>
+                              <span class="status-connector" *ngIf="!last"></span>
+                            </div>
+                            <span class="status-label">{{ formatStatus(status) }}</span>
+                          </li>
+                        </ol>
+                        <button
+                          type="button"
+                          class="advance-status-button"
+                          *ngIf="getNextStatus(resolveStatus(selected)) as nextStatus"
+                          (click)="advanceOrderStatus(selected, nextStatus, $event)"
+                          [disabled]="isUpdating(selected.id)"
+                        >
+                          {{ 'admin.orders.advance' | translate: 'Mark as' }}
+                          <small>{{ formatStatus(nextStatus) }}</small>
+                        </button>
+                        
                     </div>
                     <div>
                       <h3>{{ 'orderDetail.itemsHeading' | translate: 'Items' }}</h3>
@@ -479,6 +657,16 @@ type OrderFilterFormValue = {
   `,
 })
 export class AdminRecentOrdersPage {
+  readonly statusFlow: OrderStatus[] = [
+    'composing',
+    'sent',
+    'received',
+    'printed',
+    'preparing',
+    'prepared',
+    'distributed',
+  ];
+
   private context = inject(AdminRestaurantContextService);
   private orderService = inject(OrderService);
   private fb = inject(FormBuilder);
@@ -545,6 +733,10 @@ export class AdminRecentOrdersPage {
     { value: 'status desc', labelKey: 'admin.orders.filters.sort.statusDesc', fallback: 'Status Z → A' },
   ];
 
+  private readonly refreshOrders = new BehaviorSubject<void>(undefined);
+  private readonly selectedOrderRefresh = new BehaviorSubject<void>(undefined);
+  private readonly updatingOrderIds = new Set<number>();
+
   private selectedOrderId = new BehaviorSubject<number | null>(null);
   private readonly selectedOrderId$ = this.selectedOrderId.asObservable();
 
@@ -581,9 +773,11 @@ export class AdminRecentOrdersPage {
     shareReplay({ bufferSize: 1, refCount: true })
   );
 
-  readonly selectedOrderState$ = this.selectedOrderId$.pipe(
-    distinctUntilChanged(),
-    switchMap(orderId => {
+  readonly selectedOrderState$ = combineLatest([
+    this.selectedOrderId$.pipe(distinctUntilChanged()),
+    this.selectedOrderRefresh,
+  ]).pipe(
+    switchMap(([orderId]) => {
       if (orderId === null) {
         return of<SelectedOrderState>({
           orderId,
@@ -700,5 +894,98 @@ export class AdminRecentOrdersPage {
     }
 
     return params;
+
+  }
+  
+  getNextStatus(currentStatus: string | null | undefined): OrderStatus | null {
+    if (!currentStatus) {
+      return this.statusFlow[0] ?? null;
+    }
+
+    const normalized = this.normalizeStatus(currentStatus);
+    const currentIndex = this.statusFlow.findIndex(status => status === normalized);
+    if (currentIndex === -1) {
+      return null;
+    }
+
+    return this.statusFlow[currentIndex + 1] ?? null;
+  }
+
+  resolveStatus(order: { status?: string | null; state?: string | null } | null | undefined): string | null {
+    if (!order) {
+      return null;
+    }
+
+    return order.status ?? (order as { state?: string | null }).state ?? null;
+  }
+
+  isCurrentStatus(currentStatus: string | null | undefined, status: OrderStatus): boolean {
+    return this.normalizeStatus(currentStatus ?? '') === status;
+  }
+
+  isStatusCompleted(currentStatus: string | null | undefined, status: OrderStatus): boolean {
+    const normalized = this.normalizeStatus(currentStatus ?? '');
+    const currentIndex = this.statusFlow.findIndex(step => step === normalized);
+    const stepIndex = this.statusFlow.findIndex(step => step === status);
+
+    if (currentIndex === -1 || stepIndex === -1) {
+      return false;
+    }
+
+    return stepIndex < currentIndex;
+  }
+
+  formatStatus(status: string | null | undefined): string {
+    if (!status) {
+      return '';
+    }
+
+    return status
+      .toString()
+      .split('_')
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  }
+
+  isUpdating(orderId: number): boolean {
+    return this.updatingOrderIds.has(orderId);
+  }
+
+  advanceOrderStatus(order: Order, nextStatus: OrderStatus, event?: Event): void {
+    event?.stopPropagation?.();
+    event?.preventDefault?.();
+
+    if (this.updatingOrderIds.has(order.id)) {
+      return;
+    }
+
+    this.updatingOrderIds.add(order.id);
+
+    this.orderService.updateStatus(order.id, nextStatus).subscribe({
+      next: updatedOrder => {
+        this.refreshOrders.next(undefined);
+        this.selectedOrderRefresh.next(undefined);
+
+        if (this.selectedOrderId.getValue() === updatedOrder.id) {
+          this.selectedOrderId.next(updatedOrder.id);
+        }
+
+        this.updatingOrderIds.delete(order.id);
+      },
+      error: error => {
+        console.error('Failed to update order status', error);
+        this.updatingOrderIds.delete(order.id);
+      },
+    });
+  }
+
+  private normalizeStatus(status: string | null | undefined): OrderStatus | string {
+    if (!status) {
+      return '';
+    }
+
+    const lower = status.toLowerCase();
+    const match = this.statusFlow.find(step => step === lower);
+    return match ?? status;
   }
 }
