@@ -801,9 +801,14 @@ export class AdminRecentOrdersPage {
     map(value => this.buildQueryParams(value))
   );
 
-  readonly orders$ = combineLatest([this.context.selectedRestaurant$, this.filterParams$]).pipe(
-    switchMap(([restaurant, params]) =>
-      this.orderService.listForRestaurant(restaurant.id, params).pipe(
+  readonly orders$ = combineLatest([
+    this.context.selectedRestaurant$,
+    this.filterParams$,
+    this.refreshOrders.asObservable(),
+  ]).pipe(
+    switchMap(([restaurant, params, refreshTrigger]) => {
+      void refreshTrigger;
+      return this.orderService.listForRestaurant(restaurant.id, params).pipe(
         map(orders => orders ?? []),
         tap(orders => {
           const current = this.selectedOrderId.getValue();
@@ -823,8 +828,8 @@ export class AdminRecentOrdersPage {
           this.selectedOrderId.next(null);
           return of<Order[]>([]);
         })
-      )
-    ),
+      );
+    }),
     shareReplay({ bufferSize: 1, refCount: true })
   );
 
