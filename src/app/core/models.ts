@@ -33,6 +33,11 @@ export interface Review {
   reviewer_name?: string | null;
 }
 
+export interface ReviewInput {
+  rating?: number | null;
+  comment?: string | null;
+}
+
 export interface RatingSummary {
   average_rating?: number | null;
   avg_rating?: number | null;

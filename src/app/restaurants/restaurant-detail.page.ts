@@ -13,6 +13,7 @@ import {
   DOCUMENT,
   TitleCasePipe,
 } from '@angular/common';
+import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import {
   Allergen,
   Card,
@@ -23,12 +24,14 @@ import {
   RatingSummary,
   Restaurant,
   Review,
+  ReviewInput,
 } from '../core/models';
 import {
   BehaviorSubject,
   Observable,
   catchError,
   combineLatest,
+  finalize,
   firstValueFrom,
   map,
   of,
@@ -82,6 +85,18 @@ type MenuItemModalContext = {
   item: MenuItem;
   category: CartCategorySelection | null;
   restaurant: Restaurant;
+};
+
+type ReviewFormGroup = FormGroup<{
+  rating: FormControl<number | null>;
+  comment: FormControl<string>;
+}>;
+
+type ReviewStatus = 'success' | 'error' | '';
+
+type MenuItemReviewState = {
+  submitting: boolean;
+  status: ReviewStatus;
 };
 
 type CounterLocationStatusViewModel = {
@@ -143,6 +158,7 @@ type ScheduledInterval = {
     NgIf,
     TranslatePipe,
     NgStyle,
+    ReactiveFormsModule,
     MenuItemPhotoSliderComponent,
     AllergenIconComponent,
     TitleCasePipe,
@@ -810,10 +826,7 @@ type ScheduledInterval = {
           </ng-container>
         </div>
       </section>
-      <section
-        class="reviews"
-        *ngIf="hasRatings(r.rating_summary) || hasReviews(r.reviews)"
-      >
+      <section class="reviews">
         <div class="reviews-header">
           <h3>{{ 'restaurantDetail.reviewsHeading' | translate: 'What people are saying' }}</h3>
           <span class="rating-chip rating-chip-large" *ngIf="hasRatings(r.rating_summary)">
@@ -845,6 +858,100 @@ type ScheduledInterval = {
             {{ 'restaurantDetail.reviewsEmpty' | translate: 'No comments yet.' }}
           </p>
         </ng-template>
+        <form
+          class="review-form"
+          [formGroup]="restaurantReviewForm"
+          (ngSubmit)="submitRestaurantReview()"
+          novalidate
+        >
+          <h4>{{ 'restaurantDetail.reviewFormHeading' | translate: 'Share your experience' }}</h4>
+          <div class="form-field">
+            <label for="restaurant-review-rating">
+              {{ 'restaurantDetail.reviewFormRatingLabel' | translate: 'Your rating' }}
+            </label>
+            <select id="restaurant-review-rating" formControlName="rating">
+              <option [ngValue]="null">
+                {{
+                  'restaurantDetail.reviewFormRatingPlaceholder'
+                    | translate: 'Select a rating'
+                }}
+              </option>
+              <option *ngFor="let rating of ratingOptions" [ngValue]="rating">
+                {{ rating }} ★
+              </option>
+            </select>
+            <p
+              class="form-error"
+              *ngIf="
+                restaurantReviewForm.controls.rating.touched &&
+                restaurantReviewForm.controls.rating.hasError('required')
+              "
+            >
+              {{ 'restaurantDetail.reviewFormRatingRequired' | translate: 'Please select a rating.' }}
+            </p>
+          </div>
+          <div class="form-field">
+            <label for="restaurant-review-comment">
+              {{ 'restaurantDetail.reviewFormCommentLabel' | translate: 'Your comment' }}
+            </label>
+            <textarea
+              id="restaurant-review-comment"
+              formControlName="comment"
+              [attr.maxlength]="reviewCommentMaxLength"
+              [attr.placeholder]="
+                'restaurantDetail.reviewFormCommentPlaceholder'
+                  | translate
+                    : 'Tell other guests about your visit (optional)'
+              "
+            ></textarea>
+            <p
+              class="form-error"
+              *ngIf="
+                restaurantReviewForm.controls.comment.touched &&
+                restaurantReviewForm.controls.comment.hasError('maxlength')
+              "
+            >
+              {{
+                'restaurantDetail.reviewFormCommentTooLong'
+                  | translate
+                    : 'Comments must be {{max}} characters or fewer.'
+                    : { max: reviewCommentMaxLength }
+              }}
+            </p>
+          </div>
+          <div class="form-actions">
+            <button type="submit" [disabled]="restaurantReviewSubmitting()">
+              {{
+                restaurantReviewSubmitting()
+                  ? (
+                      'restaurantDetail.reviewFormSubmitting'
+                        | translate: 'Submitting…'
+                    )
+                  : (
+                      'restaurantDetail.reviewFormSubmit'
+                        | translate: 'Submit review'
+                    )
+              }}
+            </button>
+            <p
+              class="form-status success"
+              *ngIf="restaurantReviewStatus() === 'success'"
+              aria-live="polite"
+            >
+              {{ 'restaurantDetail.reviewFormSuccess' | translate: 'Thanks for your feedback!' }}
+            </p>
+            <p
+              class="form-status error"
+              *ngIf="restaurantReviewStatus() === 'error'"
+              aria-live="polite"
+            >
+              {{
+                'restaurantDetail.reviewFormError'
+                  | translate: 'Unable to submit your review. Please try again.'
+              }}
+            </p>
+          </div>
+        </form>
       </section>
       <ng-container *ngIf="(menuCategories$ | async) as menuCategories">
         <h3 *ngIf="menuCategories.length || searchTerm">
@@ -1017,13 +1124,7 @@ type ScheduledInterval = {
               <span class="value">{{ formatAverageRating(menuItemContext.item.rating_summary) }}</span>
               <span class="count">{{ getRatingCountLabel(menuItemContext.item.rating_summary) }}</span>
             </span>
-            <section
-              class="review-section"
-              *ngIf="
-                hasRatings(menuItemContext.item.rating_summary) ||
-                hasReviews(menuItemContext.item.reviews)
-              "
-            >
+            <section class="review-section">
               <h4>{{ 'restaurantDetail.menuItemReviewsHeading' | translate: 'Guest comments' }}</h4>
               <ng-container *ngIf="getDisplayableReviews(menuItemContext.item.reviews) as itemReviews">
                 <ul class="review-list" *ngIf="itemReviews.length; else menuItemReviewsEmpty">
@@ -1055,6 +1156,108 @@ type ScheduledInterval = {
                   }}
                 </p>
               </ng-template>
+              <form
+                class="review-form"
+                [formGroup]="getMenuItemReviewForm(menuItemContext.item.id)"
+                (ngSubmit)="submitMenuItemReview(menuItemContext.item)"
+                novalidate
+              >
+                <ng-container *ngIf="getMenuItemReviewForm(menuItemContext.item.id) as itemReviewForm">
+                  <h4>{{ 'restaurantDetail.menuItemReviewFormHeading' | translate: 'Review this item' }}</h4>
+                  <div class="form-field">
+                    <label [attr.for]="'menu-item-review-rating-' + menuItemContext.item.id">
+                      {{ 'restaurantDetail.reviewFormRatingLabel' | translate: 'Your rating' }}
+                    </label>
+                    <select
+                      [id]="'menu-item-review-rating-' + menuItemContext.item.id"
+                      formControlName="rating"
+                    >
+                      <option [ngValue]="null">
+                        {{
+                          'restaurantDetail.reviewFormRatingPlaceholder'
+                            | translate: 'Select a rating'
+                        }}
+                      </option>
+                      <option *ngFor="let rating of ratingOptions" [ngValue]="rating">
+                        {{ rating }} ★
+                      </option>
+                    </select>
+                    <p
+                      class="form-error"
+                      *ngIf="
+                        itemReviewForm.controls.rating.touched &&
+                        itemReviewForm.controls.rating.hasError('required')
+                      "
+                    >
+                      {{ 'restaurantDetail.reviewFormRatingRequired' | translate: 'Please select a rating.' }}
+                    </p>
+                  </div>
+                  <div class="form-field">
+                    <label [attr.for]="'menu-item-review-comment-' + menuItemContext.item.id">
+                      {{ 'restaurantDetail.reviewFormCommentLabel' | translate: 'Your comment' }}
+                    </label>
+                    <textarea
+                      [id]="'menu-item-review-comment-' + menuItemContext.item.id"
+                      formControlName="comment"
+                      [attr.maxlength]="reviewCommentMaxLength"
+                      [attr.placeholder]="
+                        'restaurantDetail.reviewFormCommentPlaceholder'
+                          | translate
+                            : 'Tell other guests about your visit (optional)'
+                      "
+                    ></textarea>
+                    <p
+                      class="form-error"
+                      *ngIf="
+                        itemReviewForm.controls.comment.touched &&
+                        itemReviewForm.controls.comment.hasError('maxlength')
+                      "
+                    >
+                      {{
+                        'restaurantDetail.reviewFormCommentTooLong'
+                          | translate
+                            : 'Comments must be {{max}} characters or fewer.'
+                            : { max: reviewCommentMaxLength }
+                      }}
+                    </p>
+                  </div>
+                  <div class="form-actions">
+                    <button
+                      type="submit"
+                      [disabled]="isMenuItemReviewSubmitting(menuItemContext.item.id)"
+                    >
+                      {{
+                        isMenuItemReviewSubmitting(menuItemContext.item.id)
+                          ? (
+                              'restaurantDetail.reviewFormSubmitting'
+                                | translate: 'Submitting…'
+                            )
+                          : (
+                              'restaurantDetail.reviewFormSubmit'
+                                | translate: 'Submit review'
+                            )
+                      }}
+                    </button>
+                    <p
+                      class="form-status success"
+                      *ngIf="getMenuItemReviewStatus(menuItemContext.item.id) === 'success'"
+                      aria-live="polite"
+                    >
+                      {{ 'restaurantDetail.reviewFormSuccess' | translate: 'Thanks for your feedback!' }}
+                    </p>
+                    <p
+                      class="form-status error"
+                      *ngIf="getMenuItemReviewStatus(menuItemContext.item.id) === 'error'"
+                      aria-live="polite"
+                    >
+                      {{
+                        'restaurantDetail.reviewFormError'
+                          | translate: 'Unable to submit your review. Please try again.'
+                      }}
+                    </p>
+                  </div>
+                </ng-container>
+              </form>
             </section>
             <div *ngIf="menuItemContext.item.allergens?.length">
               <h4>{{ 'restaurantDetail.menuItemAllergensHeading' | translate: 'Allergens' }}</h4>
@@ -1245,6 +1448,7 @@ export class RestaurantDetailPage implements OnDestroy {
   private brandColor = inject(BrandColorService);
   private locations = inject(LocationService);
   private sanitizer = inject(DomSanitizer);
+  private fb = inject(FormBuilder);
   private highlightMenuItemId$ = this.route.queryParamMap.pipe(
     map(params => this.parseHighlightParam(params.get('highlightItem'))),
     startWith(this.parseHighlightParam(this.route.snapshot.queryParamMap.get('highlightItem')))
@@ -1256,7 +1460,11 @@ export class RestaurantDetailPage implements OnDestroy {
   private cartFlightTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
 
   id = Number(this.route.snapshot.paramMap.get('id'));
-  restaurant$: Observable<Restaurant> = this.rSvc.get(this.id).pipe(shareReplay({ bufferSize: 1, refCount: true }));
+  private restaurantReload$ = new BehaviorSubject<void>(undefined);
+  restaurant$: Observable<Restaurant> = this.restaurantReload$.pipe(
+    switchMap(() => this.rSvc.get(this.id)),
+    shareReplay({ bufferSize: 1, refCount: true })
+  );
   private searchTerm$ = new BehaviorSubject<string>('');
   menuCategories$: Observable<MenuCategoryGroup[]> = this.createMenuCategoriesStream();
   searchTerm = '';
@@ -1289,6 +1497,13 @@ export class RestaurantDetailPage implements OnDestroy {
   );
 
   private readonly restaurantSummaryLength = 160;
+  readonly ratingOptions = [5, 4, 3, 2, 1];
+  readonly reviewCommentMaxLength = 1000;
+  restaurantReviewForm: ReviewFormGroup = this.createReviewForm();
+  restaurantReviewSubmitting = signal(false);
+  restaurantReviewStatus = signal<ReviewStatus>('');
+  private menuItemReviewForms = new Map<number, ReviewFormGroup>();
+  private menuItemReviewStatuses = signal<Record<number, MenuItemReviewState>>({});
   selectedPhotos: File[] = [];
   uploading = false;
   statusMessage = '';
@@ -1319,6 +1534,14 @@ export class RestaurantDetailPage implements OnDestroy {
         }
 
         this.brandColor.setOverride(restaurant.primary_color ?? null);
+      });
+
+    this.restaurantReviewForm.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => {
+        if (this.restaurantReviewStatus()) {
+          this.restaurantReviewStatus.set('');
+        }
       });
 
     let initial = true;
@@ -1357,6 +1580,8 @@ export class RestaurantDetailPage implements OnDestroy {
     if (this.restaurantMismatchContext()) {
       this.closeRestaurantMismatchModal();
     }
+    this.restaurantReload$.complete();
+    this.menuItemReviewForms.clear();
     while (this.modalLockCount > 0) {
       this.unlockBodyScroll();
     }
@@ -1383,7 +1608,7 @@ export class RestaurantDetailPage implements OnDestroy {
         'Photos uploaded successfully!'
       );
       this.statusType = 'success';
-      this.restaurant$ = this.rSvc.get(this.id);
+      this.triggerRestaurantReload();
       this.refreshMenu();
     } catch (err) {
       console.error(err);
@@ -1590,6 +1815,138 @@ export class RestaurantDetailPage implements OnDestroy {
     }
 
     return null;
+  }
+
+  submitRestaurantReview() {
+    if (this.restaurantReviewSubmitting()) {
+      return;
+    }
+
+    if (this.restaurantReviewForm.invalid) {
+      this.restaurantReviewForm.markAllAsTouched();
+      return;
+    }
+
+    const payload = this.buildReviewPayload(this.restaurantReviewForm.getRawValue());
+    this.restaurantReviewSubmitting.set(true);
+    this.restaurantReviewStatus.set('');
+
+    this.rSvc
+      .createReview(this.id, payload)
+      .pipe(finalize(() => this.restaurantReviewSubmitting.set(false)))
+      .subscribe({
+        next: () => {
+          this.restaurantReviewForm.reset({ rating: null, comment: '' });
+          this.restaurantReviewStatus.set('success');
+          this.triggerRestaurantReload();
+        },
+        error: () => {
+          this.restaurantReviewStatus.set('error');
+        },
+      });
+  }
+
+  submitMenuItemReview(item: MenuItem) {
+    const form = this.getMenuItemReviewForm(item.id);
+    if (this.isMenuItemReviewSubmitting(item.id)) {
+      return;
+    }
+
+    if (form.invalid) {
+      form.markAllAsTouched();
+      return;
+    }
+
+    const payload = this.buildReviewPayload(form.getRawValue());
+    this.updateMenuItemReviewState(item.id, { submitting: true, status: '' });
+
+    this.menuSvc
+      .createReview(item.id, payload)
+      .pipe(
+        switchMap(() => this.menuSvc.get(item.id)),
+        finalize(() => this.updateMenuItemReviewState(item.id, { submitting: false }))
+      )
+      .subscribe({
+        next: updatedItem => {
+          form.reset({ rating: null, comment: '' });
+          this.updateMenuItemReviewState(item.id, { status: 'success' });
+          const currentModal = this.menuItemModal();
+          if (currentModal?.item.id === item.id) {
+            this.menuItemModal.set({ ...currentModal, item: updatedItem });
+          }
+          this.refreshMenu();
+        },
+        error: () => {
+          this.updateMenuItemReviewState(item.id, { status: 'error' });
+        },
+      });
+  }
+
+  getMenuItemReviewForm(itemId: number): ReviewFormGroup {
+    if (!this.menuItemReviewForms.has(itemId)) {
+      const form = this.createReviewForm();
+      form.valueChanges
+        .pipe(takeUntilDestroyed())
+        .subscribe(() => {
+          this.clearMenuItemReviewStatus(itemId);
+        });
+      this.menuItemReviewForms.set(itemId, form);
+    }
+
+    return this.menuItemReviewForms.get(itemId)!;
+  }
+
+  isMenuItemReviewSubmitting(itemId: number): boolean {
+    return this.menuItemReviewStatuses()[itemId]?.submitting ?? false;
+  }
+
+  getMenuItemReviewStatus(itemId: number): ReviewStatus {
+    return this.menuItemReviewStatuses()[itemId]?.status ?? '';
+  }
+
+  private createReviewForm(): ReviewFormGroup {
+    return this.fb.group({
+      rating: this.fb.control<number | null>(null, {
+        validators: [Validators.required],
+      }),
+      comment: this.fb.control<string>('', {
+        validators: [Validators.maxLength(this.reviewCommentMaxLength)],
+        nonNullable: true,
+      }),
+    });
+  }
+
+  private buildReviewPayload(value: { rating: number | null; comment: string }): ReviewInput {
+    const rating =
+      typeof value.rating === 'number' && Number.isFinite(value.rating)
+        ? Math.min(5, Math.max(1, Math.round(value.rating)))
+        : null;
+    const comment = typeof value.comment === 'string' ? value.comment.trim() : '';
+
+    return {
+      rating,
+      comment: comment.length ? comment : null,
+    };
+  }
+
+  private updateMenuItemReviewState(itemId: number, patch: Partial<MenuItemReviewState>) {
+    this.menuItemReviewStatuses.update(current => {
+      const next = { ...current };
+      const existing = next[itemId] ?? { submitting: false, status: '' as ReviewStatus };
+      next[itemId] = { ...existing, ...patch };
+      return next;
+    });
+  }
+
+  private clearMenuItemReviewStatus(itemId: number) {
+    const state = this.menuItemReviewStatuses()[itemId];
+    if (state?.status) {
+      this.updateMenuItemReviewState(itemId, { status: '' });
+    }
+  }
+
+  private triggerRestaurantReload() {
+    this.restaurantReload$.next(undefined);
   }
 
   private resolveRatingAverage(summary?: RatingSummary | null): number | null {

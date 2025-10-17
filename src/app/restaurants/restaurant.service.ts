@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { map, Observable } from 'rxjs';
 import { ApiService } from '../core/api.service';
-import { Chain, Restaurant, RestaurantCreateInput, RestaurantUpdateInput } from '../core/models';
+import { Chain, Restaurant, RestaurantCreateInput, RestaurantUpdateInput, Review, ReviewInput } from '../core/models';
 
 @Injectable({ providedIn: 'root' })
 export class RestaurantService {
@@ -71,6 +71,10 @@ export class RestaurantService {
     return this.api
       .post<RestaurantApiResponse>('/restaurants', payload)
       .pipe(map(restaurant => this.normalizeRestaurant(restaurant)));
+  }
+
+  createReview(restaurantId: number, payload: ReviewInput): Observable<Review> {
+    return this.api.post<Review>(`/restaurants/${restaurantId}/reviews`, { review: payload });
   }
 }
 
