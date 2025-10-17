@@ -644,7 +644,7 @@ export class TranslationService {
       'restaurantDetail.menuItemTabReviews': 'Beoordelingen',
       'restaurantDetail.menuItemTabsLabel': 'Menu-itemsecties',
       'restaurantDetail.customerFavourite': 'Favoriet bij klanten',
-      'restaurantDetail.addToCart': 'Toevoegen aan winkelwagen',
+      'restaurantDetail.addToCart': 'Toevoegen',
       'restaurantDetail.highlightedHeading': 'Highlights',
       'restaurantDetail.photosUploaded': 'Foto’s succesvol geüpload!',
       'restaurantDetail.photosError': 'Er is iets misgegaan bij het uploaden van de foto’s. Probeer het opnieuw.',
