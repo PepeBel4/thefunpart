@@ -271,6 +271,39 @@ app-restaurant-detail .menu-item-modal {
   position: relative;
 }
 
+app-restaurant-detail .modal-tabs {
+  margin-top: 1.5rem;
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+app-restaurant-detail .modal-tab {
+  border: none;
+  background: none;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+app-restaurant-detail .modal-tab.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--brand-green);
+}
+
+app-restaurant-detail .modal-tab:focus-visible {
+  outline: 2px solid var(--brand-green);
+  outline-offset: 2px;
+}
+
+app-restaurant-detail .modal-tabpanel {
+  padding-top: 1.5rem;
+}
+
 app-restaurant-detail .modal-close-button {
   position: absolute;
   top: 1rem;

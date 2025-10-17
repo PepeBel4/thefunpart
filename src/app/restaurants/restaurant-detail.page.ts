@@ -1098,7 +1098,11 @@ type ScheduledInterval = {
             role="dialog"
             aria-modal="true"
             [attr.aria-labelledby]="'menu-item-modal-title-' + menuItemContext.item.id"
-            [attr.aria-describedby]="'menu-item-modal-description-' + menuItemContext.item.id"
+            [attr.aria-describedby]="
+              menuItemModalTab() === 'details'
+                ? 'menu-item-tabpanel-details-' + menuItemContext.item.id
+                : 'menu-item-tabpanel-reviews-' + menuItemContext.item.id
+            "
             (click)="$event.stopPropagation()"
           >
             <button
@@ -1118,187 +1122,243 @@ type ScheduledInterval = {
             <h3 id="menu-item-modal-title-{{ menuItemContext.item.id }}">
               {{ menuItemContext.item.name }}
             </h3>
-            <div class="price-group" *ngIf="hasDiscount(menuItemContext.item); else modalRegularPrice">
-              <span class="price discounted">
-                {{ (getCurrentPriceCents(menuItemContext.item) / 100) | currency:'EUR' }}
-              </span>
-              <span class="price original">
-                {{ (menuItemContext.item.price_cents / 100) | currency:'EUR' }}
-              </span>
-              <span class="discount-pill">
-                {{ 'restaurantDetail.discountBadge' | translate: 'Special offer' }}
-              </span>
-            </div>
-            <ng-template #modalRegularPrice>
-              <span class="price">{{ (menuItemContext.item.price_cents / 100) | currency:'EUR' }}</span>
-            </ng-template>
-            <p id="menu-item-modal-description-{{ menuItemContext.item.id }}">
-              {{
-                menuItemContext.item.description ||
-                  ('restaurantDetail.customerFavourite' | translate: 'Customer favourite')
-              }}
-            </p>
-            <ng-container *ngIf="getMenuItemRatingSource(menuItemContext.item) as menuItemRating">
-              <span class="rating-chip rating-chip-large" *ngIf="hasRatings(menuItemRating)">
-                <span aria-hidden="true">⭐</span>
-                <span class="value">{{ formatAverageRating(menuItemRating) }}</span>
-                <span class="count">{{ getRatingCountLabel(menuItemRating) }}</span>
-              </span>
-            </ng-container>
-            <section class="review-section">
-              <h4>{{ 'restaurantDetail.menuItemReviewsHeading' | translate: 'Guest comments' }}</h4>
-              <ng-container
-                *ngIf="
-                  getDisplayableReviews(
-                    menuItemContext.item.reviews ?? menuItemContext.item.ratings
-                  ) as itemReviews
-                "
+            <div
+              class="modal-tabs"
+              role="tablist"
+              [attr.aria-label]="
+                'restaurantDetail.menuItemTabsLabel' | translate: 'Menu item sections'
+              "
+            >
+              <button
+                type="button"
+                class="modal-tab"
+                role="tab"
+                [class.active]="menuItemModalTab() === 'details'"
+                (click)="setMenuItemModalTab('details')"
+                [attr.id]="'menu-item-tab-details-' + menuItemContext.item.id"
+                [attr.aria-selected]="menuItemModalTab() === 'details' ? 'true' : 'false'"
+                [attr.aria-controls]="'menu-item-tabpanel-details-' + menuItemContext.item.id"
+                [attr.tabindex]="menuItemModalTab() === 'details' ? 0 : -1"
               >
-                <ul class="review-list" *ngIf="itemReviews.length; else menuItemReviewsEmpty">
-                  <li class="review-card" *ngFor="let review of itemReviews">
-                    <div class="review-header">
-                      <span class="review-rating" *ngIf="getReviewRating(review) as rating">
-                        ⭐ {{ rating | number:'1.0-1' }}
-                      </span>
-                      <span class="review-author">{{ getReviewAuthor(review) }}</span>
-                      <span class="review-date" *ngIf="getFormattedReviewDate(review) as reviewDate">
-                        {{
-                          'restaurantDetail.reviewedOn'
-                            | translate: 'Reviewed on {{date}}'
-                            : { date: reviewDate }
-                        }}
-                      </span>
-                    </div>
-                    <p class="review-comment" *ngIf="getReviewComment(review) as comment">
-                      {{ comment }}
-                    </p>
-                  </li>
-                </ul>
+                {{ 'restaurantDetail.menuItemTabDetails' | translate: 'Details' }}
+              </button>
+              <button
+                type="button"
+                class="modal-tab"
+                role="tab"
+                [class.active]="menuItemModalTab() === 'reviews'"
+                (click)="setMenuItemModalTab('reviews')"
+                [attr.id]="'menu-item-tab-reviews-' + menuItemContext.item.id"
+                [attr.aria-selected]="menuItemModalTab() === 'reviews' ? 'true' : 'false'"
+                [attr.aria-controls]="'menu-item-tabpanel-reviews-' + menuItemContext.item.id"
+                [attr.tabindex]="menuItemModalTab() === 'reviews' ? 0 : -1"
+              >
+                {{ 'restaurantDetail.menuItemTabReviews' | translate: 'Reviews' }}
+              </button>
+            </div>
+            <section
+              class="modal-tabpanel"
+              role="tabpanel"
+              [attr.id]="'menu-item-tabpanel-details-' + menuItemContext.item.id"
+              [attr.aria-labelledby]="'menu-item-tab-details-' + menuItemContext.item.id"
+              *ngIf="menuItemModalTab() === 'details'"
+            >
+              <ng-container *ngIf="hasDiscount(menuItemContext.item); else detailsRegularPrice">
+                <div class="price-group">
+                  <span class="price discounted">
+                    {{ (getCurrentPriceCents(menuItemContext.item) / 100) | currency:'EUR' }}
+                  </span>
+                  <span class="price original">
+                    {{ (menuItemContext.item.price_cents / 100) | currency:'EUR' }}
+                  </span>
+                  <span class="discount-pill">
+                    {{ 'restaurantDetail.discountBadge' | translate: 'Special offer' }}
+                  </span>
+                </div>
               </ng-container>
-              <ng-template #menuItemReviewsEmpty>
-                <p class="review-empty">
-                  {{
-                    'restaurantDetail.menuItemReviewsEmpty'
-                      | translate: 'No comments for this item yet.'
-                  }}
-                </p>
+              <ng-template #detailsRegularPrice>
+                <div class="price-group">
+                  <span class="price">
+                    {{ (menuItemContext.item.price_cents / 100) | currency:'EUR' }}
+                  </span>
+                </div>
               </ng-template>
-              <form
-                class="review-form"
-                [formGroup]="getMenuItemReviewForm(menuItemContext.item.id)"
-                (ngSubmit)="submitMenuItemReview(menuItemContext.item)"
-                novalidate
-              >
-                <ng-container *ngIf="getMenuItemReviewForm(menuItemContext.item.id) as itemReviewForm">
-                  <h4>{{ 'restaurantDetail.menuItemReviewFormHeading' | translate: 'Review this item' }}</h4>
-                  <div class="form-field">
-                    <label [attr.for]="'menu-item-review-rating-' + menuItemContext.item.id">
-                      {{ 'restaurantDetail.reviewFormRatingLabel' | translate: 'Your rating' }}
-                    </label>
-                    <select
-                      [id]="'menu-item-review-rating-' + menuItemContext.item.id"
-                      formControlName="rating"
-                    >
-                      <option [ngValue]="null">
-                        {{
-                          'restaurantDetail.reviewFormRatingPlaceholder'
-                            | translate: 'Select a rating'
-                        }}
-                      </option>
-                      <option *ngFor="let rating of ratingOptions" [ngValue]="rating">
-                        {{ rating }} ★
-                      </option>
-                    </select>
-                    <p
-                      class="form-error"
-                      *ngIf="
-                        itemReviewForm.controls.rating.touched &&
-                        itemReviewForm.controls.rating.hasError('required')
-                      "
-                    >
-                      {{ 'restaurantDetail.reviewFormRatingRequired' | translate: 'Please select a rating.' }}
-                    </p>
-                  </div>
-                  <div class="form-field">
-                    <label [attr.for]="'menu-item-review-comment-' + menuItemContext.item.id">
-                      {{ 'restaurantDetail.reviewFormCommentLabel' | translate: 'Your comment' }}
-                    </label>
-                    <textarea
-                      [id]="'menu-item-review-comment-' + menuItemContext.item.id"
-                      formControlName="comment"
-                      [attr.maxlength]="reviewCommentMaxLength"
-                      [attr.placeholder]="
-                        'restaurantDetail.reviewFormCommentPlaceholder'
-                          | translate
-                            : 'Tell other guests about your visit (optional)'
-                      "
-                    ></textarea>
-                    <p
-                      class="form-error"
-                      *ngIf="
-                        itemReviewForm.controls.comment.touched &&
-                        itemReviewForm.controls.comment.hasError('maxlength')
-                      "
-                    >
-                      {{
-                        'restaurantDetail.reviewFormCommentTooLong'
-                          | translate
-                            : 'Comments must be {{max}} characters or fewer.'
-                            : { max: reviewCommentMaxLength }
-                      }}
-                    </p>
-                  </div>
-                  <div class="form-actions">
-                    <button
-                      type="submit"
-                      [disabled]="isMenuItemReviewSubmitting(menuItemContext.item.id)"
-                    >
-                      {{
-                        isMenuItemReviewSubmitting(menuItemContext.item.id)
-                          ? (
-                              'restaurantDetail.reviewFormSubmitting'
-                                | translate: 'Submitting…'
-                            )
-                          : (
-                              'restaurantDetail.reviewFormSubmit'
-                                | translate: 'Submit review'
-                            )
-                      }}
-                    </button>
-                    <p
-                      class="form-status success"
-                      *ngIf="getMenuItemReviewStatus(menuItemContext.item.id) === 'success'"
-                      aria-live="polite"
-                    >
-                      {{ 'restaurantDetail.reviewFormSuccess' | translate: 'Thanks for your feedback!' }}
-                    </p>
-                    <p
-                      class="form-status error"
-                      *ngIf="getMenuItemReviewStatus(menuItemContext.item.id) === 'error'"
-                      aria-live="polite"
-                    >
-                      {{
-                        'restaurantDetail.reviewFormError'
-                          | translate: 'Unable to submit your review. Please try again.'
-                      }}
-                    </p>
-                  </div>
-                </ng-container>
-              </form>
-            </section>
-            <div *ngIf="menuItemContext.item.allergens?.length">
-              <h4>{{ 'restaurantDetail.menuItemAllergensHeading' | translate: 'Allergens' }}</h4>
-              <div class="allergen-badges">
-                <ng-container *ngFor="let allergen of menuItemContext.item.allergens">
-                  <ng-container *ngIf="resolveAllergenLabel(allergen) as allergenLabel">
-                    <span class="badge">
-                      <app-allergen-icon [allergen]="allergen"></app-allergen-icon>
-                      <span>{{ allergenLabel }}</span>
-                    </span>
+              <p id="menu-item-modal-description-{{ menuItemContext.item.id }}">
+                {{
+                  menuItemContext.item.description ||
+                    ('restaurantDetail.customerFavourite' | translate: 'Customer favourite')
+                }}
+              </p>
+              <div *ngIf="menuItemContext.item.allergens?.length">
+                <h4>{{ 'restaurantDetail.menuItemAllergensHeading' | translate: 'Allergens' }}</h4>
+                <div class="allergen-badges">
+                  <ng-container *ngFor="let allergen of menuItemContext.item.allergens">
+                    <ng-container *ngIf="resolveAllergenLabel(allergen) as allergenLabel">
+                      <span class="badge">
+                        <app-allergen-icon [allergen]="allergen"></app-allergen-icon>
+                        <span>{{ allergenLabel }}</span>
+                      </span>
+                    </ng-container>
                   </ng-container>
-                </ng-container>
+                </div>
               </div>
-            </div>
+            </section>
+            <section
+              class="modal-tabpanel"
+              role="tabpanel"
+              [attr.id]="'menu-item-tabpanel-reviews-' + menuItemContext.item.id"
+              [attr.aria-labelledby]="'menu-item-tab-reviews-' + menuItemContext.item.id"
+              *ngIf="menuItemModalTab() === 'reviews'"
+            >
+              <ng-container *ngIf="getMenuItemRatingSource(menuItemContext.item) as menuItemRating">
+                <span class="rating-chip rating-chip-large" *ngIf="hasRatings(menuItemRating)">
+                  <span aria-hidden="true">⭐</span>
+                  <span class="value">{{ formatAverageRating(menuItemRating) }}</span>
+                  <span class="count">{{ getRatingCountLabel(menuItemRating) }}</span>
+                </span>
+              </ng-container>
+              <section class="review-section">
+                <h4>{{ 'restaurantDetail.menuItemReviewsHeading' | translate: 'Guest comments' }}</h4>
+                <ng-container
+                  *ngIf="
+                    getDisplayableReviews(
+                      menuItemContext.item.reviews ?? menuItemContext.item.ratings
+                    ) as itemReviews
+                  "
+                >
+                  <ul class="review-list" *ngIf="itemReviews.length; else menuItemReviewsEmpty">
+                    <li class="review-card" *ngFor="let review of itemReviews">
+                      <div class="review-header">
+                        <span class="review-rating" *ngIf="getReviewRating(review) as rating">
+                          ⭐ {{ rating | number:'1.0-1' }}
+                        </span>
+                        <span class="review-author">{{ getReviewAuthor(review) }}</span>
+                        <span class="review-date" *ngIf="getFormattedReviewDate(review) as reviewDate">
+                          {{
+                            'restaurantDetail.reviewedOn'
+                              | translate: 'Reviewed on {{date}}'
+                              : { date: reviewDate }
+                          }}
+                        </span>
+                      </div>
+                      <p class="review-comment" *ngIf="getReviewComment(review) as comment">
+                        {{ comment }}
+                      </p>
+                    </li>
+                  </ul>
+                </ng-container>
+                <ng-template #menuItemReviewsEmpty>
+                  <p class="review-empty">
+                    {{
+                      'restaurantDetail.menuItemReviewsEmpty'
+                        | translate: 'No comments for this item yet.'
+                    }}
+                  </p>
+                </ng-template>
+                <form
+                  class="review-form"
+                  [formGroup]="getMenuItemReviewForm(menuItemContext.item.id)"
+                  (ngSubmit)="submitMenuItemReview(menuItemContext.item)"
+                  novalidate
+                >
+                  <ng-container *ngIf="getMenuItemReviewForm(menuItemContext.item.id) as itemReviewForm">
+                    <h4>{{ 'restaurantDetail.menuItemReviewFormHeading' | translate: 'Review this item' }}</h4>
+                    <div class="form-field">
+                      <label [attr.for]="'menu-item-review-rating-' + menuItemContext.item.id">
+                        {{ 'restaurantDetail.reviewFormRatingLabel' | translate: 'Your rating' }}
+                      </label>
+                      <select
+                        [id]="'menu-item-review-rating-' + menuItemContext.item.id"
+                        formControlName="rating"
+                      >
+                        <option [ngValue]="null">
+                          {{
+                            'restaurantDetail.reviewFormRatingPlaceholder'
+                              | translate: 'Select a rating'
+                          }}
+                        </option>
+                        <option *ngFor="let rating of ratingOptions" [ngValue]="rating">
+                          {{ rating }} ★
+                        </option>
+                      </select>
+                      <p
+                        class="form-error"
+                        *ngIf="
+                          itemReviewForm.controls.rating.touched &&
+                          itemReviewForm.controls.rating.hasError('required')
+                        "
+                      >
+                        {{ 'restaurantDetail.reviewFormRatingRequired' | translate: 'Please select a rating.' }}
+                      </p>
+                    </div>
+                    <div class="form-field">
+                      <label [attr.for]="'menu-item-review-comment-' + menuItemContext.item.id">
+                        {{ 'restaurantDetail.reviewFormCommentLabel' | translate: 'Your comment' }}
+                      </label>
+                      <textarea
+                        [id]="'menu-item-review-comment-' + menuItemContext.item.id"
+                        formControlName="comment"
+                        [attr.maxlength]="reviewCommentMaxLength"
+                        [attr.placeholder]="
+                          'restaurantDetail.reviewFormCommentPlaceholder'
+                            | translate
+                              : 'Tell other guests about your visit (optional)'
+                        "
+                      ></textarea>
+                      <p
+                        class="form-error"
+                        *ngIf="
+                          itemReviewForm.controls.comment.touched &&
+                          itemReviewForm.controls.comment.hasError('maxlength')
+                        "
+                      >
+                        {{
+                          'restaurantDetail.reviewFormCommentTooLong'
+                            | translate
+                              : 'Comments must be {{max}} characters or fewer.'
+                              : { max: reviewCommentMaxLength }
+                        }}
+                      </p>
+                    </div>
+                    <div class="form-actions">
+                      <button
+                        type="submit"
+                        [disabled]="isMenuItemReviewSubmitting(menuItemContext.item.id)"
+                      >
+                        {{
+                          isMenuItemReviewSubmitting(menuItemContext.item.id)
+                            ? (
+                                'restaurantDetail.reviewFormSubmitting'
+                                  | translate: 'Submitting…'
+                              )
+                            : (
+                                'restaurantDetail.reviewFormSubmit'
+                                  | translate: 'Submit review'
+                              )
+                        }}
+                      </button>
+                      <p
+                        class="form-status success"
+                        *ngIf="getMenuItemReviewStatus(menuItemContext.item.id) === 'success'"
+                        aria-live="polite"
+                      >
+                        {{ 'restaurantDetail.reviewFormSuccess' | translate: 'Thanks for your feedback!' }}
+                      </p>
+                      <p
+                        class="form-status error"
+                        *ngIf="getMenuItemReviewStatus(menuItemContext.item.id) === 'error'"
+                        aria-live="polite"
+                      >
+                        {{
+                          'restaurantDetail.reviewFormError'
+                            | translate: 'Unable to submit your review. Please try again.'
+                        }}
+                      </p>
+                    </div>
+                  </ng-container>
+                </form>
+              </section>
+            </section>
             <div class="modal-actions">
               <div class="quantity-controls" role="group" aria-label="{{ 'cart.quantity' | translate: 'Quantity' }}">
                 <button
@@ -1512,6 +1572,7 @@ export class RestaurantDetailPage implements OnDestroy {
   menuCategories$: Observable<MenuCategoryGroup[]> = this.createMenuCategoriesStream();
   searchTerm = '';
   menuItemModal = signal<MenuItemModalContext | null>(null);
+  menuItemModalTab = signal<'details' | 'reviews'>('details');
   infoModalOpen = signal(false);
   counterLocationVm$: Observable<CounterLocationViewModel | null> = this.locations.listForRestaurant(this.id).pipe(
     map(locations => this.pickCounterLocation(locations)),
@@ -2386,6 +2447,7 @@ export class RestaurantDetailPage implements OnDestroy {
       category: this.resolveCartCategory(group, item),
       restaurant,
     });
+    this.menuItemModalTab.set('details');
 
     if (!alreadyOpen) {
       this.lockBodyScroll();
@@ -2400,7 +2462,22 @@ export class RestaurantDetailPage implements OnDestroy {
     }
 
     this.menuItemModal.set(null);
+    this.menuItemModalTab.set('details');
     this.unlockBodyScroll();
+  }
+
+  setMenuItemModalTab(tab: 'details' | 'reviews') {
+    if (this.menuItemModalTab() === tab) {
+      return;
+    }
+
+    this.menuItemModalTab.set(tab);
+    if (tab === 'reviews') {
+      const context = this.menuItemModal();
+      if (context) {
+        this.ensureMenuItemRatings(context.item);
+      }
+    }
   }
 
   addMenuItemToCartFromModal(context: MenuItemModalContext, event: Event) {
