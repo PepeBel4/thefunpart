@@ -26,7 +26,7 @@ import {
   tap,
 } from 'rxjs';
 import { Order } from '../core/models';
-import { Chart, ChartConfiguration, registerables } from 'chart.js';
+import { Chart, ChartConfiguration, TooltipItem, registerables } from 'chart.js';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 
@@ -354,9 +354,9 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
 
   private latestOrders: Order[] = [];
   private latestDataset: ReadyViewModel | null = null;
-  private salesChart: Chart | null = null;
-  private scenarioChart: Chart | null = null;
-  private itemsChart: Chart | null = null;
+  private salesChart: Chart<'line'> | null = null;
+  private scenarioChart: Chart<'doughnut'> | null = null;
+  private itemsChart: Chart<'bar'> | null = null;
 
   private salesChartElement?: ElementRef<HTMLCanvasElement>;
   private scenarioChartElement?: ElementRef<HTMLCanvasElement>;
@@ -623,7 +623,10 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
 
     if (salesCtx) {
       if (!this.salesChart) {
-        this.salesChart = new Chart(salesCtx, this.buildLineChartConfig(dataset.salesByDay));
+        this.salesChart = new Chart<'line'>(
+          salesCtx,
+          this.buildLineChartConfig(dataset.salesByDay)
+        );
       } else {
         this.updateLineChart(this.salesChart, dataset.salesByDay);
       }
@@ -631,7 +634,7 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
 
     if (scenarioCtx) {
       if (!this.scenarioChart) {
-        this.scenarioChart = new Chart(
+        this.scenarioChart = new Chart<'doughnut'>(
           scenarioCtx,
           this.buildDoughnutConfig(dataset.scenarioBreakdown)
         );
@@ -642,7 +645,10 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
 
     if (itemsCtx && dataset.topItems.length) {
       if (!this.itemsChart) {
-        this.itemsChart = new Chart(itemsCtx, this.buildBarChartConfig(dataset.topItems));
+        this.itemsChart = new Chart<'bar'>(
+          itemsCtx,
+          this.buildBarChartConfig(dataset.topItems)
+        );
       } else {
         this.updateBarChart(this.itemsChart, dataset.topItems);
       }
@@ -705,7 +711,7 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
         scales: {
           y: {
             ticks: {
-              callback: value => this.formatCurrencyTick(value),
+              callback: (value: string | number) => this.formatCurrencyTick(value),
             },
           },
         },
@@ -713,7 +719,7 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: context => {
+              label: (context: TooltipItem<'line'>) => {
                 const value = context.parsed.y;
                 if (typeof value === 'number' && Number.isFinite(value)) {
                   return `$${value.toFixed(2)}`;
@@ -765,7 +771,7 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
           },
           tooltip: {
             callbacks: {
-              label: context => {
+              label: (context: TooltipItem<'doughnut'>) => {
                 const value = context.parsed;
                 const formatted =
                   typeof value === 'number' && Number.isFinite(value)
@@ -821,7 +827,7 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: context => {
+              label: (context: TooltipItem<'bar'>) => {
                 const value = context.parsed.x;
                 const formatted =
                   typeof value === 'number' && Number.isFinite(value)
@@ -835,7 +841,7 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
         scales: {
           x: {
             ticks: {
-              callback: value => this.formatCurrencyTick(value),
+              callback: (value: string | number) => this.formatCurrencyTick(value),
             },
           },
         },
