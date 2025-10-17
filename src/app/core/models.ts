@@ -414,6 +414,22 @@ export interface SessionUser {
   birthDate?: string | null;
 }
 
+export type RestaurantUserChurnRisk = 'low' | 'medium' | 'high';
+
+export interface RestaurantUser {
+  id: number;
+  email?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  churn_risk?: RestaurantUserChurnRisk | null;
+  last_order_at?: string | null;
+  order_count?: number | null;
+  orders_count?: number | null;
+  total_orders?: number | null;
+}
+
 export interface UserProfile {
   firstName: string | null;
   lastName: string | null;

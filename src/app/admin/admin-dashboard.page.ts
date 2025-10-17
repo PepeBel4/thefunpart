@@ -374,6 +374,9 @@ import { TranslatePipe } from '../shared/translate.pipe';
           <a routerLink="orders" routerLinkActive="active">
             {{ 'admin.sections.orders' | translate: 'Recent orders' }}
           </a>
+          <a routerLink="users" routerLinkActive="active">
+            {{ 'admin.sections.users' | translate: 'Restaurant users' }}
+          </a>
           <a routerLink="analytics" routerLinkActive="active">
             {{ 'admin.sections.analytics' | translate: 'Reports & analytics' }}
           </a>
