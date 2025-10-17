@@ -13,6 +13,7 @@ import {
   shareReplay,
   startWith,
   switchMap,
+  tap,
 } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AdminRestaurantContextService } from './admin-restaurant-context.service';
@@ -183,58 +184,74 @@ interface UsersState {
       font-style: italic;
     }
 
-    .users-grid {
-      display: grid;
-      gap: 1rem;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    }
-
-    article.user-card {
-      border: 1px solid rgba(10, 10, 10, 0.08);
-      border-radius: 1rem;
-      padding: 1.25rem;
-      background: rgba(10, 10, 10, 0.02);
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-      transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
-    }
-
-    article.user-card:hover {
-      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.35);
-      box-shadow: 0 10px 22px rgba(var(--brand-green-rgb, 6, 193, 103), 0.1);
-      transform: translateY(-2px);
-    }
-
-    article.user-card header {
-      display: flex;
-      justify-content: space-between;
-      gap: 0.75rem;
-      align-items: flex-start;
-    }
-
-    .user-title {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-
-    .user-title h4 {
-      margin: 0;
-      font-size: 1.1rem;
-    }
-
     .muted {
       margin: 0;
       color: var(--text-secondary);
       font-size: 0.9rem;
     }
 
+    p.empty-state {
+      margin: 0;
+      color: var(--text-secondary);
+    }
+
+    .users-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    li.user-row {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      justify-content: space-between;
+      padding: 0.85rem 1rem;
+      border: 1px solid rgba(10, 10, 10, 0.08);
+      border-radius: 0.85rem;
+      background: rgba(10, 10, 10, 0.02);
+      transition: border-color 150ms ease, box-shadow 150ms ease;
+    }
+
+    li.user-row:hover {
+      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.35);
+      box-shadow: 0 8px 18px rgba(var(--brand-green-rgb, 6, 193, 103), 0.08);
+    }
+
+    .user-main {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .user-name {
+      font-weight: 600;
+      font-size: 1.05rem;
+    }
+
+    .user-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .user-meta span {
+      white-space: nowrap;
+    }
+
     .churn-pill {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 0.3rem 0.7rem;
+      padding: 0.35rem 0.75rem;
       border-radius: 999px;
       font-size: 0.75rem;
       font-weight: 600;
@@ -256,31 +273,61 @@ interface UsersState {
       color: #c81e1e;
     }
 
-    dl {
-      display: grid;
+    .pagination {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    @media (min-width: 640px) {
+      .pagination {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+      }
+    }
+
+    .pagination-summary {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .pagination-controls {
+      display: flex;
+      align-items: center;
       gap: 0.5rem;
-      margin: 0;
+      flex-wrap: wrap;
     }
 
-    dl div {
-      display: grid;
-      gap: 0.15rem;
-    }
-
-    dt {
-      font-weight: 600;
+    .pagination-controls button {
+      border: 1px solid rgba(10, 10, 10, 0.15);
+      background: rgba(10, 10, 10, 0.04);
+      color: inherit;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
       font-size: 0.85rem;
-      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background-color 150ms ease, border-color 150ms ease;
     }
 
-    dd {
-      margin: 0;
-      font-size: 0.95rem;
+    .pagination-controls button:hover:not(:disabled),
+    .pagination-controls button:focus-visible:not(:disabled) {
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.12);
+      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.35);
+      outline: none;
     }
 
-    p.empty-state {
-      margin: 0;
-      color: var(--text-secondary);
+    .pagination-controls button.active {
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.18);
+      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.4);
+      color: var(--brand-green, #06c167);
+      font-weight: 600;
+    }
+
+    .pagination-controls button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
     }
   `],
   template: `
@@ -363,30 +410,67 @@ interface UsersState {
               {{ 'admin.users.state.empty' | translate: 'No users match these filters yet.' }}
             </p>
 
-            <div class="users-grid" *ngIf="state.users.length">
-              <article class="user-card" *ngFor="let user of state.users">
-                <header>
-                  <div class="user-title">
-                    <h4>{{ formatUserName(user) }}</h4>
+            <ng-container *ngIf="state.users.length as total">
+              <ul class="users-list">
+                <li class="user-row" *ngFor="let user of paginate(state.users); trackBy: trackByUserId">
+                  <div class="user-main">
+                    <span class="user-name">{{ formatUserName(user) }}</span>
                     <p class="muted" *ngIf="user.email; else noEmail">{{ user.email }}</p>
+                    <div class="user-meta">
+                      <span *ngIf="user.last_order_at as lastOrder">
+                        {{ 'admin.users.details.lastOrder' | translate: 'Last order' }}:
+                        <strong>{{ lastOrder | date: 'medium' }}</strong>
+                      </span>
+                      <span *ngIf="getOrderCount(user) as count">
+                        {{ 'admin.users.details.orderCount' | translate: 'Total orders' }}:
+                        <strong>{{ count }}</strong>
+                      </span>
+                    </div>
                   </div>
                   <span *ngIf="user.churn_risk as risk" class="churn-pill" [attr.data-risk]="risk">
                     {{ ('admin.users.churnRisk.' + risk) | translate: churnRiskFallback(risk) }}
                   </span>
-                </header>
+                </li>
+              </ul>
 
-                <dl>
-                  <div *ngIf="user.last_order_at as lastOrder">
-                    <dt>{{ 'admin.users.details.lastOrder' | translate: 'Last order' }}</dt>
-                    <dd>{{ lastOrder | date: 'medium' }}</dd>
-                  </div>
-                  <div *ngIf="getOrderCount(user) as count">
-                    <dt>{{ 'admin.users.details.orderCount' | translate: 'Total orders' }}</dt>
-                    <dd>{{ count }}</dd>
-                  </div>
-                </dl>
-              </article>
-            </div>
+              <footer class="pagination">
+                <span class="pagination-summary">
+                  {{
+                    'admin.users.pagination.summary'
+                      | translate:
+                          'Showing {{from}}–{{to}} of {{total}} users': paginationSummaryParams(total)
+                  }}
+                </span>
+
+                <nav
+                  class="pagination-controls"
+                  aria-label="User list pagination"
+                  *ngIf="total > pageSize"
+                >
+                  <button type="button" (click)="goToPreviousPage(total)" [disabled]="currentPage === 1">
+                    {{ 'admin.users.pagination.previous' | translate: 'Previous' }}
+                  </button>
+
+                  <ng-container *ngFor="let page of pageNumbers(total)">
+                    <button
+                      type="button"
+                      (click)="goToPage(page, total)"
+                      [class.active]="page === currentPage"
+                    >
+                      {{ page }}
+                    </button>
+                  </ng-container>
+
+                  <button
+                    type="button"
+                    (click)="goToNextPage(total)"
+                    [disabled]="currentPage >= totalPages(total)"
+                  >
+                    {{ 'admin.users.pagination.next' | translate: 'Next' }}
+                  </button>
+                </nav>
+              </footer>
+            </ng-container>
           </ng-container>
         </ng-container>
 
@@ -410,6 +494,9 @@ export class AdminRestaurantUsersPage {
   private usersService = inject(AdminRestaurantUsersService);
   private menuService = inject(MenuService);
   private fb = inject(FormBuilder);
+
+  readonly pageSize = 10;
+  currentPage = 1;
 
   readonly selectedRestaurant$ = this.restaurantContext.selectedRestaurant$;
 
@@ -495,6 +582,9 @@ export class AdminRestaurantUsersPage {
       return { filters, key: JSON.stringify(filters) };
     }),
     distinctUntilChanged((a, b) => a.key === b.key),
+    tap(() => {
+      this.currentPage = 1;
+    }),
     map(result => result.filters)
   );
 
@@ -516,6 +606,11 @@ export class AdminRestaurantUsersPage {
         )
       );
     }),
+    tap(state => {
+      if (!state.loading) {
+        this.ensureValidPage(state.users.length);
+      }
+    }),
     shareReplay({ bufferSize: 1, refCount: true })
   );
 
@@ -535,6 +630,49 @@ export class AdminRestaurantUsersPage {
 
   resetFilters(): void {
     this.filterForm.reset(this.defaultFilters);
+  }
+
+  paginate(users: RestaurantUser[]): RestaurantUser[] {
+    const start = (this.currentPage - 1) * this.pageSize;
+    const end = start + this.pageSize;
+    return users.slice(start, end);
+  }
+
+  goToPage(page: number, total: number): void {
+    const totalPages = this.totalPages(total);
+    const nextPage = Math.min(Math.max(page, 1), totalPages);
+    if (nextPage !== this.currentPage) {
+      this.currentPage = nextPage;
+    }
+  }
+
+  goToPreviousPage(total: number): void {
+    this.goToPage(this.currentPage - 1, total);
+  }
+
+  goToNextPage(total: number): void {
+    this.goToPage(this.currentPage + 1, total);
+  }
+
+  pageNumbers(total: number): number[] {
+    const pages = this.totalPages(total);
+    return Array.from({ length: pages }, (_, index) => index + 1);
+  }
+
+  paginationSummaryParams(total: number): { from: number; to: number; total: number } {
+    return {
+      from: this.pageStart(total),
+      to: this.pageEnd(total),
+      total,
+    };
+  }
+
+  totalPages(total: number): number {
+    return total > 0 ? Math.ceil(total / this.pageSize) : 1;
+  }
+
+  trackByUserId(_: number, user: RestaurantUser): number {
+    return user.id;
   }
 
   formatUserName(user: RestaurantUser): string {
@@ -568,6 +706,33 @@ export class AdminRestaurantUsersPage {
         return 'Low risk';
       default:
         return risk;
+    }
+  }
+
+  private pageStart(total: number): number {
+    if (total === 0) {
+      return 0;
+    }
+
+    return (this.currentPage - 1) * this.pageSize + 1;
+  }
+
+  private pageEnd(total: number): number {
+    if (total === 0) {
+      return 0;
+    }
+
+    return Math.min(this.currentPage * this.pageSize, total);
+  }
+
+  private ensureValidPage(total: number): void {
+    const totalPages = this.totalPages(total);
+    if (this.currentPage > totalPages) {
+      this.currentPage = totalPages;
+    }
+
+    if (this.currentPage < 1) {
+      this.currentPage = 1;
     }
   }
 
