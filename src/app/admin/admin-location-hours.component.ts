@@ -855,9 +855,10 @@ export class AdminLocationHoursComponent implements OnChanges {
     const payload = this.buildExceptionPayload(this.exceptionCreateForm);
 
     try {
-      await firstValueFrom(
+      const createdException = await firstValueFrom(
         this.locations.createOpeningHourException(this.locationId, payload)
       );
+      this.upsertException(createdException);
       this.setExceptionStatus(
         'success',
         this.i18n.translate('admin.locations.exceptions.created', 'Exception added.')
@@ -910,9 +911,10 @@ export class AdminLocationHoursComponent implements OnChanges {
     const payload = this.buildExceptionPayload(this.exceptionEditForm);
 
     try {
-      await firstValueFrom(
+      const updatedException = await firstValueFrom(
         this.locations.updateOpeningHourException(this.locationId, exceptionId, payload)
       );
+      this.upsertException(updatedException);
       this.setExceptionStatus(
         'success',
         this.i18n.translate('admin.locations.exceptions.updated', 'Exception updated.')
@@ -1005,9 +1007,10 @@ export class AdminLocationHoursComponent implements OnChanges {
     this.exceptionsError = '';
 
     try {
-      this.exceptions = await firstValueFrom(
+      const exceptions = await firstValueFrom(
         this.locations.listOpeningHourExceptions(this.locationId)
       );
+      this.exceptions = this.sortExceptions(exceptions);
     } catch (error) {
       console.error('Failed to load opening hour exceptions', error);
       this.exceptionsError = this.i18n.translate(
@@ -1204,6 +1207,35 @@ export class AdminLocationHoursComponent implements OnChanges {
     this.exceptions = this.exceptions.filter(
       exception => exception.id !== exceptionId
     );
+  }
+
+  private upsertException(exception: LocationOpeningHourException) {
+    const remaining = this.exceptions.filter(item => item.id !== exception.id);
+    this.exceptions = this.sortExceptions([...remaining, exception]);
+  }
+
+  private sortExceptions(
+    exceptions: LocationOpeningHourException[]
+  ): LocationOpeningHourException[] {
+    return [...exceptions].sort((a, b) => {
+      const dateDiff = a.date.localeCompare(b.date);
+      if (dateDiff !== 0) {
+        return dateDiff;
+      }
+
+      const aMinutes = this.exceptionStartMinutes(a);
+      const bMinutes = this.exceptionStartMinutes(b);
+      return aMinutes - bMinutes;
+    });
+  }
+
+  private exceptionStartMinutes(exception: LocationOpeningHourException): number {
+    if (exception.closed || !exception.starts_at) {
+      return -1;
+    }
+
+    const minutes = this.timeToMinutes(exception.starts_at);
+    return minutes ?? Number.MAX_SAFE_INTEGER;
   }
 
   private sortOpeningHours(hours: LocationOpeningHour[]): LocationOpeningHour[] {
