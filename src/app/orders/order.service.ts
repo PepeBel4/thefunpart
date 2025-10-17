@@ -14,8 +14,17 @@ import {
 export class OrderService {
   private api = inject(ApiService);
 
-  list(): Observable<Order[]> {
-    return this.api.get<Order[]>('/orders');
+  list(params: Record<string, unknown> = {}): Observable<Order[]> {
+    return this.api.get<Order[]>('/orders', { params });
+  }
+
+  listForRestaurant(
+    restaurantId: number,
+    params: Record<string, unknown> = {}
+  ): Observable<Order[]> {
+    return this.api.get<Order[]>(`/restaurants/${restaurantId}/orders`, {
+      params,
+    });
   }
 
   get(id: number): Observable<Order> {
