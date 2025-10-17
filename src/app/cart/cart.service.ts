@@ -69,46 +69,42 @@ export class CartService {
     this.restore();
 
     if (this.storage) {
-      effect(
-        () => {
-          const storage = this.storage;
-          if (!storage) {
-            return;
-          }
+      effect(() => {
+        const storage = this.storage;
+        if (!storage) {
+          return;
+        }
 
-          const payload = {
-            lines: this._lines().map(line => ({
-              item: line.item,
-              quantity: line.quantity,
-              category: line.category ?? null,
-              remark: line.remark ?? null,
-            })),
-            scenario: this._scenario(),
-            targetTimeType: this._targetTimeType(),
-            targetTimeInput: this._targetTimeInput(),
-            restaurant: this._restaurant(),
-            orderRemark: this._orderRemark(),
-          };
+        const payload = {
+          lines: this._lines().map(line => ({
+            item: line.item,
+            quantity: line.quantity,
+            category: line.category ?? null,
+            remark: line.remark ?? null,
+          })),
+          scenario: this._scenario(),
+          targetTimeType: this._targetTimeType(),
+          targetTimeInput: this._targetTimeInput(),
+          restaurant: this._restaurant(),
+          orderRemark: this._orderRemark(),
+        };
 
-          try {
-            if (
-              !payload.lines.length &&
-              payload.scenario === 'takeaway' &&
-              payload.targetTimeType === 'asap' &&
-              payload.targetTimeInput === null &&
-              (payload.restaurant === null || payload.restaurant === undefined) &&
-              (payload.orderRemark === null || payload.orderRemark === undefined)
-            ) {
-              storage.removeItem(this.storageKey);
-            } else {
-              storage.setItem(this.storageKey, JSON.stringify(payload));
-            }
-          } catch (error) {
-            // Ignore storage write errors (e.g. quota exceeded)
+        try {
+          if (
+            !payload.lines.length &&
+            payload.scenario === 'takeaway' &&
+            payload.targetTimeType === 'asap' &&
+            payload.targetTimeInput === null &&
+            (payload.restaurant === null || payload.restaurant === undefined)
+          ) {
+            storage.removeItem(this.storageKey);
+          } else {
+            storage.setItem(this.storageKey, JSON.stringify(payload));
           }
-        },
-        { allowSignalWrites: true }
-      );
+        } catch (error) {
+          // Ignore storage write errors (e.g. quota exceeded)
+        }
+      });
     }
   }
 

@@ -8,16 +8,20 @@ export class RestaurantService {
   private api = inject(ApiService);
 
   private normalizeRestaurant(restaurant: RestaurantApiResponse): Restaurant {
-    const { chain, chains, logo, ...rest } = restaurant;
+    const { chain, chains, logo, reviews, ratings, ...rest } = restaurant;
 
     const normalizedChain = chain ?? (Array.isArray(chains) ? chains.find(item => !!item) ?? null : null);
     const normalizedLogoUrl = rest.logo_url ?? logo?.url ?? null;
+    const normalizedRatings = ratings ?? reviews ?? null;
+    const normalizedReviews = reviews ?? ratings ?? null;
 
     return {
       ...rest,
       logo: logo ?? null,
       logo_url: normalizedLogoUrl,
       chain: normalizedChain ?? null,
+      ratings: normalizedRatings,
+      reviews: normalizedReviews,
     };
   }
 
@@ -72,6 +76,7 @@ export class RestaurantService {
       .post<RestaurantApiResponse>('/restaurants', payload)
       .pipe(map(restaurant => this.normalizeRestaurant(restaurant)));
   }
+
 }
 
 type RestaurantApiResponse = Omit<Restaurant, 'chain'> & {

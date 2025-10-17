@@ -26,4 +26,5 @@ export class MenuService {
   deletePhoto(menuItemId: number, photoId: number): Observable<MenuItem> {
     return this.api.delete<MenuItem>(`/menu_items/${menuItemId}/photos/${photoId}`);
   }
+
 }
