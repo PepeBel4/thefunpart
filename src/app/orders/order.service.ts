@@ -56,7 +56,7 @@ export class OrderService {
   ): Observable<Order> {
     const body = {
       order: {
-        state,
+        status: state,
       },
     };
 
