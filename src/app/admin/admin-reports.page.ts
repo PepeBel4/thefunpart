@@ -17,6 +17,7 @@ import {
   Subject,
   catchError,
   distinctUntilChanged,
+  forkJoin,
   map,
   of,
   shareReplay,
@@ -29,8 +30,16 @@ import { Order } from '../core/models';
 import { Chart, ChartConfiguration, TooltipItem, registerables } from 'chart.js';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
+import { AdminReportsService, SalesPipelineResponse } from './admin-reports.service';
 
 Chart.register(...registerables);
+
+type ScenarioBreakdownEntry = {
+  label: string;
+  count: number;
+  value: number;
+  valueType: 'currency' | 'count';
+};
 
 type AggregatedDataset = {
   orders: Order[];
@@ -38,7 +47,7 @@ type AggregatedDataset = {
   averageOrderValue: number;
   totalOrders: number;
   salesByDay: { label: string; total: number }[];
-  scenarioBreakdown: { label: string; count: number; total: number }[];
+  scenarioBreakdown: ScenarioBreakdownEntry[];
   topItems: { label: string; quantity: number; total: number }[];
 };
 
@@ -350,6 +359,7 @@ type ReadyViewModel = Extract<ViewModel, { state: 'ready' }>;
 export class AdminReportsPage implements AfterViewInit, OnDestroy {
   private context = inject(AdminRestaurantContextService);
   private orderService = inject(OrderService);
+  private reportsService = inject(AdminReportsService);
 
   private destroy$ = new Subject<void>();
   private reloadTrigger$ = new BehaviorSubject<void>(undefined);
@@ -396,8 +406,11 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
 
       return this.reloadTrigger$.pipe(
         switchMap(() =>
-          this.orderService.listForRestaurant(restaurantId).pipe(
-            map(orders => this.buildAggregatedDataset(orders)),
+          forkJoin({
+            pipeline: this.reportsService.getSalesPipeline(restaurantId),
+            orders: this.orderService.listForRestaurant(restaurantId),
+          }).pipe(
+            map(({ pipeline, orders }) => this.buildAggregatedDataset(pipeline, orders)),
             map(dataset => ({ state: 'ready', ...dataset } as ViewModel)),
             catchError(error => {
               console.error('Failed to load analytics', error);
@@ -554,64 +567,57 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
     return new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
   }
 
-  private buildAggregatedDataset(orders: Order[]): AggregatedDataset {
-    if (!orders.length) {
+  private buildAggregatedDataset(
+    pipeline: SalesPipelineResponse,
+    orders: Order[]
+  ): AggregatedDataset {
+    const revenueCents = pipeline.totals?.revenue_cents ?? 0;
+    const totalOrders = pipeline.totals?.orders ?? orders.length;
+    const averageCents = pipeline.totals?.average_order_value_cents;
+
+    const totalRevenue = revenueCents / 100;
+    const averageOrderValue =
+      averageCents != null
+        ? averageCents / 100
+        : totalOrders > 0
+        ? totalRevenue / totalOrders
+        : 0;
+
+    const salesByDay = (pipeline.daily_totals ?? [])
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map(entry => ({
+        label: this.formatDisplayDate(entry.date),
+        total: (entry.revenue_cents ?? 0) / 100,
+      }));
+
+    const scenarioBreakdown = (pipeline.scenario_breakdown ?? []).map(entry => {
+      const revenue = entry.revenue_cents ?? null;
+      const value = revenue != null ? revenue / 100 : entry.order_count ?? 0;
+      const valueType: ScenarioBreakdownEntry['valueType'] = revenue != null ? 'currency' : 'count';
+
       return {
-        orders,
-        totalRevenue: 0,
-        averageOrderValue: 0,
-        totalOrders: 0,
-        salesByDay: [],
-        scenarioBreakdown: [],
-        topItems: [],
+        label: this.formatScenarioLabel(entry.scenario),
+        count: entry.order_count ?? 0,
+        value,
+        valueType,
       };
-    }
+    });
 
-    const totalRevenue = orders.reduce((acc, order) => acc + order.total_cents, 0) / 100;
-    const salesByDayMap = new Map<string, number>();
-    const scenarioMap = new Map<string, { count: number; total: number }>();
-    const itemMap = new Map<string, { quantity: number; total: number }>();
-
-    for (const order of orders) {
-      const dateKey = order.created_at ? order.created_at.slice(0, 10) : '';
-      const currentValue = salesByDayMap.get(dateKey) ?? 0;
-      salesByDayMap.set(dateKey, currentValue + order.total_cents / 100);
-
-      const scenario = order.scenario ?? 'unknown';
-      const scenarioEntry = scenarioMap.get(scenario) ?? { count: 0, total: 0 };
-      scenarioEntry.count += 1;
-      scenarioEntry.total += order.total_cents / 100;
-      scenarioMap.set(scenario, scenarioEntry);
-
-      for (const item of order.order_items ?? []) {
-        const label = item.menu_item?.name ?? `Item #${item.menu_item_id}`;
-        const entry = itemMap.get(label) ?? { quantity: 0, total: 0 };
-        entry.quantity += item.quantity;
-        entry.total += (item.price_cents * item.quantity) / 100;
-        itemMap.set(label, entry);
-      }
-    }
-
-    const salesByDay = Array.from(salesByDayMap.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([key, total]) => ({ label: this.formatDisplayDate(key), total }));
-
-    const scenarioBreakdown = Array.from(scenarioMap.entries()).map(([label, value]) => ({
-      label: this.formatScenarioLabel(label),
-      count: value.count,
-      total: value.total,
-    }));
-
-    const topItems = Array.from(itemMap.entries())
-      .map(([label, value]) => ({ label, quantity: value.quantity, total: value.total }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
+    const apiTopItems = pipeline.top_items ?? [];
+    const topItems = apiTopItems.length
+      ? apiTopItems.map(item => ({
+          label: item.name,
+          quantity: item.quantity,
+          total: (item.revenue_cents ?? 0) / 100,
+        }))
+      : this.deriveTopItemsFromOrders(orders);
 
     return {
       orders,
       totalRevenue,
-      averageOrderValue: totalRevenue / orders.length,
-      totalOrders: orders.length,
+      averageOrderValue,
+      totalOrders,
       salesByDay,
       scenarioBreakdown,
       topItems,
@@ -743,14 +749,11 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
     chart.update('none');
   }
 
-  private buildDoughnutConfig(data: {
-    label: string;
-    count: number;
-    total: number;
-  }[]): ChartConfiguration<'doughnut'> {
+  private buildDoughnutConfig(data: ScenarioBreakdownEntry[]): ChartConfiguration<'doughnut'> {
     const labels = data.map(entry => `${entry.label} (${entry.count})`);
-    const values = data.map(entry => entry.total);
+    const values = data.map(entry => entry.value);
     const palette = ['#06c167', '#0f7b6c', '#ec950f', '#ea5a4f', '#4d64ff'];
+    const usesCurrency = data.some(entry => entry.valueType === 'currency');
 
     return {
       type: 'doughnut',
@@ -761,6 +764,7 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
             data: values,
             backgroundColor: values.map((_, index) => palette[index % palette.length]),
             hoverOffset: 10,
+            label: usesCurrency ? 'Revenue' : 'Orders',
           },
         ],
       },
@@ -773,14 +777,8 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
           },
           tooltip: {
             callbacks: {
-              label: (context: TooltipItem<'doughnut'>) => {
-                const value = context.parsed;
-                const formatted =
-                  typeof value === 'number' && Number.isFinite(value)
-                    ? `$${value.toFixed(2)}`
-                    : '$0.00';
-                return `${context.label}: ${formatted}`;
-              },
+              label: (context: TooltipItem<'doughnut'>) =>
+                this.formatScenarioTooltip(context, data),
             },
           },
         },
@@ -788,18 +786,28 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
     };
   }
 
-  private updateDoughnutChart(
-    chart: Chart<'doughnut'>,
-    data: { label: string; count: number; total: number }[]
-  ): void {
+  private updateDoughnutChart(chart: Chart<'doughnut'>, data: ScenarioBreakdownEntry[]): void {
     chart.data.labels = data.map(entry => `${entry.label} (${entry.count})`);
     if (chart.data.datasets[0]) {
       const palette = ['#06c167', '#0f7b6c', '#ec950f', '#ea5a4f', '#4d64ff'];
-      chart.data.datasets[0].data = data.map(entry => entry.total);
+      chart.data.datasets[0].data = data.map(entry => entry.value);
       chart.data.datasets[0].backgroundColor = data.map(
         (_, index) => palette[index % palette.length]
       );
+      chart.data.datasets[0].label = data.some(entry => entry.valueType === 'currency')
+        ? 'Revenue'
+        : 'Orders';
     }
+    if (!chart.options.plugins) {
+      chart.options.plugins = {};
+    }
+    if (!chart.options.plugins.tooltip) {
+      chart.options.plugins.tooltip = {};
+    }
+    chart.options.plugins.tooltip.callbacks = {
+      ...chart.options.plugins.tooltip.callbacks,
+      label: (context: TooltipItem<'doughnut'>) => this.formatScenarioTooltip(context, data),
+    };
     chart.update('none');
   }
 
@@ -891,5 +899,45 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
     }
 
     return label.charAt(0).toUpperCase() + label.slice(1);
+  }
+
+  private formatScenarioTooltip(
+    context: TooltipItem<'doughnut'>,
+    data: ScenarioBreakdownEntry[]
+  ): string {
+    const entry = data[context.dataIndex ?? 0];
+    if (!entry) {
+      return context.label ?? '';
+    }
+
+    const value = typeof context.parsed === 'number' && Number.isFinite(context.parsed)
+      ? context.parsed
+      : 0;
+
+    if (entry.valueType === 'currency') {
+      return `${entry.label}: $${value.toFixed(2)}`;
+    }
+
+    const unit = value === 1 ? 'order' : 'orders';
+    return `${entry.label}: ${value} ${unit}`;
+  }
+
+  private deriveTopItemsFromOrders(orders: Order[]): { label: string; quantity: number; total: number }[] {
+    const itemMap = new Map<string, { quantity: number; total: number }>();
+
+    for (const order of orders) {
+      for (const item of order.order_items ?? []) {
+        const label = item.menu_item?.name ?? `Item #${item.menu_item_id}`;
+        const entry = itemMap.get(label) ?? { quantity: 0, total: 0 };
+        entry.quantity += item.quantity;
+        entry.total += (item.price_cents * item.quantity) / 100;
+        itemMap.set(label, entry);
+      }
+    }
+
+    return Array.from(itemMap.entries())
+      .map(([label, value]) => ({ label, quantity: value.quantity, total: value.total }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5);
   }
 }
