@@ -43,6 +43,46 @@ import { TranslatePipe } from '../shared/translate.pipe';
       font-weight: 600;
     }
 
+    .order-remark-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .order-remark-field label {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .order-remark-field textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(10, 10, 10, 0.1);
+      background: var(--surface);
+      font: inherit;
+      color: inherit;
+      resize: vertical;
+      min-height: 3.5rem;
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .order-remark-field textarea::placeholder {
+      color: rgba(10, 10, 10, 0.45);
+    }
+
+    .order-remark-field textarea:focus {
+      outline: none;
+      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.4);
+      box-shadow: 0 0 0 3px rgba(var(--brand-green-rgb, 6, 193, 103), 0.18);
+    }
+
+    .order-remark-hint {
+      margin: 0;
+      font-size: 0.85rem;
+      color: rgba(10, 10, 10, 0.55);
+    }
+
     button {
       align-self: flex-start;
       background: var(--brand-green);
@@ -185,6 +225,19 @@ import { TranslatePipe } from '../shared/translate.pipe';
       >
         {{ 'checkout.placeOrder' | translate: 'Place order' }}
       </button>
+      <div class="order-remark-field">
+        <label for="checkout-order-remark">{{ 'checkout.orderRemark.label' | translate: 'Order note' }}</label>
+        <textarea
+          id="checkout-order-remark"
+          rows="3"
+          [value]="cart.orderRemark() ?? ''"
+          (input)="onOrderRemarkInput($event)"
+          [attr.placeholder]="'checkout.orderRemark.placeholder' | translate: 'Share delivery instructions or notes for the kitchen'"
+        ></textarea>
+        <p class="order-remark-hint">
+          {{ 'checkout.orderRemark.hint' | translate: 'We share these notes with the restaurant.' }}
+        </p>
+      </div>
       <section class="suggestions" *ngIf="isLoadingSuggestions || aiSuggestions.length">
         <div class="suggestions-header">
           <h3>{{ 'checkout.aiSuggestions.title' | translate: 'Recommended for your order' }}</h3>
@@ -269,6 +322,11 @@ export class CheckoutPage implements OnDestroy {
     this.brandColor.reset();
   }
 
+  onOrderRemarkInput(event: Event) {
+    const textarea = event.target as HTMLTextAreaElement | null;
+    this.cart.setOrderRemark(textarea?.value ?? null);
+  }
+
   async placeOrder(){
     const lines = this.cart.lines();
     if (!lines.length || this.isPlacingOrder) return;
@@ -279,6 +337,7 @@ export class CheckoutPage implements OnDestroy {
       menu_item_id: l.item.id,
       quantity: l.quantity,
       category_id: l.category?.id ?? null,
+      remark: l.remark ?? null,
     }));
     const scenario = this.cart.scenario();
     const targetTimeType = this.cart.targetTimeType();
@@ -287,7 +346,14 @@ export class CheckoutPage implements OnDestroy {
 
     try {
       const order: Order = await firstValueFrom(
-        this.orders.create({ restaurantId, items, scenario, targetTimeType, targetTimeAt })
+        this.orders.create({
+          restaurantId,
+          items,
+          scenario,
+          targetTimeType,
+          targetTimeAt,
+          remark: this.cart.orderRemark(),
+        })
       );
 
       const paymentResponse = await firstValueFrom(

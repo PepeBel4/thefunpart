@@ -38,15 +38,20 @@ export class OrderService {
     scenario: OrderScenario;
     targetTimeType: OrderTargetTimeType;
     targetTimeAt: string | null;
+    remark?: string | null;
   }): Observable<Order> {
     const body = {
       order: {
         restaurant_id: payload.restaurantId,
-        order_items: payload.items,
+        order_items: payload.items.map(item => ({
+          ...item,
+          remark: item.remark ?? null,
+        })),
         status: 'composing',
         scenario: payload.scenario,
         target_time_type: payload.targetTimeType,
-        target_time_at: payload.targetTimeAt
+        target_time_at: payload.targetTimeAt,
+        remark: payload.remark ?? null,
       },
     };
 

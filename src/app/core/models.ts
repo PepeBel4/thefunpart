@@ -302,6 +302,7 @@ export interface OrderItemInput {
   menu_item_id: number;
   quantity: number;
   category_id?: number | null;
+  remark?: string | null;
 }
 
 export type OrderStatus =
@@ -328,6 +329,7 @@ export interface Order {
   paid_cents?: number;
   remaining_balance_cents?: number;
   order_items: OrderItem[];
+  remark?: string | null;
   scenario?: OrderScenario;
   target_time_type?: OrderTargetTimeType;
   target_time_at?: string | null;
@@ -372,6 +374,7 @@ export interface OrderItem {
   };
   category_id?: number | null;
   category?: string | null;
+  remark?: string | null;
 }
 
 export interface SessionUser {

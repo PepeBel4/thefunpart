@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { NgFor, CurrencyPipe, NgIf, NgClass } from '@angular/common';
-import { CartService } from './cart.service';
+import { CartService, type CartLine } from './cart.service';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
@@ -191,6 +191,42 @@ import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
       font-size: 0.75rem;
       color: var(--text-secondary);
       margin-top: 0.15rem;
+    }
+
+    .line-remark {
+      margin-top: 0.65rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      font-size: 0.8rem;
+      color: rgba(10, 10, 10, 0.7);
+    }
+
+    .line-remark span {
+      font-weight: 500;
+    }
+
+    .line-remark textarea {
+      width: 100%;
+      resize: vertical;
+      min-height: 2.5rem;
+      padding: 0.55rem 0.75rem;
+      border-radius: 0.65rem;
+      border: 1px solid var(--border-soft, rgba(10, 10, 10, 0.12));
+      background: var(--surface, #fff);
+      font: inherit;
+      color: inherit;
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .line-remark textarea::placeholder {
+      color: rgba(10, 10, 10, 0.4);
+    }
+
+    .line-remark textarea:focus {
+      outline: none;
+      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.4);
+      box-shadow: 0 0 0 3px rgba(var(--brand-green-rgb, 6, 193, 103), 0.15);
     }
 
     .line-price {
@@ -490,7 +526,7 @@ import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
       </header>
 
       <div class="cart-lines" *ngIf="cart.lines().length; else empty">
-        <div class="line" *ngFor="let l of cart.lines()">
+        <div class="line" *ngFor="let l of cart.lines(); let i = index">
           <div>
             <div class="line-name">{{ l.item.name }}</div>
             <div class="line-price">
@@ -510,6 +546,16 @@ import { MenuItem, OrderScenario, OrderTargetTimeType } from '../core/models';
               </ng-template>
             </div>
             <div class="line-category" *ngIf="l.category?.label as label">{{ label }}</div>
+            <label class="line-remark">
+              <span>{{ 'cart.itemRemark.label' | translate: 'Item note' }}</span>
+              <textarea
+                rows="2"
+                [attr.name]="'cart-line-remark-' + i"
+                [value]="l.remark ?? ''"
+                (input)="onLineRemarkInput(l, $event)"
+                [attr.placeholder]="'cart.itemRemark.placeholder' | translate: 'Add a note for this item'"
+              ></textarea>
+            </label>
           </div>
           <div class="qty-controls">
             <button
@@ -579,6 +625,11 @@ export class CartSidebarComponent {
   onTargetTimeChange(event: Event) {
     const input = event.target as HTMLInputElement | null;
     this.cart.setTargetTimeInput(input?.value ?? null);
+  }
+
+  onLineRemarkInput(line: CartLine, event: Event) {
+    const textarea = event.target as HTMLTextAreaElement | null;
+    this.cart.setLineRemark(line.item.id, textarea?.value ?? null, line.category ?? null);
   }
 
   hasDiscount(item: MenuItem): boolean {

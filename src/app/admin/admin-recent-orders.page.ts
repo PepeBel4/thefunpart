@@ -205,6 +205,15 @@ type OrderFilterFormValue = {
       font-size: 0.9rem;
     }
 
+    .order-card .remark {
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.12);
+      border-radius: 0.75rem;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.9rem;
+      line-height: 1.4;
+      color: var(--text-primary);
+    }
+
     .status-current {
       display: inline-flex;
       align-items: center;
@@ -360,8 +369,8 @@ type OrderFilterFormValue = {
 
     .items-list li {
       display: flex;
-      justify-content: space-between;
-      gap: 0.75rem;
+      flex-direction: column;
+      gap: 0.45rem;
       padding-bottom: 0.75rem;
       border-bottom: 1px solid var(--border-soft);
     }
@@ -369,6 +378,43 @@ type OrderFilterFormValue = {
     .items-list li:last-child {
       border-bottom: 0;
       padding-bottom: 0;
+    }
+
+    .items-list .item-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+
+    .items-list .item-remark {
+      background: rgba(10, 10, 10, 0.04);
+      border-radius: 0.6rem;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    .order-remark {
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.1);
+      border-radius: 1rem;
+      padding: 1rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+
+    .order-remark h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .order-remark p {
+      margin: 0;
+      font-size: 0.95rem;
+      line-height: 1.45;
+      color: var(--text-primary);
     }
 
     .total {
@@ -533,6 +579,7 @@ type OrderFilterFormValue = {
                         || ('admin.orders.statusUnknown' | translate: 'Status unknown')
                     }}
                   </div>
+                  <div class="remark" *ngIf="order.remark">{{ order.remark }}</div>
                   <button
                     type="button"
                     class="advance-status-button"
@@ -570,17 +617,22 @@ type OrderFilterFormValue = {
                       <h2>
                         {{ 'orderDetail.title' | translate: 'Order #{{id}}': { id: selected.id } }}
                       </h2>
-                      <div class="meta">
-                        {{
-                          'orderDetail.subtitle'
-                            | translate: '{{status}} • Placed {{date}}': {
-                                status: selected.status,
-                                date: (selected.created_at | date:'short') || ''
-                              }
-                        }}
-                      </div>
+                  <div class="meta">
+                    {{
+                      'orderDetail.subtitle'
+                        | translate: '{{status}} • Placed {{date}}': {
+                            status: selected.status,
+                            date: (selected.created_at | date:'short') || ''
+                          }
+                    }}
+                  </div>
 
-                      <ol class="status-timeline" aria-label="Order status progression">
+                  <div class="order-remark" *ngIf="selected.remark">
+                    <h3>{{ 'orderDetail.orderRemarkHeading' | translate: 'Order note' }}</h3>
+                    <p>{{ selected.remark }}</p>
+                  </div>
+
+                  <ol class="status-timeline" aria-label="Order status progression">
                           <li
                             class="status-timeline-step"
                             *ngFor="let status of statusFlow; let last = last"
@@ -610,12 +662,15 @@ type OrderFilterFormValue = {
                       <h3>{{ 'orderDetail.itemsHeading' | translate: 'Items' }}</h3>
                       <ul class="items-list">
                         <li *ngFor="let item of selected.order_items">
-                          <span>
-                            {{ item.menu_item?.name || ('#' + item.menu_item_id) }} × {{ item.quantity }}
-                          </span>
-                          <span>
-                            {{ ((item.price_cents * item.quantity) / 100) | currency:'EUR' }}
-                          </span>
+                          <div class="item-line">
+                            <span>
+                              {{ item.menu_item?.name || ('#' + item.menu_item_id) }} × {{ item.quantity }}
+                            </span>
+                            <span>
+                              {{ ((item.price_cents * item.quantity) / 100) | currency:'EUR' }}
+                            </span>
+                          </div>
+                          <div class="item-remark" *ngIf="item.remark">{{ item.remark }}</div>
                         </li>
                       </ul>
                     </div>

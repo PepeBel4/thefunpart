@@ -61,6 +61,16 @@ import { TranslatePipe } from '../shared/translate.pipe';
       font-size: 0.9rem;
     }
 
+    .remark {
+      margin-top: 0.35rem;
+      padding: 0.65rem 0.75rem;
+      border-radius: 0.75rem;
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.08);
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
     a.view-link {
       align-self: flex-start;
       text-decoration: none;
@@ -93,6 +103,7 @@ import { TranslatePipe } from '../shared/translate.pipe';
         <div class="meta">
           {{ 'orders.totalLabel' | translate: 'Total:' }} {{ (o.total_cents/100) | currency:'EUR' }}
         </div>
+        <div class="remark" *ngIf="o.remark">{{ o.remark }}</div>
         <a class="view-link" [routerLink]="['/orders', o.id]">
           {{ 'orders.view' | translate: 'View details' }}
         </a>

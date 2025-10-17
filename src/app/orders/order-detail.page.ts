@@ -185,7 +185,8 @@ type IconPath = {
 
     li {
       display: flex;
-      justify-content: space-between;
+      flex-direction: column;
+      gap: 0.45rem;
       padding-bottom: 0.75rem;
       border-bottom: 1px solid var(--border-soft);
     }
@@ -193,6 +194,43 @@ type IconPath = {
     li:last-child {
       border-bottom: 0;
       padding-bottom: 0;
+    }
+
+    .item-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+
+    .item-remark {
+      background: rgba(10, 10, 10, 0.04);
+      border-radius: 0.65rem;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    .order-remark {
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.1);
+      border-radius: var(--radius-card);
+      padding: 1rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+
+    .order-remark h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .order-remark p {
+      margin: 0;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: var(--text-primary);
     }
 
     .total {
@@ -248,14 +286,21 @@ type IconPath = {
             }}
           </div>
         </div>
+        <div class="order-remark" *ngIf="o.remark">
+          <h3>{{ 'orderDetail.orderRemarkHeading' | translate: 'Order note' }}</h3>
+          <p>{{ o.remark }}</p>
+        </div>
         <div>
           <h3>{{ 'orderDetail.itemsHeading' | translate: 'Items' }}</h3>
           <ul>
             <li *ngFor="let it of o.order_items">
-              <span>
-                {{ it.menu_item?.name || ('#' + it.menu_item_id) }} × {{ it.quantity }}
-              </span>
-              <span>{{ (it.price_cents/100) | currency:'EUR' }}</span>
+              <div class="item-line">
+                <span>
+                  {{ it.menu_item?.name || ('#' + it.menu_item_id) }} × {{ it.quantity }}
+                </span>
+                <span>{{ (it.price_cents/100) | currency:'EUR' }}</span>
+              </div>
+              <div class="item-remark" *ngIf="it.remark">{{ it.remark }}</div>
             </li>
           </ul>
         </div>

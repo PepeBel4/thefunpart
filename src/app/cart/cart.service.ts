@@ -6,7 +6,12 @@ export interface CartCategorySelection {
   label?: string | null;
 }
 
-export interface CartLine { item: MenuItem; quantity: number; category?: CartCategorySelection | null; }
+export interface CartLine {
+  item: MenuItem;
+  quantity: number;
+  category?: CartCategorySelection | null;
+  remark?: string | null;
+}
 
 export interface CartRestaurant {
   id: number;
@@ -57,6 +62,9 @@ export class CartService {
   requiresTargetTime = computed(() => this._targetTimeType() === 'scheduled');
   hasValidTargetTime = computed(() => !this.requiresTargetTime() || this.targetTime() !== null);
 
+  private _orderRemark = signal<string | null>(null);
+  orderRemark = computed(() => this._orderRemark());
+
   constructor() {
     this.restore();
 
@@ -73,11 +81,13 @@ export class CartService {
               item: line.item,
               quantity: line.quantity,
               category: line.category ?? null,
+              remark: line.remark ?? null,
             })),
             scenario: this._scenario(),
             targetTimeType: this._targetTimeType(),
             targetTimeInput: this._targetTimeInput(),
             restaurant: this._restaurant(),
+            orderRemark: this._orderRemark(),
           };
 
           try {
@@ -86,7 +96,8 @@ export class CartService {
               payload.scenario === 'takeaway' &&
               payload.targetTimeType === 'asap' &&
               payload.targetTimeInput === null &&
-              (payload.restaurant === null || payload.restaurant === undefined)
+              (payload.restaurant === null || payload.restaurant === undefined) &&
+              (payload.orderRemark === null || payload.orderRemark === undefined)
             ) {
               storage.removeItem(this.storageKey);
             } else {
@@ -193,11 +204,36 @@ export class CartService {
     this._targetTimeInput.set(trimmed ? trimmed : null);
   }
 
+  setOrderRemark(value: string | null | undefined) {
+    const normalized = this.normalizeRemark(value);
+    this._orderRemark.set(normalized);
+  }
+
+  setLineRemark(
+    itemId: number,
+    remark: string | null | undefined,
+    category?: CartCategorySelection | null
+  ) {
+    const normalizedId = category?.id ?? null;
+    const normalizedRemark = this.normalizeRemark(remark);
+
+    this._lines.set(
+      this._lines().map(line =>
+        line.item.id === itemId && (line.category?.id ?? null) === normalizedId
+          ? normalizedRemark === line.remark
+            ? line
+            : { ...line, remark: normalizedRemark }
+          : line
+      )
+    );
+  }
+
   clear() {
     this._lines.set([]);
     this._scenario.set('takeaway');
     this._targetTimeType.set('asap');
     this._targetTimeInput.set(null);
+    this._orderRemark.set(null);
     this._restaurant.set(null);
 
   }
@@ -273,6 +309,7 @@ export class CartService {
         targetTimeType: OrderTargetTimeType;
         targetTimeInput: string | null;
         restaurant: CartRestaurant | null;
+        orderRemark: string | null;
       }>;
 
       let restoredLines: CartLine[] | null = null;
@@ -284,6 +321,7 @@ export class CartService {
             item: line.item,
             quantity: Math.max(1, Math.floor(line.quantity ?? 1)),
             category: this.normalizeCategory(line.category) ?? undefined,
+            remark: this.normalizeRemark(line.remark),
           }));
 
         if (restoredLines.length) {
@@ -321,9 +359,18 @@ export class CartService {
       if (typeof parsed.targetTimeInput === 'string' || parsed.targetTimeInput === null) {
         this._targetTimeInput.set(parsed.targetTimeInput);
       }
+
+      if (typeof parsed.orderRemark === 'string' || parsed.orderRemark === null) {
+        this._orderRemark.set(this.normalizeRemark(parsed.orderRemark));
+      }
     } catch (error) {
       // Ignore malformed storage data
     }
+  }
+
+  private normalizeRemark(value: string | null | undefined): string | null {
+    const trimmed = value?.trim();
+    return trimmed ? trimmed : null;
   }
 
   private getStorage(): Storage | null {
