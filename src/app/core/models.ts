@@ -46,6 +46,8 @@ export interface Location {
   longitude?: number | null;
   created_at: string;
   updated_at: string;
+  opening_hours?: LocationOpeningHour[] | null;
+  opening_hour_exceptions?: LocationOpeningHourException[] | null;
 }
 
 export interface LocationInput {
