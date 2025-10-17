@@ -1,9 +1,27 @@
 import { AsyncPipe, CurrencyPipe, DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, inject } from '@angular/core';
-import { BehaviorSubject, combineLatest, map, shareReplay, switchMap, tap } from 'rxjs';
+import {
+  BehaviorSubject,
+  catchError,
+  distinctUntilChanged,
+  map,
+  of,
+  shareReplay,
+  startWith,
+  switchMap,
+  tap,
+} from 'rxjs';
+import { Order } from '../core/models';
 import { OrderService } from '../orders/order.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { AdminRestaurantContextService } from './admin-restaurant-context.service';
+
+type SelectedOrderState = {
+  orderId: number | null;
+  order: Order | null;
+  loading: boolean;
+  error: boolean;
+};
 
 @Component({
   standalone: true,
@@ -166,7 +184,7 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
         </p>
       </header>
 
-      <ng-container *ngIf="selectedOrder$ | async as selected">
+      <ng-container *ngIf="selectedOrderState$ | async as selectedState">
         <ng-container *ngIf="orders.length; else emptyOrders">
           <div class="layout">
             <div class="orders-panel">
@@ -177,7 +195,7 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
                   role="listitem"
                   *ngFor="let order of orders; trackBy: trackByOrderId"
                   (click)="selectOrder(order.id)"
-                  [class.selected]="selected?.id === order.id"
+                  [class.selected]="selectedState.orderId === order.id"
                 >
                   <header>
                     <span>
@@ -208,38 +226,47 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
               </div>
             </div>
             <aside class="details-panel">
-              <ng-container *ngIf="selected; else placeholder">
-                <div class="details-card">
-                  <div>
-                    <h2>
-                      {{ 'orderDetail.title' | translate: 'Order #{{id}}': { id: selected.id } }}
-                    </h2>
-                    <div class="meta">
-                      {{
-                        'orderDetail.subtitle'
-                          | translate: '{{status}} • Placed {{date}}': {
-                              status: selected.status,
-                              date: (selected.created_at | date:'short') || ''
-                            }
-                      }}
+              <ng-container *ngIf="selectedState.orderId !== null; else placeholder">
+                <ng-container *ngIf="selectedState.loading; else detailsOrError">
+                  <div class="empty-details">
+                    <p>{{ 'admin.orders.loading' | translate: 'Loading order details…' }}</p>
+                  </div>
+                </ng-container>
+                <ng-template #detailsOrError>
+                  <ng-container *ngIf="!selectedState.error && selectedState.order as selected; else error">
+                    <div class="details-card">
+                      <div>
+                        <h2>
+                          {{ 'orderDetail.title' | translate: 'Order #{{id}}': { id: selected.id } }}
+                        </h2>
+                        <div class="meta">
+                          {{
+                            'orderDetail.subtitle'
+                              | translate: '{{status}} • Placed {{date}}': {
+                                  status: selected.status,
+                                  date: (selected.created_at | date:'short') || ''
+                                }
+                          }}
+                        </div>
+                      </div>
+                      <div>
+                        <h3>{{ 'orderDetail.itemsHeading' | translate: 'Items' }}</h3>
+                        <ul class="items-list">
+                          <li *ngFor="let item of selected.order_items">
+                            <span>
+                              {{ item.menu_item?.name || ('#' + item.menu_item_id) }} × {{ item.quantity }}
+                            </span>
+                            <span>{{ (item.price_cents / 100) | currency:'EUR' }}</span>
+                          </li>
+                        </ul>
+                      </div>
+                      <div class="total">
+                        <span>{{ 'orderDetail.total' | translate: 'Total' }}</span>
+                        <span>{{ (selected.total_cents / 100) | currency:'EUR' }}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <h3>{{ 'orderDetail.itemsHeading' | translate: 'Items' }}</h3>
-                    <ul class="items-list">
-                      <li *ngFor="let item of selected.order_items">
-                        <span>
-                          {{ item.menu_item?.name || ('#' + item.menu_item_id) }} × {{ item.quantity }}
-                        </span>
-                        <span>{{ (item.price_cents / 100) | currency:'EUR' }}</span>
-                      </li>
-                    </ul>
-                  </div>
-                  <div class="total">
-                    <span>{{ 'orderDetail.total' | translate: 'Total' }}</span>
-                    <span>{{ (selected.total_cents / 100) | currency:'EUR' }}</span>
-                  </div>
-                </div>
+                  </ng-container>
+                </ng-template>
               </ng-container>
             </aside>
           </div>
@@ -255,6 +282,17 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
           <p>{{ 'admin.orders.placeholder' | translate: 'Select an order to see its details.' }}</p>
         </div>
       </ng-template>
+
+      <ng-template #error>
+        <div class="empty-details">
+          <p>
+            {{
+              'admin.orders.error'
+                | translate: 'We could not load the order details. Please try again.'
+            }}
+          </p>
+        </div>
+      </ng-template>
     </section>
   `,
 })
@@ -263,6 +301,7 @@ export class AdminRecentOrdersPage {
   private orderService = inject(OrderService);
 
   private selectedOrderId = new BehaviorSubject<number | null>(null);
+  private readonly selectedOrderId$ = this.selectedOrderId.asObservable();
 
   readonly orders$ = this.context.selectedRestaurant$.pipe(
     switchMap(restaurant =>
@@ -310,8 +349,42 @@ export class AdminRecentOrdersPage {
     shareReplay({ bufferSize: 1, refCount: true })
   );
 
-  readonly selectedOrder$ = combineLatest([this.orders$, this.selectedOrderId]).pipe(
-    map(([orders, selectedId]) => orders.find(order => order.id === selectedId) ?? null)
+  readonly selectedOrderState$ = this.selectedOrderId$.pipe(
+    distinctUntilChanged(),
+    switchMap(orderId => {
+      if (orderId === null) {
+        return of<SelectedOrderState>({
+          orderId,
+          order: null,
+          loading: false,
+          error: false,
+        });
+      }
+
+      return this.orderService.get(orderId).pipe(
+        map<Order, SelectedOrderState>(order => ({
+          orderId,
+          order: order ?? null,
+          loading: false,
+          error: false,
+        })),
+        startWith<SelectedOrderState>({
+          orderId,
+          order: null,
+          loading: true,
+          error: false,
+        }),
+        catchError(() =>
+          of<SelectedOrderState>({
+            orderId,
+            order: null,
+            loading: false,
+            error: true,
+          })
+        )
+      );
+    }),
+    shareReplay({ bufferSize: 1, refCount: true })
   );
 
   selectOrder(orderId: number): void {
