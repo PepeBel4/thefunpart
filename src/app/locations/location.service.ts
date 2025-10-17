@@ -43,11 +43,11 @@ export class LocationService {
   }
 
   listOpeningHours(locationId: number) {
-    return this.api.get<LocationOpeningHour[]>(`/locations/${locationId}/location_opening_hours`);
+    return this.api.get<LocationOpeningHour[]>(`/locations/${locationId}/opening_hours`);
   }
 
   createOpeningHour(locationId: number, payload: LocationOpeningHourInput) {
-    return this.api.post<LocationOpeningHour>(`/locations/${locationId}/location_opening_hours`, {
+    return this.api.post<LocationOpeningHour>(`/locations/${locationId}/opening_hours`, {
       location_opening_hour: payload,
     });
   }
@@ -58,7 +58,7 @@ export class LocationService {
     payload: LocationOpeningHourInput
   ) {
     return this.api.put<LocationOpeningHour>(
-      `/locations/${locationId}/location_opening_hours/${openingHourId}`,
+      `/locations/${locationId}/opening_hours/${openingHourId}`,
       {
         location_opening_hour: payload,
       }
@@ -66,14 +66,12 @@ export class LocationService {
   }
 
   deleteOpeningHour(locationId: number, openingHourId: number) {
-    return this.api.delete<void>(
-      `/locations/${locationId}/location_opening_hours/${openingHourId}`
-    );
+    return this.api.delete<void>(`/locations/${locationId}/opening_hours/${openingHourId}`);
   }
 
   listOpeningHourExceptions(locationId: number) {
     return this.api.get<LocationOpeningHourException[]>(
-      `/locations/${locationId}/location_opening_hour_exceptions`
+      `/locations/${locationId}/opening_hour_exceptions`
     );
   }
 
@@ -82,7 +80,7 @@ export class LocationService {
     payload: LocationOpeningHourExceptionInput
   ) {
     return this.api.post<LocationOpeningHourException>(
-      `/locations/${locationId}/location_opening_hour_exceptions`,
+      `/locations/${locationId}/opening_hour_exceptions`,
       {
         location_opening_hour_exception: payload,
       }
@@ -95,7 +93,7 @@ export class LocationService {
     payload: LocationOpeningHourExceptionInput
   ) {
     return this.api.put<LocationOpeningHourException>(
-      `/locations/${locationId}/location_opening_hour_exceptions/${exceptionId}`,
+      `/locations/${locationId}/opening_hour_exceptions/${exceptionId}`,
       {
         location_opening_hour_exception: payload,
       }
@@ -104,7 +102,7 @@ export class LocationService {
 
   deleteOpeningHourException(locationId: number, exceptionId: number) {
     return this.api.delete<void>(
-      `/locations/${locationId}/location_opening_hour_exceptions/${exceptionId}`
+      `/locations/${locationId}/opening_hour_exceptions/${exceptionId}`
     );
   }
 }
