@@ -13,7 +13,6 @@ import {
   shareReplay,
   startWith,
   switchMap,
-  tap,
 } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AdminRestaurantContextService } from './admin-restaurant-context.service';
@@ -27,6 +26,12 @@ interface RestaurantUserFilterFormValue {
   orderedTo: string;
   menuItemId: string;
   churnRisk: string;
+}
+
+interface UsersState {
+  users: RestaurantUser[];
+  loading: boolean;
+  error: string | null;
 }
 
 @Component({
@@ -346,20 +351,20 @@ interface RestaurantUserFilterFormValue {
           </p>
         </form>
 
-        <p class="state" *ngIf="loading">
-          {{ 'admin.users.state.loading' | translate: 'Loading users…' }}
-        </p>
+        <ng-container *ngIf="usersState$ | async as state">
+          <p class="state" *ngIf="state.loading">
+            {{ 'admin.users.state.loading' | translate: 'Loading users…' }}
+          </p>
 
-        <p class="state error" *ngIf="errorMessage">{{ errorMessage }}</p>
+          <p class="state error" *ngIf="state.error">{{ state.error }}</p>
 
-        <ng-container *ngIf="!loading && !errorMessage">
-          <ng-container *ngIf="users$ | async as users">
-            <p class="state empty" *ngIf="!users.length">
+          <ng-container *ngIf="!state.loading && !state.error">
+            <p class="state empty" *ngIf="!state.users.length">
               {{ 'admin.users.state.empty' | translate: 'No users match these filters yet.' }}
             </p>
 
-            <div class="users-grid" *ngIf="users.length">
-              <article class="user-card" *ngFor="let user of users">
+            <div class="users-grid" *ngIf="state.users.length">
+              <article class="user-card" *ngFor="let user of state.users">
                 <header>
                   <div class="user-title">
                     <h4>{{ formatUserName(user) }}</h4>
@@ -445,9 +450,6 @@ export class AdminRestaurantUsersPage {
     { validators: this.dateRangeValidator }
   );
 
-  loading = false;
-  errorMessage: string | null = null;
-
   readonly churnRiskOptions: {
     value: RestaurantUserChurnRisk;
     labelKey: string;
@@ -496,25 +498,22 @@ export class AdminRestaurantUsersPage {
     map(result => result.filters)
   );
 
-  readonly users$ = combineLatest([this.restaurantContext.selectedRestaurantId$, this.filters$]).pipe(
+  readonly usersState$ = combineLatest([this.restaurantContext.selectedRestaurantId$, this.filters$]).pipe(
     switchMap(([restaurantId, filters]) => {
       if (restaurantId === null) {
-        this.loading = false;
-        return of([] as RestaurantUser[]);
+        return of<UsersState>({ users: [], loading: false, error: null });
       }
 
-      this.loading = true;
-      this.errorMessage = null;
-
       return this.usersService.list(restaurantId, filters).pipe(
-        tap(() => {
-          this.loading = false;
-        }),
-        catchError(error => {
-          this.loading = false;
-          this.errorMessage = this.resolveErrorMessage(error);
-          return of([] as RestaurantUser[]);
-        })
+        map(users => ({ users, loading: false, error: null }) as UsersState),
+        startWith<UsersState>({ users: [], loading: true, error: null }),
+        catchError(error =>
+          of<UsersState>({
+            users: [],
+            loading: false,
+            error: this.resolveErrorMessage(error),
+          })
+        )
       );
     }),
     shareReplay({ bufferSize: 1, refCount: true })
@@ -532,9 +531,6 @@ export class AdminRestaurantUsersPage {
         }
       });
 
-    this.filterForm.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
-      this.errorMessage = null;
-    });
   }
 
   resetFilters(): void {
