@@ -67,7 +67,10 @@ export interface Restaurant {
   primary_color?: string | null;
   locations?: Location[] | null;
   rating_summary?: RatingSummary | null;
+  rating_average?: number | null;
+  rating_count?: number | null;
   reviews?: Review[] | null;
+  ratings?: Review[] | null;
 }
 
 export interface Location {
@@ -216,7 +219,10 @@ export interface MenuItem {
   photos?: RestaurantPhoto[];
   option_assignments?: MenuOptionAssignment[];
   rating_summary?: RatingSummary | null;
+  rating_average?: number | null;
+  rating_count?: number | null;
   reviews?: Review[] | null;
+  ratings?: Review[] | null;
 }
 
 export interface MenuOptionCategory {

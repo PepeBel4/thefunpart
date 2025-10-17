@@ -10,4 +10,13 @@ export class RatingsService {
   createRating(payload: RatingInput): Observable<Review> {
     return this.api.post<Review>('/ratings', { rating: payload });
   }
+
+  listRatings(rateableType: RatingInput['rateable_type'], rateableId: number): Observable<Review[]> {
+    return this.api.get<Review[]>('/ratings', {
+      params: {
+        rateable_type: rateableType,
+        rateable_id: String(rateableId),
+      },
+    });
+  }
 }

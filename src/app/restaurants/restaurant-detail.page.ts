@@ -38,6 +38,7 @@ import {
   shareReplay,
   startWith,
   switchMap,
+  take,
   tap,
   timer,
 } from 'rxjs';
@@ -98,6 +99,20 @@ type ReviewStatus = 'success' | 'error' | '';
 type MenuItemReviewState = {
   submitting: boolean;
   status: ReviewStatus;
+};
+
+type RatingSource = {
+  rating_summary?: RatingSummary | null;
+  rating_average?: number | null;
+  average_rating?: number | null;
+  avg_rating?: number | null;
+  rating?: number | null;
+  rating_count?: number | null;
+  ratings_count?: number | null;
+  total_ratings?: number | null;
+  count?: number | null;
+  reviews?: Review[] | null;
+  ratings?: Review[] | null;
 };
 
 type CounterLocationStatusViewModel = {
@@ -730,12 +745,14 @@ type ScheduledInterval = {
           </ul>
           <div class="hero-meta">
             <span class="tag">{{ 'restaurantDetail.tagPopular' | translate: 'Popular' }}</span>
-            <ng-container *ngIf="hasRatings(r.rating_summary); else heroRatingEmpty">
-              <span class="hero-rating">
-                <span aria-hidden="true">⭐</span>
-                <span class="value">{{ formatAverageRating(r.rating_summary) }}</span>
-                <span class="count">{{ getRatingCountLabel(r.rating_summary) }}</span>
-              </span>
+            <ng-container *ngIf="getRestaurantRatingSource(r) as restaurantRating">
+              <ng-container *ngIf="hasRatings(restaurantRating); else heroRatingEmpty">
+                <span class="hero-rating">
+                  <span aria-hidden="true">⭐</span>
+                  <span class="value">{{ formatAverageRating(restaurantRating) }}</span>
+                  <span class="count">{{ getRatingCountLabel(restaurantRating) }}</span>
+                </span>
+              </ng-container>
             </ng-container>
             <ng-template #heroRatingEmpty>
               <span class="hero-rating muted">
@@ -830,13 +847,15 @@ type ScheduledInterval = {
       <section class="reviews">
         <div class="reviews-header">
           <h3>{{ 'restaurantDetail.reviewsHeading' | translate: 'What people are saying' }}</h3>
-          <span class="rating-chip rating-chip-large" *ngIf="hasRatings(r.rating_summary)">
-            <span aria-hidden="true">⭐</span>
-            <span class="value">{{ formatAverageRating(r.rating_summary) }}</span>
-            <span class="count">{{ getRatingCountLabel(r.rating_summary) }}</span>
-          </span>
+          <ng-container *ngIf="getRestaurantRatingSource(r) as restaurantRating">
+            <span class="rating-chip rating-chip-large" *ngIf="hasRatings(restaurantRating)">
+              <span aria-hidden="true">⭐</span>
+              <span class="value">{{ formatAverageRating(restaurantRating) }}</span>
+              <span class="count">{{ getRatingCountLabel(restaurantRating) }}</span>
+            </span>
+          </ng-container>
         </div>
-        <ng-container *ngIf="getDisplayableReviews(r.reviews) as restaurantReviews">
+        <ng-container *ngIf="getDisplayableReviews(r.reviews ?? r.ratings) as restaurantReviews">
           <ul class="review-list" *ngIf="restaurantReviews.length; else restaurantReviewsEmpty">
             <li class="review-card" *ngFor="let review of restaurantReviews">
               <div class="review-header">
@@ -1020,11 +1039,13 @@ type ScheduledInterval = {
                     ('restaurantDetail.customerFavourite' | translate: 'Customer favourite')
                 }}
               </p>
-              <span class="rating-chip" *ngIf="hasRatings(m.rating_summary)">
-                <span aria-hidden="true">⭐</span>
-                <span class="value">{{ formatAverageRating(m.rating_summary) }}</span>
-                <span class="count">{{ getRatingCountLabel(m.rating_summary) }}</span>
-              </span>
+              <ng-container *ngIf="getMenuItemRatingSource(m) as menuItemRating">
+                <span class="rating-chip" *ngIf="hasRatings(menuItemRating)">
+                  <span aria-hidden="true">⭐</span>
+                  <span class="value">{{ formatAverageRating(menuItemRating) }}</span>
+                  <span class="count">{{ getRatingCountLabel(menuItemRating) }}</span>
+                </span>
+              </ng-container>
               <div class="price-group" *ngIf="hasDiscount(m); else cardRegularPrice">
                 <span class="price discounted">
                   {{ (getCurrentPriceCents(m) / 100) | currency:'EUR' }}
@@ -1117,17 +1138,22 @@ type ScheduledInterval = {
                   ('restaurantDetail.customerFavourite' | translate: 'Customer favourite')
               }}
             </p>
-            <span
-              class="rating-chip rating-chip-large"
-              *ngIf="hasRatings(menuItemContext.item.rating_summary)"
-            >
-              <span aria-hidden="true">⭐</span>
-              <span class="value">{{ formatAverageRating(menuItemContext.item.rating_summary) }}</span>
-              <span class="count">{{ getRatingCountLabel(menuItemContext.item.rating_summary) }}</span>
-            </span>
+            <ng-container *ngIf="getMenuItemRatingSource(menuItemContext.item) as menuItemRating">
+              <span class="rating-chip rating-chip-large" *ngIf="hasRatings(menuItemRating)">
+                <span aria-hidden="true">⭐</span>
+                <span class="value">{{ formatAverageRating(menuItemRating) }}</span>
+                <span class="count">{{ getRatingCountLabel(menuItemRating) }}</span>
+              </span>
+            </ng-container>
             <section class="review-section">
               <h4>{{ 'restaurantDetail.menuItemReviewsHeading' | translate: 'Guest comments' }}</h4>
-              <ng-container *ngIf="getDisplayableReviews(menuItemContext.item.reviews) as itemReviews">
+              <ng-container
+                *ngIf="
+                  getDisplayableReviews(
+                    menuItemContext.item.reviews ?? menuItemContext.item.ratings
+                  ) as itemReviews
+                "
+              >
                 <ul class="review-list" *ngIf="itemReviews.length; else menuItemReviewsEmpty">
                   <li class="review-card" *ngFor="let review of itemReviews">
                     <div class="review-header">
@@ -1463,8 +1489,23 @@ export class RestaurantDetailPage implements OnDestroy {
 
   id = Number(this.route.snapshot.paramMap.get('id'));
   private restaurantReload$ = new BehaviorSubject<void>(undefined);
-  restaurant$: Observable<Restaurant> = this.restaurantReload$.pipe(
+  private restaurantRequest$ = this.restaurantReload$.pipe(
     switchMap(() => this.rSvc.get(this.id)),
+    shareReplay({ bufferSize: 1, refCount: true })
+  );
+  private restaurantRatings$ = this.restaurantReload$.pipe(
+    switchMap(() =>
+      this.ratingsSvc
+        .listRatings('restaurant', this.id)
+        .pipe(catchError(() => of([])))
+    ),
+    shareReplay({ bufferSize: 1, refCount: true })
+  );
+  restaurant$: Observable<Restaurant> = combineLatest([
+    this.restaurantRequest$,
+    this.restaurantRatings$,
+  ]).pipe(
+    map(([restaurant, ratings]) => this.mergeRestaurantRatings(restaurant, ratings)),
     shareReplay({ bufferSize: 1, refCount: true })
   );
   private searchTerm$ = new BehaviorSubject<string>('');
@@ -1506,6 +1547,8 @@ export class RestaurantDetailPage implements OnDestroy {
   restaurantReviewStatus = signal<ReviewStatus>('');
   private menuItemReviewForms = new Map<number, ReviewFormGroup>();
   private menuItemReviewStatuses = signal<Record<number, MenuItemReviewState>>({});
+  private menuItemRatingsCache = new Map<number, Review[]>();
+  private pendingMenuItemRatings = new Set<number>();
   selectedPhotos: File[] = [];
   uploading = false;
   statusMessage = '';
@@ -1703,8 +1746,29 @@ export class RestaurantDetailPage implements OnDestroy {
     return item.price_cents;
   }
 
-  hasRatings(summary?: RatingSummary | null): boolean {
-    return this.resolveRatingCount(summary) > 0 && this.resolveRatingAverage(summary) !== null;
+  getRestaurantRatingSource(restaurant: Restaurant): RatingSource {
+    return this.buildRatingSourceFromEntity(
+      restaurant as unknown as Record<string, unknown>,
+      restaurant.rating_summary ?? null,
+      restaurant.reviews ?? restaurant.ratings ?? null,
+      restaurant.ratings ?? null
+    );
+  }
+
+  getMenuItemRatingSource(item: MenuItem): RatingSource {
+    return this.buildRatingSourceFromEntity(
+      item as unknown as Record<string, unknown>,
+      item.rating_summary ?? null,
+      item.reviews ?? item.ratings ?? null,
+      item.ratings ?? null
+    );
+  }
+
+  hasRatings(source?: RatingSummary | RatingSource | null): boolean {
+    return (
+      this.resolveCombinedRatingCount(source) > 0 &&
+      this.resolveCombinedRatingAverage(source) !== null
+    );
   }
 
   getDisplayableReviews(reviews?: Review[] | null): Review[] {
@@ -1719,8 +1783,8 @@ export class RestaurantDetailPage implements OnDestroy {
     return this.getDisplayableReviews(reviews).length > 0;
   }
 
-  formatAverageRating(summary?: RatingSummary | null): string {
-    const average = this.resolveRatingAverage(summary);
+  formatAverageRating(source?: RatingSummary | RatingSource | null): string {
+    const average = this.resolveCombinedRatingAverage(source);
     if (average === null) {
       return '–';
     }
@@ -1729,8 +1793,8 @@ export class RestaurantDetailPage implements OnDestroy {
     return rounded.toFixed(1);
   }
 
-  getRatingCountLabel(summary?: RatingSummary | null): string {
-    const count = this.resolveRatingCount(summary);
+  getRatingCountLabel(source?: RatingSummary | RatingSource | null): string {
+    const count = this.resolveCombinedRatingCount(source);
     if (count <= 0) {
       return this.i18n.translate('restaurantDetail.ratingNoReviews', 'No reviews yet');
     }
@@ -1876,6 +1940,8 @@ export class RestaurantDetailPage implements OnDestroy {
           if (currentModal?.item.id === item.id) {
             this.menuItemModal.set({ ...currentModal, item: updatedItem });
           }
+          this.menuItemRatingsCache.delete(item.id);
+          this.ensureMenuItemRatings(updatedItem);
           this.refreshMenu();
         },
         error: () => {
@@ -1904,6 +1970,63 @@ export class RestaurantDetailPage implements OnDestroy {
 
   getMenuItemReviewStatus(itemId: number): ReviewStatus {
     return this.menuItemReviewStatuses()[itemId]?.status ?? '';
+  }
+
+  private ensureMenuItemRatings(item: MenuItem) {
+    const itemId = item.id;
+    if (!Number.isFinite(itemId)) {
+      return;
+    }
+
+    if (this.hasReviews(item.reviews ?? item.ratings ?? null)) {
+      return;
+    }
+
+    if (this.pendingMenuItemRatings.has(itemId)) {
+      return;
+    }
+
+    const cached = this.menuItemRatingsCache.get(itemId);
+    if (cached) {
+      this.applyMenuItemRatings(itemId, cached);
+      return;
+    }
+
+    this.pendingMenuItemRatings.add(itemId);
+
+    this.ratingsSvc
+      .listRatings('menu_item', itemId)
+      .pipe(
+        take(1),
+        catchError(() => of([] as Review[]))
+      )
+      .subscribe({
+        next: ratings => {
+          this.menuItemRatingsCache.set(itemId, ratings);
+          this.applyMenuItemRatings(itemId, ratings);
+        },
+        error: () => {
+          // Swallow errors; the UI will simply show no ratings.
+        },
+        complete: () => {
+          this.pendingMenuItemRatings.delete(itemId);
+        },
+      });
+  }
+
+  private applyMenuItemRatings(itemId: number, ratings: Review[]) {
+    const modal = this.menuItemModal();
+    if (modal?.item.id === itemId) {
+      const existingReviews = modal.item.reviews;
+      this.menuItemModal.set({
+        ...modal,
+        item: {
+          ...modal.item,
+          ratings,
+          reviews: this.hasReviews(existingReviews) ? existingReviews : ratings,
+        },
+      });
+    }
   }
 
   private createReviewForm(): ReviewFormGroup {
@@ -1957,6 +2080,122 @@ export class RestaurantDetailPage implements OnDestroy {
     this.restaurantReload$.next(undefined);
   }
 
+  private mergeRestaurantRatings(restaurant: Restaurant, ratings: Review[]): Restaurant {
+    const hasExistingReviews = this.hasReviews(restaurant.reviews ?? restaurant.ratings ?? null);
+    const normalizedReviews = hasExistingReviews ? restaurant.reviews : ratings;
+
+    return {
+      ...restaurant,
+      ratings,
+      reviews: normalizedReviews ?? ratings ?? [],
+    };
+  }
+
+  private buildRatingSourceFromEntity(
+    entity: Record<string, unknown>,
+    summary: RatingSummary | null,
+    reviews?: Review[] | null,
+    ratings?: Review[] | null
+  ): RatingSource {
+    return {
+      rating_summary: summary,
+      rating_average: this.coerceNumber(entity['rating_average']),
+      average_rating: this.coerceNumber(entity['average_rating']),
+      avg_rating: this.coerceNumber(entity['avg_rating']),
+      rating: this.coerceNumber(entity['rating']),
+      rating_count: this.coerceNumber(entity['rating_count']),
+      ratings_count: this.coerceNumber(entity['ratings_count']),
+      total_ratings: this.coerceNumber(entity['total_ratings']),
+      count: this.coerceNumber(entity['count']),
+      reviews: reviews ?? null,
+      ratings: ratings ?? null,
+    };
+  }
+
+  private resolveCombinedRatingAverage(source?: RatingSummary | RatingSource | null): number | null {
+    if (!source) {
+      return null;
+    }
+
+    const record = source as Record<string, unknown>;
+    const hasContainer = this.hasRatingContainerProps(record);
+    const summary = hasContainer
+      ? ((record['rating_summary'] as RatingSummary | null) ?? null)
+      : (source as RatingSummary | null);
+
+    const averageFromSummary = this.resolveRatingAverage(summary);
+    if (averageFromSummary !== null) {
+      return averageFromSummary;
+    }
+
+    if (hasContainer) {
+      const container = source as RatingSource;
+      const candidates = [
+        container.rating_average,
+        container.average_rating,
+        container.avg_rating,
+        container.rating,
+      ];
+
+      for (const candidate of candidates) {
+        const value = this.coerceNumber(candidate);
+        if (value !== null) {
+          return value;
+        }
+      }
+
+      const computed = this.computeAverageFromReviews(container.reviews ?? container.ratings ?? null);
+      if (computed !== null) {
+        return computed;
+      }
+    }
+
+    return null;
+  }
+
+  private resolveCombinedRatingCount(source?: RatingSummary | RatingSource | null): number {
+    if (!source) {
+      return 0;
+    }
+
+    const record = source as Record<string, unknown>;
+    const hasContainer = this.hasRatingContainerProps(record);
+    const summary = hasContainer
+      ? ((record['rating_summary'] as RatingSummary | null) ?? null)
+      : (source as RatingSummary | null);
+
+    const countFromSummary = this.resolveRatingCount(summary);
+    if (!hasContainer) {
+      return countFromSummary;
+    }
+
+    if (countFromSummary > 0) {
+      return countFromSummary;
+    }
+
+    const container = source as RatingSource;
+    const candidates = [
+      container.rating_count,
+      container.ratings_count,
+      container.total_ratings,
+      container.count,
+    ];
+
+    for (const candidate of candidates) {
+      const value = this.coerceNumber(candidate);
+      if (value !== null && value > 0) {
+        return Math.trunc(value);
+      }
+    }
+
+    const computed = this.countRatingsFromReviews(container.reviews ?? container.ratings ?? null);
+    if (computed > 0) {
+      return computed;
+    }
+
+    return countFromSummary;
+  }
+
   private resolveRatingAverage(summary?: RatingSummary | null): number | null {
     if (!summary || typeof summary !== 'object') {
       return null;
@@ -1997,6 +2236,57 @@ export class RestaurantDetailPage implements OnDestroy {
     }
 
     return 0;
+  }
+
+  private computeAverageFromReviews(reviews?: Review[] | null): number | null {
+    if (!Array.isArray(reviews) || !reviews.length) {
+      return null;
+    }
+
+    let total = 0;
+    let count = 0;
+
+    reviews.forEach(review => {
+      const rating = this.getReviewRating(review);
+      if (rating !== null) {
+        total += rating;
+        count += 1;
+      }
+    });
+
+    if (!count) {
+      return null;
+    }
+
+    return total / count;
+  }
+
+  private countRatingsFromReviews(reviews?: Review[] | null): number {
+    if (!Array.isArray(reviews) || !reviews.length) {
+      return 0;
+    }
+
+    let count = 0;
+
+    reviews.forEach(review => {
+      if (this.getReviewRating(review) !== null) {
+        count += 1;
+      }
+    });
+
+    return count;
+  }
+
+  private coerceNumber(value: unknown): number | null {
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      return null;
+    }
+
+    return value;
+  }
+
+  private hasRatingContainerProps(record: Record<string, unknown>): boolean {
+    return 'rating_summary' in record || 'reviews' in record || 'ratings' in record;
   }
 
   private formatReviewDate(value?: string | null): string | null {
@@ -2099,6 +2389,8 @@ export class RestaurantDetailPage implements OnDestroy {
     if (!alreadyOpen) {
       this.lockBodyScroll();
     }
+
+    this.ensureMenuItemRatings(item);
   }
 
   closeMenuItemModal() {
@@ -2537,8 +2829,6 @@ export class RestaurantDetailPage implements OnDestroy {
     }
 
     const highlightedItems = items.filter(item => this.isHighlightedMenuItem(item));
-
-    console.log(highlightedItems);
     
     if (highlightedItems.length) {
       const cartCategoriesByItemId: Record<number, CartCategorySelection | null> = {};
@@ -2558,8 +2848,6 @@ export class RestaurantDetailPage implements OnDestroy {
         cartCategoriesByItemId,
       });
     }
-
-    console.log(result);
 
     return result;
   }
