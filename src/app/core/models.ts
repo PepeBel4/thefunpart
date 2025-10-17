@@ -1,6 +1,53 @@
 export type OrderScenario = 'takeaway' | 'delivery' | 'eatin';
 export type OrderTargetTimeType = 'asap' | 'scheduled';
 
+export interface SalesPipelineTimeframe {
+  start_date: string;
+  end_date: string;
+}
+
+export interface SalesPipelineTotals {
+  orders: number;
+  revenue_cents: number;
+  average_order_value_cents: number;
+}
+
+export interface SalesPipelineStatusBreakdown {
+  status: string;
+  order_count: number;
+}
+
+export interface SalesPipelineStatusProgression {
+  status: string;
+  order_count: number;
+}
+
+export interface SalesPipelineScenarioBreakdown {
+  scenario: OrderScenario;
+  order_count: number;
+}
+
+export interface SalesPipelineTargetTimeTypeBreakdown {
+  target_time_type: OrderTargetTimeType;
+  order_count: number;
+}
+
+export interface SalesPipelineDailyTotals {
+  date: string;
+  order_count: number;
+  revenue_cents: number;
+}
+
+export interface SalesPipelineReport {
+  timeframe: SalesPipelineTimeframe;
+  totals: SalesPipelineTotals;
+  status_breakdown: SalesPipelineStatusBreakdown[];
+  status_progression: SalesPipelineStatusProgression[];
+  scenario_breakdown: SalesPipelineScenarioBreakdown[];
+  target_time_type_breakdown: SalesPipelineTargetTimeTypeBreakdown[];
+  daily_totals: SalesPipelineDailyTotals[];
+}
+
 export interface RestaurantPhoto {
   id: number;
   url: string;
