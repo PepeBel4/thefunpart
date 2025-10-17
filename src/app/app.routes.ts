@@ -52,5 +52,13 @@ export const appRoutes: Routes = [
   { path: 'checkout', canActivate: [authGuard], loadComponent: () => import('./checkout/checkout.page').then(m => m.CheckoutPage) },
   { path: 'orders', canActivate: [authGuard], loadComponent: () => import('./orders/orders.page').then(m => m.OrdersPage) },
   { path: 'orders/:id', canActivate: [authGuard], loadComponent: () => import('./orders/order-detail.page').then(m => m.OrderDetailPage) },
+  {
+    path: 'algemene-voorwaarden',
+    loadComponent: () => import('./legal/terms.page').then(m => m.TermsPage),
+  },
+  {
+    path: 'privacyverklaring',
+    loadComponent: () => import('./legal/privacy.page').then(m => m.PrivacyPage),
+  },
   { path: '**', redirectTo: '' }
 ];

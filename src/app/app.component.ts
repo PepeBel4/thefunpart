@@ -1,6 +1,6 @@
 import { NgIf } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
-import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { NavbarComponent } from './shared/navbar.component';
 import { CartSidebarComponent } from './cart/card-sidebar.component';
 import { CookieConsentComponent } from './shared/cookie-consent.component';
@@ -12,11 +12,11 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NavbarComponent, CartSidebarComponent, CookieConsentComponent, CardSpotlightComponent, NgIf],
+  imports: [RouterOutlet, RouterLink, NavbarComponent, CartSidebarComponent, CookieConsentComponent, CardSpotlightComponent, NgIf],
   styles: [`
     :host {
       display: grid;
-      grid-template-rows: auto 1fr;
+      grid-template-rows: auto 1fr auto;
       min-height: 100vh;
       background: radial-gradient(circle at top, rgba(var(--brand-green-rgb, 6, 193, 103), 0.05), transparent 60%),
         var(--surface-elevated);
@@ -68,6 +68,65 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         gap: 1.25rem;
       }
     }
+
+    .app-footer {
+      border-top: 1px solid rgba(12, 36, 32, 0.08);
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(14px);
+    }
+
+    .app-footer__content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      width: min(1220px, 100%);
+      margin: 0 auto;
+      padding: 1.25rem clamp(1.5rem, 3vw, 3rem);
+      color: var(--text-secondary);
+      font-size: 0.925rem;
+    }
+
+    .app-footer__links {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .app-footer__links a {
+      color: inherit;
+      font-weight: 600;
+      text-decoration: none;
+      position: relative;
+    }
+
+    .app-footer__links a::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      bottom: -0.2rem;
+      width: 100%;
+      height: 2px;
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.5);
+      opacity: 0;
+      transform: scaleX(0.6);
+      transform-origin: center;
+      transition: opacity 150ms ease, transform 150ms ease;
+    }
+
+    .app-footer__links a:hover::after,
+    .app-footer__links a:focus-visible::after {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+
+    @media (max-width: 720px) {
+      .app-footer__content {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
   `],
   template: `
     <app-navbar />
@@ -80,6 +139,16 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         <app-cart-sidebar *ngIf="showCartSidebar()" />
       </div>
     </main>
+    <footer class="app-footer">
+      <div class="app-footer__content">
+        <span>© {{ currentYear }} The Fun Part. Alle rechten voorbehouden.</span>
+        <nav class="app-footer__links" aria-label="Footer links">
+          <a routerLink="/algemene-voorwaarden">Algemene voorwaarden</a>
+          <span aria-hidden="true">•</span>
+          <a routerLink="/privacyverklaring">Privacyverklaring</a>
+        </nav>
+      </div>
+    </footer>
     <app-cookie-consent />
   `
 })
@@ -87,6 +156,7 @@ export class AppComponent {
   private router = inject(Router);
   private cardSpotlight = inject(CardSpotlightService);
 
+  readonly currentYear = new Date().getFullYear();
   readonly showCartSidebar = signal(this.shouldShowCart(this.router.url));
   readonly showSidebarShell = computed(
     () => this.showCartSidebar() || this.cardSpotlight.spotlight() !== null
