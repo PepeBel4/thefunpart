@@ -8,13 +8,15 @@ import {
   inject,
   signal
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { NgFor, NgIf } from '@angular/common';
 import { CartService } from '../cart/cart.service';
 import { TranslatePipe } from './translate.pipe';
 import { TranslationService } from '../core/translation.service';
 import { UserMenuComponent } from './user-menu.component';
+import { filter } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 type LanguageOption = { code: string; label: string; flag: string };
 
@@ -509,7 +511,7 @@ type LanguageOption = { code: string; label: string; flag: string };
           </ul>
         </div>
         <app-user-menu class="user-menu"></app-user-menu>
-        <a routerLink="/checkout" class="cart-pill">
+        <a *ngIf="showCartPill()" routerLink="/checkout" class="cart-pill">
           <span aria-hidden="true" class="cart-icon">🛒</span>
           <span class="cart-count">{{ cart.count() }}</span>
           <span class="sr-only">
@@ -524,6 +526,7 @@ export class NavbarComponent {
   auth = inject(AuthService);
   cart = inject(CartService);
   private i18n = inject(TranslationService);
+  private router = inject(Router);
   @ViewChild('languageMenu') languageMenu?: ElementRef<HTMLElement>;
   languages: LanguageOption[] = this.i18n.languages.map((lang) => ({
     ...lang,
@@ -531,6 +534,7 @@ export class NavbarComponent {
   }));
   language = this.i18n.languageSignal;
   selectedLanguage = signal(this.language());
+  readonly showCartPill = signal(!this.isAdminRoute(this.router.url));
   selectedLanguageDetails = computed<LanguageOption>(() => {
     const fallback = this.languages[0];
     return this.languages.find((lang) => lang.code === this.selectedLanguage()) ?? fallback;
@@ -544,6 +548,20 @@ export class NavbarComponent {
       this.selectedLanguage.set(this.language());
       this.selectedLanguageOptionId = this.languageOptionId(this.selectedLanguage());
     });
+
+    this.router.events
+      .pipe(
+        takeUntilDestroyed(),
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd)
+      )
+      .subscribe(event => {
+        this.showCartPill.set(!this.isAdminRoute(event.urlAfterRedirects));
+      });
+  }
+
+  private isAdminRoute(url: string): boolean {
+    const normalized = url.split('?')[0]?.split('#')[0] ?? '';
+    return normalized === '/admin' || normalized.startsWith('/admin/');
   }
 
   onLanguageChange(code: string) {
