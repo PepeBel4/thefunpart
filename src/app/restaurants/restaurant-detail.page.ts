@@ -58,6 +58,12 @@ type PendingCartAddition = {
   quantity: number;
 };
 
+type MenuItemModalContext = {
+  item: MenuItem;
+  category: CartCategorySelection | null;
+  restaurant: Restaurant;
+};
+
 type CounterLocationViewModel = {
   location: Location;
   telephone: string | null;
@@ -362,174 +368,6 @@ type CounterLocationViewModel = {
       margin-bottom: 0;
     }
 
-    .menu-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 1.5rem;
-    }
-
-    .card {
-      background: var(--surface);
-      border-radius: var(--radius-card);
-      padding: 1.5rem;
-      box-shadow: var(--shadow-soft);
-      border: 1px solid rgba(10, 10, 10, 0.05);
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .card::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(135deg, rgba(var(--brand-green-rgb, 6, 193, 103), 0.12), transparent 60%);
-      opacity: 0;
-      transition: opacity 0.2s ease;
-      pointer-events: none;
-    }
-
-    .card.highlighted {
-      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.4);
-      box-shadow: 0 0 0 3px rgba(var(--brand-green-rgb, 6, 193, 103), 0.14), var(--shadow-soft);
-    }
-
-    .card:hover::after {
-      opacity: 1;
-    }
-
-    .price {
-      font-weight: 700;
-      font-size: 1.1rem;
-    }
-
-    .price-group {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .allergen-badges {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.35rem;
-    }
-
-    .allergen-badges .badge {
-      background: rgba(229, 62, 62, 0.12);
-      color: #8f1e1e;
-      border-radius: 999px;
-      padding: 0.3rem 0.65rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      line-height: 1;
-    }
-
-    .allergen-badges .badge app-allergen-icon {
-      --allergen-icon-bg: rgba(229, 62, 62, 0.2);
-      --allergen-icon-border: rgba(143, 30, 30, 0.24);
-    }
-
-    .price-group .price.discounted {
-      color: var(--brand-green);
-      font-size: 1.25rem;
-    }
-
-    .price-group .price.original {
-      text-decoration: line-through;
-      font-weight: 500;
-      font-size: 0.95rem;
-      color: var(--text-secondary);
-    }
-
-    .discount-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.25rem;
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: color-mix(in srgb, var(--brand-green) 65%, black);
-      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.14);
-      padding: 0.3rem 0.6rem;
-      border-radius: 999px;
-    }
-
-    .quantity-controls {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.85rem;
-      padding: 0.5rem 0.75rem;
-      border: 1px solid var(--border-soft);
-      border-radius: 999px;
-      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.08);
-      color: var(--text-primary);
-      font-weight: 600;
-      width: fit-content;
-    }
-
-    .quantity-controls .quantity-button {
-      background: transparent;
-      border: 0;
-      color: inherit;
-      font-size: 1.25rem;
-      font-weight: 600;
-      cursor: pointer;
-      width: 1.75rem;
-      height: 1.75rem;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 50%;
-      transition: background 0.2s ease;
-    }
-
-    .quantity-controls .quantity-button:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-
-    .quantity-controls .quantity-button:not(:disabled):hover,
-    .quantity-controls .quantity-button:not(:disabled):focus {
-      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.18);
-      outline: none;
-    }
-
-    .quantity-controls .quantity-button:focus-visible {
-      outline: 2px solid var(--brand-green);
-      outline-offset: 2px;
-    }
-
-    .quantity-controls .quantity-display {
-      min-width: 1.5rem;
-      text-align: center;
-    }
-
-    .card button {
-      align-self: flex-start;
-      background: var(--brand-green);
-      color: var(--brand-on-primary);
-      border: 0;
-      border-radius: 12px;
-      padding: 0.6rem 1.1rem;
-      font-weight: 600;
-      cursor: pointer;
-      box-shadow: 0 12px 24px rgba(var(--brand-green-rgb, 6, 193, 103), 0.24);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .card button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 16px 32px rgba(var(--brand-green-rgb, 6, 193, 103), 0.28);
-    }
-
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -554,6 +392,7 @@ type CounterLocationViewModel = {
       flex-direction: column;
       gap: 1.25rem;
     }
+
 
 
     .modal h3 {
@@ -719,11 +558,21 @@ type CounterLocationViewModel = {
               [attr.id]="getMenuItemAnchor(m)"
               [class.highlighted]="shouldHighlightMenuItem(m)"
             >
-              <app-menu-item-photo-slider
-                *ngIf="m.photos?.length"
-                [photos]="m.photos"
-                [itemName]="m.name"
-              ></app-menu-item-photo-slider>
+              <button
+                type="button"
+                class="card-info-button"
+                (click)="openMenuItemModal(m, category, r)"
+                [attr.aria-label]="
+                  'restaurantDetail.menuItemInfoLabel'
+                    | translate: 'View details for {{name}}'
+                    : { name: m.name }
+                "
+              >
+                <span aria-hidden="true">i</span>
+              </button>
+              <div class="card-media" *ngIf="getPrimaryPhotoUrl(m) as photoUrl">
+                <img [src]="photoUrl" [alt]="m.name" loading="lazy" />
+              </div>
               <h4>{{ m.name }}</h4>
               <p>
                 {{
@@ -731,30 +580,17 @@ type CounterLocationViewModel = {
                     ('restaurantDetail.customerFavourite' | translate: 'Customer favourite')
                 }}
               </p>
-              <div class="price-group" *ngIf="hasDiscount(m); else regularPrice">
+              <div class="price-group" *ngIf="hasDiscount(m); else cardRegularPrice">
                 <span class="price discounted">
                   {{ (getCurrentPriceCents(m) / 100) | currency:'EUR' }}
                 </span>
                 <span class="price original">
                   {{ (m.price_cents / 100) | currency:'EUR' }}
                 </span>
-                <span class="discount-pill">
-                  {{ 'restaurantDetail.discountBadge' | translate: 'Special offer' }}
-                </span>
               </div>
-              <ng-template #regularPrice>
+              <ng-template #cardRegularPrice>
                 <span class="price">{{ (m.price_cents / 100) | currency:'EUR' }}</span>
               </ng-template>
-              <div class="allergen-badges" *ngIf="m.allergens?.length">
-                <ng-container *ngFor="let allergen of m.allergens">
-                  <ng-container *ngIf="resolveAllergenLabel(allergen) as allergenLabel">
-                    <span class="badge">
-                      <app-allergen-icon [allergen]="allergen"></app-allergen-icon>
-                      <span>{{ allergenLabel }}</span>
-                    </span>
-                  </ng-container>
-                </ng-container>
-              </div>
               <div class="quantity-controls" role="group" aria-label="{{ 'cart.quantity' | translate: 'Quantity' }}">
                 <button
                   type="button"
@@ -786,6 +622,99 @@ type CounterLocationViewModel = {
         </section>
         <div class="menu-empty" *ngIf="!menuCategories.length && searchTerm">
           {{ 'restaurantDetail.menuSearchEmpty' | translate: 'No menu items match your search.' }}
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="menuItemModal() as menuItemContext">
+        <div class="modal-backdrop" (click)="closeMenuItemModal()">
+          <div
+            class="modal menu-item-modal"
+            role="dialog"
+            aria-modal="true"
+            [attr.aria-labelledby]="'menu-item-modal-title-' + menuItemContext.item.id"
+            [attr.aria-describedby]="'menu-item-modal-description-' + menuItemContext.item.id"
+            (click)="$event.stopPropagation()"
+          >
+            <button
+              type="button"
+              class="modal-close-button"
+              (click)="closeMenuItemModal()"
+              [attr.aria-label]="'restaurantDetail.infoModalClose' | translate: 'Close'"
+            >
+              <span aria-hidden="true">×</span>
+            </button>
+            <div *ngIf="menuItemContext.item.photos?.length">
+              <app-menu-item-photo-slider
+                [photos]="menuItemContext.item.photos"
+                [itemName]="menuItemContext.item.name"
+              ></app-menu-item-photo-slider>
+            </div>
+            <h3 id="menu-item-modal-title-{{ menuItemContext.item.id }}">
+              {{ menuItemContext.item.name }}
+            </h3>
+            <div class="price-group" *ngIf="hasDiscount(menuItemContext.item); else modalRegularPrice">
+              <span class="price discounted">
+                {{ (getCurrentPriceCents(menuItemContext.item) / 100) | currency:'EUR' }}
+              </span>
+              <span class="price original">
+                {{ (menuItemContext.item.price_cents / 100) | currency:'EUR' }}
+              </span>
+              <span class="discount-pill">
+                {{ 'restaurantDetail.discountBadge' | translate: 'Special offer' }}
+              </span>
+            </div>
+            <ng-template #modalRegularPrice>
+              <span class="price">{{ (menuItemContext.item.price_cents / 100) | currency:'EUR' }}</span>
+            </ng-template>
+            <p id="menu-item-modal-description-{{ menuItemContext.item.id }}">
+              {{
+                menuItemContext.item.description ||
+                  ('restaurantDetail.customerFavourite' | translate: 'Customer favourite')
+              }}
+            </p>
+            <div *ngIf="menuItemContext.item.allergens?.length">
+              <h4>{{ 'restaurantDetail.menuItemAllergensHeading' | translate: 'Allergens' }}</h4>
+              <div class="allergen-badges">
+                <ng-container *ngFor="let allergen of menuItemContext.item.allergens">
+                  <ng-container *ngIf="resolveAllergenLabel(allergen) as allergenLabel">
+                    <span class="badge">
+                      <app-allergen-icon [allergen]="allergen"></app-allergen-icon>
+                      <span>{{ allergenLabel }}</span>
+                    </span>
+                  </ng-container>
+                </ng-container>
+              </div>
+            </div>
+            <div class="modal-actions">
+              <div class="quantity-controls" role="group" aria-label="{{ 'cart.quantity' | translate: 'Quantity' }}">
+                <button
+                  type="button"
+                  class="quantity-button"
+                  (click)="changeQuantity(menuItemContext.item.id, -1)"
+                  [disabled]="getQuantity(menuItemContext.item.id) === 1"
+                  [attr.aria-label]="'cart.decrease' | translate: 'Decrease quantity'"
+                >
+                  −
+                </button>
+                <span class="quantity-display" aria-live="polite">{{ getQuantity(menuItemContext.item.id) }}</span>
+                <button
+                  type="button"
+                  class="quantity-button"
+                  (click)="changeQuantity(menuItemContext.item.id, 1)"
+                  [attr.aria-label]="'cart.increase' | translate: 'Increase quantity'"
+                >
+                  +
+                </button>
+              </div>
+              <button
+                type="button"
+                class="modal-button primary"
+                (click)="addMenuItemToCartFromModal(menuItemContext, $event)"
+              >
+                {{ 'restaurantDetail.addToCart' | translate: 'Add to cart' }}
+              </button>
+            </div>
+          </div>
         </div>
       </ng-container>
 
@@ -947,6 +876,7 @@ export class RestaurantDetailPage implements OnDestroy {
   private searchTerm$ = new BehaviorSubject<string>('');
   menuCategories$: Observable<MenuCategoryGroup[]> = this.createMenuCategoriesStream();
   searchTerm = '';
+  menuItemModal = signal<MenuItemModalContext | null>(null);
   infoModalOpen = signal(false);
   counterLocationVm$: Observable<CounterLocationViewModel | null> = this.locations.listForRestaurant(this.id).pipe(
     map(locations => this.pickCounterLocation(locations)),
@@ -1034,6 +964,9 @@ export class RestaurantDetailPage implements OnDestroy {
     this.cartFlights.set([]);
     this.unlockBodyScroll();
     this.searchTerm$.complete();
+    if (this.menuItemModal()) {
+      this.closeMenuItemModal();
+    }
     if (this.infoModalOpen()) {
       this.closeInfoModal();
     }
@@ -1134,6 +1067,22 @@ export class RestaurantDetailPage implements OnDestroy {
     return typeof discounted === 'number' && discounted >= 0 && discounted < item.price_cents;
   }
 
+  getPrimaryPhotoUrl(item: MenuItem): string | null {
+    const photos = item.photos;
+    if (!photos?.length) {
+      return null;
+    }
+
+    for (const photo of photos) {
+      const url = photo?.url;
+      if (url) {
+        return url;
+      }
+    }
+
+    return null;
+  }
+
   getCurrentPriceCents(item: MenuItem): number {
     const discounted = item.discounted_price_cents;
     if (typeof discounted === 'number' && discounted >= 0) {
@@ -1215,6 +1164,33 @@ export class RestaurantDetailPage implements OnDestroy {
     if (triggerRect) {
       this.launchCartFlight(quantity, triggerRect);
     }
+  }
+
+  openMenuItemModal(item: MenuItem, group: MenuCategoryGroup, restaurant: Restaurant) {
+    const alreadyOpen = this.menuItemModal() !== null;
+    this.menuItemModal.set({
+      item,
+      category: this.resolveCartCategory(group, item),
+      restaurant,
+    });
+
+    if (!alreadyOpen) {
+      this.lockBodyScroll();
+    }
+  }
+
+  closeMenuItemModal() {
+    if (!this.menuItemModal()) {
+      return;
+    }
+
+    this.menuItemModal.set(null);
+    this.unlockBodyScroll();
+  }
+
+  addMenuItemToCartFromModal(context: MenuItemModalContext, event: Event) {
+    this.addToCart(context.item, context.category, context.restaurant, this.getQuantity(context.item.id), event);
+    this.closeMenuItemModal();
   }
 
   confirmRestaurantMismatch() {
@@ -1345,6 +1321,12 @@ export class RestaurantDetailPage implements OnDestroy {
 
   @HostListener('document:keydown.escape', ['$event'])
   onEscape(event: Event) {
+    if (this.menuItemModal()) {
+      event.preventDefault();
+      this.closeMenuItemModal();
+      return;
+    }
+
     if (this.infoModalOpen()) {
       event.preventDefault();
       this.closeInfoModal();

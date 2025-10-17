@@ -197,3 +197,257 @@ button {
   color: var(--text-secondary);
 }
 
+app-restaurant-detail .card-info-button {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--brand-green-rgb, 6, 193, 103), 0.18);
+  background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.08);
+  color: var(--brand-green);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  z-index: 1;
+}
+
+app-restaurant-detail .card-info-button:hover,
+app-restaurant-detail .card-info-button:focus {
+  background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.16);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(var(--brand-green-rgb, 6, 193, 103), 0.2);
+}
+
+app-restaurant-detail .card-info-button:focus-visible {
+  outline: 2px solid var(--brand-green);
+  outline-offset: 2px;
+}
+
+app-restaurant-detail .card-media {
+  border-radius: 16px;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  background: rgba(10, 10, 10, 0.04);
+}
+
+app-restaurant-detail .card-media img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+app-restaurant-detail .card button:not(.card-info-button):not(.quantity-button) {
+  align-self: flex-start;
+  background: var(--brand-green);
+  color: var(--brand-on-primary);
+  border: 0;
+  border-radius: 12px;
+  padding: 0.6rem 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 12px 24px rgba(var(--brand-green-rgb, 6, 193, 103), 0.24);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+app-restaurant-detail .card button:not(.card-info-button):not(.quantity-button):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px rgba(var(--brand-green-rgb, 6, 193, 103), 0.28);
+}
+
+app-restaurant-detail .card button:not(.card-info-button):not(.quantity-button):focus-visible {
+  outline: 2px solid var(--brand-green);
+  outline-offset: 3px;
+}
+
+app-restaurant-detail .menu-item-modal {
+  max-width: 640px;
+  text-align: left;
+  position: relative;
+}
+
+app-restaurant-detail .modal-close-button {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  border: none;
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-secondary);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.25rem;
+  font-weight: 600;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+app-restaurant-detail .modal-close-button:hover,
+app-restaurant-detail .modal-close-button:focus {
+  background: rgba(0, 0, 0, 0.12);
+  color: var(--text-primary);
+}
+
+app-restaurant-detail .modal-close-button:focus-visible {
+  outline: 2px solid var(--brand-green);
+  outline-offset: 2px;
+}
+
+app-restaurant-detail .menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.25rem;
+}
+
+app-restaurant-detail .card {
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  padding: 1.25rem 1.25rem 1.5rem;
+  box-shadow: var(--shadow-soft);
+  border: 1px solid rgba(10, 10, 10, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  position: relative;
+  overflow: hidden;
+}
+
+app-restaurant-detail .card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(var(--brand-green-rgb, 6, 193, 103), 0.12), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+app-restaurant-detail .card.highlighted {
+  border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.4);
+  box-shadow: 0 0 0 3px rgba(var(--brand-green-rgb, 6, 193, 103), 0.14), var(--shadow-soft);
+}
+
+app-restaurant-detail .card:hover::after {
+  opacity: 1;
+}
+
+app-restaurant-detail .price {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+app-restaurant-detail .price-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+app-restaurant-detail .allergen-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+app-restaurant-detail .allergen-badges .badge {
+  background: rgba(229, 62, 62, 0.12);
+  color: #8f1e1e;
+  border-radius: 999px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  line-height: 1;
+}
+
+app-restaurant-detail .allergen-badges .badge app-allergen-icon {
+  --allergen-icon-bg: rgba(229, 62, 62, 0.2);
+  --allergen-icon-border: rgba(143, 30, 30, 0.24);
+}
+
+app-restaurant-detail .price-group .price.discounted {
+  color: var(--brand-green);
+  font-size: 1.25rem;
+}
+
+app-restaurant-detail .price-group .price.original {
+  text-decoration: line-through;
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+app-restaurant-detail .discount-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: color-mix(in srgb, var(--brand-green) 65%, black);
+  background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.14);
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+}
+
+app-restaurant-detail .quantity-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.08);
+  color: var(--text-primary);
+  font-weight: 600;
+  width: fit-content;
+}
+
+app-restaurant-detail .quantity-controls .quantity-button {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font-size: 1.25rem;
+  font-weight: 600;
+  cursor: pointer;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s ease;
+}
+
+app-restaurant-detail .quantity-controls .quantity-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+app-restaurant-detail .quantity-controls .quantity-button:not(:disabled):hover,
+app-restaurant-detail .quantity-controls .quantity-button:not(:disabled):focus {
+  background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.18);
+  outline: none;
+}
+
+app-restaurant-detail .quantity-controls .quantity-button:focus-visible {
+  outline: 2px solid var(--brand-green);
+  outline-offset: 2px;
+}
+
+app-restaurant-detail .quantity-controls .quantity-display {
+  min-width: 1.5rem;
+  text-align: center;
+}
+
