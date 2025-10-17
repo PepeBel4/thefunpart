@@ -1,8 +1,11 @@
 import { AsyncPipe, CurrencyPipe, DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, inject } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import {
   BehaviorSubject,
+  combineLatest,
   catchError,
+  debounceTime,
   distinctUntilChanged,
   map,
   of,
@@ -11,7 +14,7 @@ import {
   switchMap,
   tap,
 } from 'rxjs';
-import { Order } from '../core/models';
+import { Order, OrderScenario, OrderTargetTimeType } from '../core/models';
 import { OrderService } from '../orders/order.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { AdminRestaurantContextService } from './admin-restaurant-context.service';
@@ -23,10 +26,25 @@ type SelectedOrderState = {
   error: boolean;
 };
 
+type OrderFilterFormValue = {
+  id: string;
+  status: string;
+  state: string;
+  paymentState: string;
+  scenario: string;
+  targetTimeType: string;
+  userEmail: string;
+  minTotal: string;
+  maxTotal: string;
+  dateFrom: string;
+  dateTo: string;
+  sort: string;
+};
+
 @Component({
   standalone: true,
   selector: 'app-admin-recent-orders',
-  imports: [AsyncPipe, CurrencyPipe, DatePipe, NgFor, NgIf, TranslatePipe],
+  imports: [AsyncPipe, CurrencyPipe, DatePipe, NgFor, NgIf, ReactiveFormsModule, TranslatePipe],
   styles: [`
     section.card {
       background: var(--surface);
@@ -44,6 +62,76 @@ type SelectedOrderState = {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
       gap: clamp(1.25rem, 3vw, 2rem);
       align-items: flex-start;
+    }
+
+    .filters {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding: 1rem;
+      border-radius: 0.9rem;
+      border: 1px solid var(--border-soft);
+      background: rgba(10, 10, 10, 0.04);
+    }
+
+    .filters-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.75rem 1rem;
+    }
+
+    .filters label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .filters label span {
+      font-weight: 600;
+      color: var(--text-primary, inherit);
+    }
+
+    .filters input,
+    .filters select {
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.5rem;
+      border: 1px solid var(--border-soft);
+      font: inherit;
+      background: var(--surface);
+      color: inherit;
+    }
+
+    .filters input:focus,
+    .filters select:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(var(--brand-green-rgb, 6, 193, 103), 0.2);
+      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.4);
+    }
+
+    .filters-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .filters button[type='button'] {
+      padding: 0.5rem 0.9rem;
+      border-radius: 999px;
+      border: 1px solid rgba(var(--brand-green-rgb, 6, 193, 103), 0.4);
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.12);
+      color: var(--brand-green, #06c167);
+      cursor: pointer;
+      transition: background-color 150ms ease, box-shadow 150ms ease;
+    }
+
+    .filters button[type='button']:hover,
+    .filters button[type='button']:focus-visible {
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.18);
+      box-shadow: 0 6px 16px rgba(var(--brand-green-rgb, 6, 193, 103), 0.18);
+      outline: none;
     }
 
     .orders-panel,
@@ -198,6 +286,83 @@ type SelectedOrderState = {
         <ng-container *ngIf="orders.length; else emptyOrders">
           <div class="layout">
             <div class="orders-panel">
+              <form class="filters" [formGroup]="filterForm" (submit)="$event.preventDefault()">
+                <div class="filters-grid">
+                  <label>
+                    <span>{{ 'admin.orders.filters.orderId' | translate: 'Order ID' }}</span>
+                    <input type="number" inputmode="numeric" formControlName="id" placeholder="e.g. 1201" />
+                  </label>
+                  <label>
+                    <span>{{ 'admin.orders.filters.status' | translate: 'Status' }}</span>
+                    <select formControlName="status">
+                      <option *ngFor="let option of statusOptions" [value]="option.value">
+                        {{ option.labelKey | translate: option.fallback }}
+                      </option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>{{ 'admin.orders.filters.state' | translate: 'Order state' }}</span>
+                    <select formControlName="state">
+                      <option *ngFor="let option of stateOptions" [value]="option.value">
+                        {{ option.labelKey | translate: option.fallback }}
+                      </option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>{{ 'admin.orders.filters.paymentState' | translate: 'Payment state' }}</span>
+                    <input type="text" formControlName="paymentState" placeholder="e.g. paid" />
+                  </label>
+                  <label>
+                    <span>{{ 'admin.orders.filters.scenario' | translate: 'Scenario' }}</span>
+                    <select formControlName="scenario">
+                      <option *ngFor="let option of scenarioOptions" [value]="option.value">
+                        {{ option.labelKey | translate: option.fallback }}
+                      </option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>{{ 'admin.orders.filters.timing' | translate: 'Target time' }}</span>
+                    <select formControlName="targetTimeType">
+                      <option *ngFor="let option of targetTimeTypeOptions" [value]="option.value">
+                        {{ option.labelKey | translate: option.fallback }}
+                      </option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>{{ 'admin.orders.filters.customer' | translate: 'Customer email' }}</span>
+                    <input type="email" formControlName="userEmail" placeholder="name@example.com" />
+                  </label>
+                  <label>
+                    <span>{{ 'admin.orders.filters.minTotal' | translate: 'Minimum total (€)' }}</span>
+                    <input type="number" formControlName="minTotal" step="0.01" min="0" placeholder="0.00" />
+                  </label>
+                  <label>
+                    <span>{{ 'admin.orders.filters.maxTotal' | translate: 'Maximum total (€)' }}</span>
+                    <input type="number" formControlName="maxTotal" step="0.01" min="0" placeholder="0.00" />
+                  </label>
+                  <label>
+                    <span>{{ 'admin.orders.filters.dateFrom' | translate: 'From date' }}</span>
+                    <input type="date" formControlName="dateFrom" />
+                  </label>
+                  <label>
+                    <span>{{ 'admin.orders.filters.dateTo' | translate: 'To date' }}</span>
+                    <input type="date" formControlName="dateTo" />
+                  </label>
+                  <label>
+                    <span>{{ 'admin.orders.filters.sort' | translate: 'Sort by' }}</span>
+                    <select formControlName="sort">
+                      <option *ngFor="let option of sortOptions" [value]="option.value">
+                        {{ option.labelKey | translate: option.fallback }}
+                      </option>
+                    </select>
+                  </label>
+                </div>
+                <div class="filters-actions">
+                  <button type="button" (click)="clearFilters()">
+                    {{ 'admin.orders.filters.reset' | translate: 'Reset filters' }}
+                  </button>
+                </div>
+              </form>
               <div class="orders-list" role="list">
                 <button
                   type="button"
@@ -311,38 +476,91 @@ type SelectedOrderState = {
 export class AdminRecentOrdersPage {
   private context = inject(AdminRestaurantContextService);
   private orderService = inject(OrderService);
+  private fb = inject(FormBuilder);
+
+  private readonly defaultFilters: OrderFilterFormValue = {
+    id: '',
+    status: '',
+    state: '',
+    paymentState: '',
+    scenario: '',
+    targetTimeType: '',
+    userEmail: '',
+    minTotal: '',
+    maxTotal: '',
+    dateFrom: '',
+    dateTo: '',
+    sort: 'created_at desc',
+  };
+
+  readonly filterForm = this.fb.nonNullable.group({
+    id: this.defaultFilters.id,
+    status: this.defaultFilters.status,
+    state: this.defaultFilters.state,
+    paymentState: this.defaultFilters.paymentState,
+    scenario: this.defaultFilters.scenario,
+    targetTimeType: this.defaultFilters.targetTimeType,
+    userEmail: this.defaultFilters.userEmail,
+    minTotal: this.defaultFilters.minTotal,
+    maxTotal: this.defaultFilters.maxTotal,
+    dateFrom: this.defaultFilters.dateFrom,
+    dateTo: this.defaultFilters.dateTo,
+    sort: this.defaultFilters.sort,
+  });
+
+  readonly statusOptions: ReadonlyArray<{ value: string; labelKey: string; fallback: string }> = [
+    { value: '', labelKey: 'admin.orders.filters.status.any', fallback: 'Any status' },
+    { value: 'pending', labelKey: 'admin.orders.filters.status.pending', fallback: 'Pending' },
+    { value: 'confirmed', labelKey: 'admin.orders.filters.status.confirmed', fallback: 'Confirmed' },
+    { value: 'preparing', labelKey: 'admin.orders.filters.status.preparing', fallback: 'Preparing' },
+    { value: 'delivered', labelKey: 'admin.orders.filters.status.delivered', fallback: 'Delivered' },
+  ];
+
+  readonly stateOptions: ReadonlyArray<{ value: string; labelKey: string; fallback: string }> = [
+    { value: '', labelKey: 'admin.orders.filters.state.any', fallback: 'Any state' },
+    { value: 'composing', labelKey: 'admin.orders.filters.state.composing', fallback: 'Composing' },
+    { value: 'sent', labelKey: 'admin.orders.filters.state.sent', fallback: 'Sent' },
+  ];
+
+  readonly scenarioOptions: ReadonlyArray<{ value: '' | OrderScenario; labelKey: string; fallback: string }> = [
+    { value: '', labelKey: 'admin.orders.filters.scenario.any', fallback: 'Any scenario' },
+    { value: 'takeaway', labelKey: 'admin.orders.filters.scenario.takeaway', fallback: 'Takeaway' },
+    { value: 'delivery', labelKey: 'admin.orders.filters.scenario.delivery', fallback: 'Delivery' },
+    { value: 'eatin', labelKey: 'admin.orders.filters.scenario.eatin', fallback: 'Eat in' },
+  ];
+
+  readonly targetTimeTypeOptions: ReadonlyArray<{
+    value: '' | OrderTargetTimeType;
+    labelKey: string;
+    fallback: string;
+  }> = [
+    { value: '', labelKey: 'admin.orders.filters.timing.any', fallback: 'Any timing' },
+    { value: 'asap', labelKey: 'admin.orders.filters.timing.asap', fallback: 'ASAP' },
+    { value: 'scheduled', labelKey: 'admin.orders.filters.timing.scheduled', fallback: 'Scheduled' },
+  ];
+
+  readonly sortOptions: ReadonlyArray<{ value: string; labelKey: string; fallback: string }> = [
+    { value: 'created_at desc', labelKey: 'admin.orders.filters.sort.newest', fallback: 'Newest first' },
+    { value: 'created_at asc', labelKey: 'admin.orders.filters.sort.oldest', fallback: 'Oldest first' },
+    { value: 'total_cents desc', labelKey: 'admin.orders.filters.sort.highestTotal', fallback: 'Highest total' },
+    { value: 'total_cents asc', labelKey: 'admin.orders.filters.sort.lowestTotal', fallback: 'Lowest total' },
+    { value: 'status asc', labelKey: 'admin.orders.filters.sort.statusAsc', fallback: 'Status A → Z' },
+    { value: 'status desc', labelKey: 'admin.orders.filters.sort.statusDesc', fallback: 'Status Z → A' },
+  ];
 
   private selectedOrderId = new BehaviorSubject<number | null>(null);
   private readonly selectedOrderId$ = this.selectedOrderId.asObservable();
 
-  readonly orders$ = this.context.selectedRestaurant$.pipe(
-    switchMap(restaurant =>
-      this.orderService.list().pipe(
-        map(orders => {
-          const restaurantId = restaurant.id;
+  private readonly filterParams$ = this.filterForm.valueChanges.pipe(
+    startWith(this.filterForm.getRawValue()),
+    debounceTime(200),
+    map(value => this.buildQueryParams(value))
+  );
 
-          const filtered = (orders ?? []).filter(order => {
-            const candidate =
-              order.restaurant?.id ??
-              (order as { restaurant_id?: number | string }).restaurant_id ??
-              (order as { restaurantId?: number | string }).restaurantId ??
-              null;
-
-            if (candidate === null || candidate === undefined) {
-              return false;
-            }
-
-            const normalized = typeof candidate === 'string' ? Number(candidate) : candidate;
-
-            if (typeof normalized !== 'number' || Number.isNaN(normalized)) {
-              return false;
-            }
-
-            return normalized === restaurantId;
-          });
-
-          return filtered.sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
-        }),
+  readonly orders$ = combineLatest([this.context.selectedRestaurant$, this.filterParams$]).pipe(
+    switchMap(([restaurant, params]) =>
+      this.orderService.listForRestaurant(restaurant.id, params).pipe(
+        map(orders => orders ?? []),
         tap(orders => {
           const current = this.selectedOrderId.getValue();
           if (!orders.length) {
@@ -355,6 +573,11 @@ export class AdminRecentOrdersPage {
           if (!orders.some(order => order.id === current)) {
             this.selectedOrderId.next(orders[0]?.id ?? null);
           }
+        }),
+        catchError(error => {
+          console.error('Failed to load restaurant orders', error);
+          this.selectedOrderId.next(null);
+          return of<Order[]>([]);
         })
       )
     ),
@@ -403,5 +626,86 @@ export class AdminRecentOrdersPage {
     this.selectedOrderId.next(orderId);
   }
 
-  trackByOrderId = (_: number, order: { id: number }) => order.id;
+  clearFilters(): void {
+    this.filterForm.reset(this.defaultFilters);
+  }
+
+  trackByOrderId(_: number, order: Order): number {
+    return order.id;
+  }
+
+  private buildQueryParams(value: Partial<OrderFilterFormValue>): Record<string, string> {
+    const params: Record<string, string> = {};
+    const q: Record<string, string> = {};
+
+    const trimmedId = value.id?.trim() ?? '';
+    if (trimmedId) {
+      const parsedId = Number.parseInt(trimmedId, 10);
+      if (!Number.isNaN(parsedId)) {
+        q['id_eq'] = String(parsedId);
+      }
+    }
+
+    if (value.status) {
+      q['status_eq'] = value.status;
+    }
+
+    if (value.state) {
+      q['state_eq'] = value.state;
+    }
+
+    const paymentState = value.paymentState?.trim() ?? '';
+    if (paymentState) {
+      q['payment_state_eq'] = paymentState;
+    }
+
+    if (value.scenario) {
+      q['scenario_eq'] = value.scenario;
+    }
+
+    if (value.targetTimeType) {
+      q['target_time_type_eq'] = value.targetTimeType;
+    }
+
+    const email = value.userEmail?.trim() ?? '';
+    if (email) {
+      q['user_email_cont'] = email;
+    }
+
+    const minTotal = Number.parseFloat(value.minTotal ?? '');
+    if (!Number.isNaN(minTotal)) {
+      q['total_cents_gteq'] = String(Math.round(minTotal * 100));
+    }
+
+    const maxTotal = Number.parseFloat(value.maxTotal ?? '');
+    if (!Number.isNaN(maxTotal)) {
+      q['total_cents_lteq'] = String(Math.round(maxTotal * 100));
+    }
+
+    if (value.dateFrom) {
+      const from = new Date(value.dateFrom);
+      if (!Number.isNaN(from.getTime())) {
+        q['created_at_gteq'] = from.toISOString();
+      }
+    }
+
+    if (value.dateTo) {
+      const to = new Date(value.dateTo);
+      if (!Number.isNaN(to.getTime())) {
+        to.setUTCHours(23, 59, 59, 999);
+        q['created_at_lteq'] = to.toISOString();
+      }
+    }
+
+    for (const [key, val] of Object.entries(q)) {
+      params[`q[${key}]`] = val;
+    }
+
+    const sort = value.sort ?? this.defaultFilters.sort;
+    if (sort) {
+      params['q[s]'] = sort;
+    }
+
+    return params;
+  }
 }

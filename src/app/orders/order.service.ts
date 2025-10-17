@@ -18,6 +18,15 @@ export class OrderService {
     return this.api.get<Order[]>('/orders');
   }
 
+  listForRestaurant(
+    restaurantId: number,
+    params?: Record<string, string | number | boolean | ReadonlyArray<string | number | boolean>>
+  ): Observable<Order[]> {
+    return this.api.get<Order[]>(`/restaurants/${restaurantId}/orders`, {
+      params,
+    });
+  }
+
   get(id: number): Observable<Order> {
     return this.api.get<Order>(`/orders/${id}`);
   }
