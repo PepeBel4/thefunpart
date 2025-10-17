@@ -2,8 +2,16 @@ import { Component, HostListener, OnDestroy, effect, inject, signal, computed } 
 import { ActivatedRoute } from '@angular/router';
 import { MenuService } from '../menu/menu.service';
 import { RestaurantService } from './restaurant.service';
-import { AsyncPipe, CurrencyPipe, NgIf, NgFor, NgStyle, DOCUMENT, TitleCasePipe } from '@angular/common';
-import { Allergen, Card, Location, MenuItem, Restaurant } from '../core/models';
+import { AsyncPipe, CurrencyPipe, NgClass, NgIf, NgFor, NgStyle, DOCUMENT, TitleCasePipe } from '@angular/common';
+import {
+  Allergen,
+  Card,
+  Location,
+  LocationOpeningHour,
+  LocationOpeningHourException,
+  MenuItem,
+  Restaurant,
+} from '../core/models';
 import {
   BehaviorSubject,
   Observable,
@@ -64,6 +72,27 @@ type MenuItemModalContext = {
   restaurant: Restaurant;
 };
 
+type CounterLocationStatusViewModel = {
+  state: 'open' | 'closed' | 'closingSoon' | 'openingSoon';
+  headline: string;
+  detail: string | null;
+};
+
+type CounterLocationScheduleEntry = {
+  dayLabel: string;
+  intervals: string[];
+  closed: boolean;
+  isToday: boolean;
+  exceptionLabel: string | null;
+};
+
+type CounterLocationExceptionEntry = {
+  dateLabel: string;
+  statusLabel: string;
+  reasonLabel: string | null;
+  state: 'open' | 'closed';
+};
+
 type CounterLocationViewModel = {
   location: Location;
   telephone: string | null;
@@ -71,12 +100,40 @@ type CounterLocationViewModel = {
   addressLines: string[];
   mapUrl: SafeResourceUrl | null;
   hasDetails: boolean;
+  status: CounterLocationStatusViewModel | null;
+  currentTimeLabel: string | null;
+  schedule: CounterLocationScheduleEntry[];
+  exceptions: CounterLocationExceptionEntry[];
+};
+
+type OpeningInterval = {
+  openMinutes: number;
+  closeMinutes: number;
+};
+
+type ScheduledInterval = {
+  start: Date;
+  end: Date;
+  dateKey: string;
+  dayOfWeek: number;
+  isException: boolean;
 };
 
 @Component({
   standalone: true,
   selector: 'app-restaurant-detail',
-  imports: [AsyncPipe, CurrencyPipe, NgFor, NgIf, TranslatePipe, NgStyle, MenuItemPhotoSliderComponent, AllergenIconComponent, TitleCasePipe],
+  imports: [
+    AsyncPipe,
+    CurrencyPipe,
+    NgClass,
+    NgFor,
+    NgIf,
+    TranslatePipe,
+    NgStyle,
+    MenuItemPhotoSliderComponent,
+    AllergenIconComponent,
+    TitleCasePipe,
+  ],
   styles: [`
     :host {
       display: block;
@@ -235,6 +292,183 @@ type CounterLocationViewModel = {
       display: inline-flex;
       align-items: center;
       gap: 0.4rem;
+    }
+
+    .hero-hours {
+      margin-top: 1.5rem;
+      padding: 1.25rem;
+      background: rgba(255, 255, 255, 0.14);
+      border-radius: clamp(14px, 3vw, 18px);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      backdrop-filter: blur(4px);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .hero-hours-status {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.75rem;
+    }
+
+    .hero-hours-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.45rem 0.85rem;
+      border-radius: 999px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      background: rgba(31, 201, 115, 0.18);
+      border: 1px solid rgba(31, 201, 115, 0.45);
+      color: #eafff4;
+      text-transform: uppercase;
+      font-size: 0.8rem;
+    }
+
+    .hero-hours-badge.closed {
+      background: rgba(241, 73, 73, 0.18);
+      border-color: rgba(241, 73, 73, 0.5);
+      color: #ffeaea;
+    }
+
+    .hero-hours-badge.opening-soon {
+      background: rgba(255, 183, 77, 0.2);
+      border-color: rgba(255, 183, 77, 0.55);
+      color: #fff4e3;
+    }
+
+    .hero-hours-badge.closing-soon {
+      background: rgba(255, 143, 107, 0.22);
+      border-color: rgba(255, 143, 107, 0.55);
+      color: #fff1eb;
+    }
+
+    .hero-hours-current-time {
+      font-size: 0.9rem;
+      opacity: 0.85;
+    }
+
+    .hero-hours-detail {
+      font-size: 0.95rem;
+      opacity: 0.92;
+    }
+
+    .hero-hours-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .hero-hours-day {
+      padding: 0.75rem;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      min-height: 96px;
+    }
+
+    .hero-hours-day.today {
+      background: rgba(255, 255, 255, 0.18);
+      border-color: rgba(255, 255, 255, 0.32);
+    }
+
+    .hero-hours-day-title {
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      font-size: 0.9rem;
+    }
+
+    .hero-hours-day-interval {
+      font-size: 0.95rem;
+      opacity: 0.92;
+    }
+
+    .hero-hours-day-empty {
+      font-size: 0.9rem;
+      opacity: 0.7;
+    }
+
+    .hero-hours-day-exception {
+      font-size: 0.85rem;
+      opacity: 0.85;
+    }
+
+    .hero-hours-exceptions {
+      margin-top: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .hero-hours-exceptions h4 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .hero-hours-exceptions-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .hero-hours-exception {
+      padding: 0.75rem 0.85rem;
+      border-radius: 12px;
+      display: grid;
+      gap: 0.3rem;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    }
+
+    .hero-hours-exception::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0.92;
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+
+    .hero-hours-exception.open::before {
+      background: linear-gradient(135deg, rgba(46, 204, 149, 0.55), rgba(27, 153, 139, 0.4));
+    }
+
+    .hero-hours-exception.closed::before {
+      background: linear-gradient(135deg, rgba(245, 101, 101, 0.55), rgba(203, 67, 67, 0.35));
+    }
+
+    .hero-hours-exception strong {
+      font-weight: 600;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-hours-exception p {
+      margin: 0;
+      font-size: 0.9rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-hours-exception p:last-child {
+      font-size: 0.85rem;
+      opacity: 0.9;
+    }
+
+    .hero-hours-empty {
+      font-size: 0.95rem;
+      opacity: 0.8;
     }
 
     .tag {
@@ -465,6 +699,11 @@ type CounterLocationViewModel = {
         right: 1.5rem;
       }
 
+      .hero-hours {
+        padding: 1rem;
+        gap: 0.75rem;
+      }
+
       .menu-grid {
         grid-template-columns: 1fr;
       }
@@ -512,6 +751,86 @@ type CounterLocationViewModel = {
             <span>{{ 'restaurants.duration' | translate: '20-30 min' }}</span>
             <span>{{ 'restaurants.freeDelivery' | translate: 'Free delivery over €15' }}</span>
           </div>
+          <ng-container *ngIf="counterLocationVm$ | async as counterLocation">
+            <div
+              class="hero-hours"
+              *ngIf="counterLocation && (counterLocation.schedule.length || counterLocation.status || counterLocation.exceptions.length)"
+            >
+              <div class="hero-hours-status" *ngIf="counterLocation.status as status">
+                <span
+                  class="hero-hours-badge"
+                  [ngClass]="{
+                    closed: status.state === 'closed',
+                    'opening-soon': status.state === 'openingSoon',
+                    'closing-soon': status.state === 'closingSoon'
+                  }"
+                >
+                  {{ status.headline }}
+                </span>
+                <span class="hero-hours-detail" *ngIf="status.detail as detail">{{ detail }}</span>
+              </div>
+              <div
+                class="hero-hours-current-time"
+                *ngIf="counterLocation.currentTimeLabel as currentTimeLabel"
+              >
+                {{ currentTimeLabel }}
+              </div>
+              <ng-container *ngIf="counterLocation.schedule.length; else heroHoursScheduleEmpty">
+                <div class="hero-hours-grid">
+                  <div
+                    class="hero-hours-day"
+                    *ngFor="let day of counterLocation.schedule"
+                    [class.today]="day.isToday"
+                  >
+                    <span class="hero-hours-day-title">{{ day.dayLabel }}</span>
+                    <ng-container *ngIf="day.intervals.length; else heroHoursClosed">
+                      <div class="hero-hours-day-interval" *ngFor="let interval of day.intervals">
+                        {{ interval }}
+                      </div>
+                    </ng-container>
+                    <span
+                      class="hero-hours-day-exception"
+                      *ngIf="day.exceptionLabel as exceptionLabel"
+                    >
+                      {{ exceptionLabel }}
+                    </span>
+                  </div>
+                </div>
+              </ng-container>
+              <ng-template #heroHoursScheduleEmpty>
+                <p class="hero-hours-empty">
+                  {{
+                    'restaurantDetail.openingHoursUnavailable'
+                      | translate: 'Opening hours are not available.'
+                  }}
+                </p>
+              </ng-template>
+              <ng-template #heroHoursClosed>
+                <span class="hero-hours-day-empty">
+                  {{ 'restaurantDetail.openingHoursClosed' | translate: 'Closed' }}
+                </span>
+              </ng-template>
+              <div class="hero-hours-exceptions" *ngIf="counterLocation.exceptions.length">
+                <h4>
+                  {{
+                    'restaurantDetail.openingHoursExceptionsHeading'
+                      | translate: 'Exceptions & special openings'
+                  }}
+                </h4>
+                <div class="hero-hours-exceptions-list">
+                  <div
+                    class="hero-hours-exception"
+                    *ngFor="let exception of counterLocation.exceptions"
+                    [ngClass]="exception.state"
+                  >
+                    <strong>{{ exception.dateLabel }}</strong>
+                    <p>{{ exception.statusLabel }}</p>
+                    <p *ngIf="exception.reasonLabel as reasonLabel">{{ reasonLabel }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </ng-container>
         </div>
       </section>
       <ng-container *ngIf="(menuCategories$ | async) as menuCategories">
@@ -1869,6 +2188,15 @@ export class RestaurantDetailPage implements OnDestroy {
       Boolean(email) ||
       addressLines.length > 0 ||
       mapUrl !== null;
+    const openingHours = this.getLocationOpeningHours(location);
+    const openingHourExceptions = this.getLocationOpeningHourExceptions(location);
+    const now = new Date();
+    const weeklySchedule = this.buildWeeklySchedule(openingHours);
+    const exceptionsByDate = this.buildExceptionMap(openingHourExceptions);
+    const status = this.buildCounterLocationStatus(now, weeklySchedule, exceptionsByDate);
+    const schedule = this.buildCounterLocationScheduleEntries(weeklySchedule, exceptionsByDate, now);
+    const exceptions = this.buildCounterLocationExceptionEntries(openingHourExceptions, now);
+    const currentTimeLabel = this.buildCurrentTimeLabel(now);
 
     return {
       location,
@@ -1877,7 +2205,440 @@ export class RestaurantDetailPage implements OnDestroy {
       addressLines,
       mapUrl,
       hasDetails,
+      status,
+      currentTimeLabel,
+      schedule,
+      exceptions,
     };
+  }
+
+  private getLocationOpeningHours(location: Location): LocationOpeningHour[] {
+    const record = location as Location & { opening_hours?: LocationOpeningHour[] | null };
+    return Array.isArray(record.opening_hours) ? record.opening_hours.filter(Boolean) : [];
+  }
+
+  private getLocationOpeningHourExceptions(location: Location): LocationOpeningHourException[] {
+    const record = location as Location & { opening_hour_exceptions?: LocationOpeningHourException[] | null };
+    return Array.isArray(record.opening_hour_exceptions)
+      ? record.opening_hour_exceptions.filter(Boolean)
+      : [];
+  }
+
+  private buildWeeklySchedule(hours: LocationOpeningHour[]): Map<number, OpeningInterval[]> {
+    const schedule = new Map<number, OpeningInterval[]>();
+
+    for (const hour of hours) {
+      const dayOfWeek = typeof hour.day_of_week === 'number' ? hour.day_of_week : Number(hour.day_of_week);
+      if (!Number.isInteger(dayOfWeek)) {
+        continue;
+      }
+
+      const opens = this.parseTimeToMinutes(hour.opens_at);
+      const closes = this.parseTimeToMinutes(hour.closes_at);
+      if (opens === null || closes === null) {
+        continue;
+      }
+
+      const intervals = schedule.get(dayOfWeek) ?? [];
+      intervals.push({ openMinutes: opens, closeMinutes: closes });
+      schedule.set(dayOfWeek, intervals);
+    }
+
+    for (const intervals of schedule.values()) {
+      intervals.sort((a, b) => a.openMinutes - b.openMinutes);
+    }
+
+    return schedule;
+  }
+
+  private buildExceptionMap(
+    exceptions: LocationOpeningHourException[]
+  ): Map<string, LocationOpeningHourException> {
+    const map = new Map<string, LocationOpeningHourException>();
+    for (const exception of exceptions) {
+      if (exception?.date) {
+        map.set(exception.date, exception);
+      }
+    }
+    return map;
+  }
+
+  private buildCounterLocationStatus(
+    now: Date,
+    weeklySchedule: Map<number, OpeningInterval[]>,
+    exceptions: Map<string, LocationOpeningHourException>
+  ): CounterLocationStatusViewModel | null {
+    const upcomingIntervals = this.buildUpcomingIntervals(now, weeklySchedule, exceptions);
+    if (!upcomingIntervals.length) {
+      return null;
+    }
+
+    const nowTime = now.getTime();
+    const currentInterval = upcomingIntervals.find(
+      interval => interval.start.getTime() <= nowTime && nowTime < interval.end.getTime()
+    );
+
+    const closingSoonThresholdMs = 45 * 60 * 1000;
+    const openingSoonThresholdMs = 60 * 60 * 1000;
+
+    if (currentInterval) {
+      const timeUntilClose = currentInterval.end.getTime() - nowTime;
+      const closeLabel = this.formatTimeFromDate(currentInterval.end);
+      const detail = this.i18n.translate(
+        'restaurantDetail.status.openUntil',
+        'Open until {{time}}',
+        { time: closeLabel }
+      );
+      const isClosingSoon = timeUntilClose <= closingSoonThresholdMs;
+      const headlineKey = isClosingSoon
+        ? 'restaurantDetail.status.closingSoon'
+        : 'restaurantDetail.status.openNow';
+      const headline = this.i18n.translate(
+        headlineKey,
+        isClosingSoon ? 'Closing soon' : 'Open now'
+      );
+
+      return {
+        state: isClosingSoon ? 'closingSoon' : 'open',
+        headline,
+        detail,
+      };
+    }
+
+    const nextInterval = upcomingIntervals.find(interval => interval.start.getTime() > nowTime);
+    if (!nextInterval) {
+      const headline = this.i18n.translate('restaurantDetail.status.closed', 'Closed now');
+      return { state: 'closed', headline, detail: null };
+    }
+
+    const timeUntilOpen = nextInterval.start.getTime() - nowTime;
+    const openLabel = this.formatTimeFromDate(nextInterval.start);
+    const dayDiff = this.diffInDays(nextInterval.start, now);
+    let detail: string;
+
+    if (dayDiff === 0) {
+      detail = this.i18n.translate('restaurantDetail.status.opensAt', 'Opens at {{time}}', {
+        time: openLabel,
+      });
+    } else if (dayDiff === 1) {
+      detail = this.i18n.translate(
+        'restaurantDetail.status.opensTomorrow',
+        'Opens tomorrow at {{time}}',
+        { time: openLabel }
+      );
+    } else {
+      const dayLabel = this.getWeekdayLabel(nextInterval.dayOfWeek);
+      detail = this.i18n.translate(
+        'restaurantDetail.status.opensOnDay',
+        'Opens {{day}} at {{time}}',
+        { day: dayLabel, time: openLabel }
+      );
+    }
+
+    const isOpeningSoon = timeUntilOpen <= openingSoonThresholdMs;
+    const headlineKey = isOpeningSoon
+      ? 'restaurantDetail.status.openingSoon'
+      : 'restaurantDetail.status.closed';
+    const headline = this.i18n.translate(
+      headlineKey,
+      isOpeningSoon ? 'Opening soon' : 'Closed now'
+    );
+
+    return {
+      state: isOpeningSoon ? 'openingSoon' : 'closed',
+      headline,
+      detail,
+    };
+  }
+
+  private buildCounterLocationScheduleEntries(
+    weeklySchedule: Map<number, OpeningInterval[]>,
+    exceptions: Map<string, LocationOpeningHourException>,
+    now: Date
+  ): CounterLocationScheduleEntry[] {
+    const entries: CounterLocationScheduleEntry[] = [];
+    const dayOrder = [1, 2, 3, 4, 5, 6, 0];
+    const todayDay = now.getUTCDay();
+    const todayKey = this.formatDateKey(now);
+    const todayException = exceptions.get(todayKey) ?? null;
+    const specialInterval = todayException ? this.convertExceptionToInterval(todayException) : null;
+
+    for (const day of dayOrder) {
+      const baseIntervals = weeklySchedule.get(day) ?? [];
+      let intervals: OpeningInterval[] = baseIntervals;
+      let exceptionLabel: string | null = null;
+
+      if (day === todayDay && todayException) {
+        if (todayException.closed || (!todayException.starts_at && !todayException.ends_at)) {
+          intervals = [];
+          exceptionLabel = this.i18n.translate(
+            'restaurantDetail.openingHoursExceptionClosedToday',
+            'Closed today (exception)'
+          );
+        } else if (specialInterval) {
+          intervals = [specialInterval];
+          exceptionLabel = this.i18n.translate(
+            'restaurantDetail.openingHoursExceptionSpecialToday',
+            'Special hours today'
+          );
+        }
+      }
+
+      const intervalLabels = intervals.map(interval =>
+        this.formatTimeRange(interval.openMinutes, interval.closeMinutes)
+      );
+
+      entries.push({
+        dayLabel: this.getWeekdayLabel(day),
+        intervals: intervalLabels,
+        closed: intervalLabels.length === 0,
+        isToday: day === todayDay,
+        exceptionLabel,
+      });
+    }
+
+    return entries;
+  }
+
+  private buildCounterLocationExceptionEntries(
+    exceptions: LocationOpeningHourException[],
+    now: Date
+  ): CounterLocationExceptionEntry[] {
+    if (!exceptions.length) {
+      return [];
+    }
+
+    const startOfToday = this.startOfDayUtc(now);
+    const items = exceptions
+      .map(exception => ({ exception, date: this.parseDateKey(exception.date) }))
+      .filter((item): item is { exception: LocationOpeningHourException; date: Date } => {
+        return Boolean(item.date && item.date.getTime() >= startOfToday.getTime());
+      })
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    return items.map(item => {
+      const interval = this.convertExceptionToInterval(item.exception);
+      const statusLabel = interval
+        ? this.i18n.translate(
+            'restaurantDetail.openingHoursExceptionOpen',
+            'Open {{time}}',
+            { time: this.formatTimeRange(interval.openMinutes, interval.closeMinutes) }
+          )
+        : this.i18n.translate('restaurantDetail.openingHoursExceptionClosed', 'Closed');
+      const reasonLabel = item.exception.reason?.trim()
+        ? this.i18n.translate(
+            'restaurantDetail.openingHoursExceptionReason',
+            'Reason: {{reason}}',
+            { reason: item.exception.reason.trim() }
+          )
+        : null;
+
+      return {
+        dateLabel: this.formatExceptionDateLabel(item.date, now),
+        statusLabel,
+        reasonLabel,
+        state: interval ? 'open' : 'closed',
+      };
+    });
+  }
+
+  private buildCurrentTimeLabel(now: Date): string {
+    const formatter = new Intl.DateTimeFormat(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZoneName: 'short',
+    });
+    const formatted = formatter.format(now);
+    return this.i18n.translate('restaurantDetail.currentTime', 'Current time: {{time}}', {
+      time: formatted,
+    });
+  }
+
+  private buildUpcomingIntervals(
+    now: Date,
+    weeklySchedule: Map<number, OpeningInterval[]>,
+    exceptions: Map<string, LocationOpeningHourException>
+  ): ScheduledInterval[] {
+    const intervals: ScheduledInterval[] = [];
+    const searchDays = 14;
+    const start = this.startOfDayUtc(now);
+
+    for (let offset = -1; offset < searchDays; offset++) {
+      const dayDate = this.addDays(start, offset);
+      const dateKey = this.formatDateKey(dayDate);
+      const exception = exceptions.get(dateKey) ?? null;
+      let dayIntervals: OpeningInterval[] = [];
+
+      if (exception) {
+        const interval = this.convertExceptionToInterval(exception);
+        if (interval && !exception.closed) {
+          dayIntervals = [interval];
+        } else {
+          dayIntervals = [];
+        }
+      } else {
+        dayIntervals = weeklySchedule.get(dayDate.getUTCDay()) ?? [];
+      }
+
+      for (const interval of dayIntervals) {
+        const startDate = this.createDateWithMinutes(dayDate, interval.openMinutes);
+        let endDate = this.createDateWithMinutes(dayDate, interval.closeMinutes);
+        if (endDate.getTime() <= startDate.getTime()) {
+          endDate = this.addDays(endDate, 1);
+        }
+
+        intervals.push({
+          start: startDate,
+          end: endDate,
+          dateKey,
+          dayOfWeek: dayDate.getUTCDay(),
+          isException: Boolean(exception),
+        });
+      }
+    }
+
+    intervals.sort((a, b) => a.start.getTime() - b.start.getTime());
+    return intervals;
+  }
+
+  private convertExceptionToInterval(
+    exception: LocationOpeningHourException
+  ): OpeningInterval | null {
+    if (exception.closed) {
+      return null;
+    }
+
+    const opens = this.parseTimeToMinutes(exception.starts_at);
+    const closes = this.parseTimeToMinutes(exception.ends_at);
+
+    if (opens === null || closes === null) {
+      return null;
+    }
+
+    return { openMinutes: opens, closeMinutes: closes };
+  }
+
+  private parseTimeToMinutes(value: string | null | undefined): number | null {
+    if (!value) {
+      return null;
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return null;
+    }
+
+    return date.getUTCHours() * 60 + date.getUTCMinutes();
+  }
+
+  private formatTimeRange(openMinutes: number, closeMinutes: number): string {
+    return `${this.formatTime(openMinutes)} – ${this.formatTime(closeMinutes)}`;
+  }
+
+  private formatTime(minutes: number): string {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    const reference = new Date(Date.UTC(2000, 0, 1, hours, mins));
+    const formatter = new Intl.DateTimeFormat(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'UTC',
+    });
+    return formatter.format(reference);
+  }
+
+  private formatTimeFromDate(date: Date): string {
+    return this.formatTime(date.getUTCHours() * 60 + date.getUTCMinutes());
+  }
+
+  private formatDateKey(date: Date): string {
+    const year = date.getUTCFullYear();
+    const month = `${date.getUTCMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getUTCDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private parseDateKey(key: string | null | undefined): Date | null {
+    if (!key) {
+      return null;
+    }
+
+    const parts = key.split('-').map(part => Number.parseInt(part, 10));
+    if (parts.length !== 3 || parts.some(Number.isNaN)) {
+      return null;
+    }
+
+    const [year, month, day] = parts;
+    return new Date(Date.UTC(year, month - 1, day));
+  }
+
+  private startOfDayUtc(date: Date): Date {
+    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  }
+
+  private addDays(date: Date, days: number): Date {
+    return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+  }
+
+  private createDateWithMinutes(baseDate: Date, minutes: number): Date {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return new Date(
+      Date.UTC(baseDate.getUTCFullYear(), baseDate.getUTCMonth(), baseDate.getUTCDate(), hours, mins)
+    );
+  }
+
+  private diffInDays(target: Date, reference: Date): number {
+    const targetStart = this.startOfDayUtc(target);
+    const referenceStart = this.startOfDayUtc(reference);
+    const diffMs = targetStart.getTime() - referenceStart.getTime();
+    return Math.round(diffMs / (24 * 60 * 60 * 1000));
+  }
+
+  private formatExceptionDateLabel(date: Date, now: Date): string {
+    const relativeLabel = this.describeRelativeDay(date, now);
+    const dateFormatter = new Intl.DateTimeFormat(undefined, {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    });
+    const formattedDate = dateFormatter.format(date);
+    return relativeLabel ? `${relativeLabel} · ${formattedDate}` : formattedDate;
+  }
+
+  private describeRelativeDay(date: Date, now: Date): string | null {
+    const dayDiff = this.diffInDays(date, now);
+
+    if (dayDiff === 0) {
+      return this.i18n.translate('restaurantDetail.day.today', 'Today');
+    }
+
+    if (dayDiff === 1) {
+      return this.i18n.translate('restaurantDetail.day.tomorrow', 'Tomorrow');
+    }
+
+    return null;
+  }
+
+  private getWeekdayLabel(day: number): string {
+    switch (day) {
+      case 0:
+        return this.i18n.translate('restaurantDetail.weekday.sunday', 'Sunday');
+      case 1:
+        return this.i18n.translate('restaurantDetail.weekday.monday', 'Monday');
+      case 2:
+        return this.i18n.translate('restaurantDetail.weekday.tuesday', 'Tuesday');
+      case 3:
+        return this.i18n.translate('restaurantDetail.weekday.wednesday', 'Wednesday');
+      case 4:
+        return this.i18n.translate('restaurantDetail.weekday.thursday', 'Thursday');
+      case 5:
+        return this.i18n.translate('restaurantDetail.weekday.friday', 'Friday');
+      case 6:
+        return this.i18n.translate('restaurantDetail.weekday.saturday', 'Saturday');
+      default:
+        return '';
+    }
   }
 
   private buildAddressLines(location: Location): string[] {
