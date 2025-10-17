@@ -982,12 +982,15 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
 
   ngOnChanges(changes: SimpleChanges) {
     if ('restaurantId' in changes) {
-      const id = changes['restaurantId'].currentValue;
-      if (typeof id === 'number' && !Number.isNaN(id)) {
+      const currentValue = changes['restaurantId'].currentValue;
+      const normalizedId = typeof currentValue === 'string' ? Number(currentValue) : currentValue;
+
+      if (typeof normalizedId === 'number' && !Number.isNaN(normalizedId)) {
+        this.restaurantId = normalizedId;
         this.resetState();
-        void this.fetchCategories(id);
+        void this.fetchCategories(normalizedId);
         void this.fetchAllergens();
-        void this.fetchOptions(id);
+        void this.fetchOptions(normalizedId);
         void this.loadMenu();
       }
     }
