@@ -598,7 +598,6 @@ export class AdminRecentOrdersPage {
 
   selectOrder(orderId: number): void {
     this.selectedOrderId.next(orderId);
-    this.selectedOrderRefresh.next(undefined);
   }
 
   trackByOrderId = (_: number, order: { id: number }) => order.id;
