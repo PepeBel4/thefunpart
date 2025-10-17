@@ -1,6 +1,6 @@
 import { NgIf } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
-import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { NavbarComponent } from './shared/navbar.component';
 import { CartSidebarComponent } from './cart/card-sidebar.component';
 import { CookieConsentComponent } from './shared/cookie-consent.component';
@@ -12,7 +12,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NavbarComponent, CartSidebarComponent, CookieConsentComponent, CardSpotlightComponent, NgIf],
+  imports: [RouterOutlet, RouterLink, NavbarComponent, CartSidebarComponent, CookieConsentComponent, CardSpotlightComponent, NgIf],
   styles: [`
     :host {
       display: grid;
@@ -143,9 +143,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
       <div class="app-footer__content">
         <span>© {{ currentYear }} The Fun Part. Alle rechten voorbehouden.</span>
         <nav class="app-footer__links" aria-label="Footer links">
-          <a href="/algemene-voorwaarden">Algemene voorwaarden</a>
+          <a routerLink="/algemene-voorwaarden">Algemene voorwaarden</a>
           <span aria-hidden="true">•</span>
-          <a href="/privacy-verklaring">Privacyverklaring</a>
+          <a routerLink="/privacyverklaring">Privacyverklaring</a>
         </nav>
       </div>
     </footer>
