@@ -622,18 +622,30 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
     const itemsCtx = this.itemsChartElement?.nativeElement.getContext('2d');
 
     if (salesCtx) {
-      this.salesChart?.destroy();
-      this.salesChart = new Chart(salesCtx, this.buildLineChartConfig(dataset.salesByDay));
+      if (!this.salesChart) {
+        this.salesChart = new Chart(salesCtx, this.buildLineChartConfig(dataset.salesByDay));
+      } else {
+        this.updateLineChart(this.salesChart, dataset.salesByDay);
+      }
     }
 
     if (scenarioCtx) {
-      this.scenarioChart?.destroy();
-      this.scenarioChart = new Chart(scenarioCtx, this.buildDoughnutConfig(dataset.scenarioBreakdown));
+      if (!this.scenarioChart) {
+        this.scenarioChart = new Chart(
+          scenarioCtx,
+          this.buildDoughnutConfig(dataset.scenarioBreakdown)
+        );
+      } else {
+        this.updateDoughnutChart(this.scenarioChart, dataset.scenarioBreakdown);
+      }
     }
 
     if (itemsCtx && dataset.topItems.length) {
-      this.itemsChart?.destroy();
-      this.itemsChart = new Chart(itemsCtx, this.buildBarChartConfig(dataset.topItems));
+      if (!this.itemsChart) {
+        this.itemsChart = new Chart(itemsCtx, this.buildBarChartConfig(dataset.topItems));
+      } else {
+        this.updateBarChart(this.itemsChart, dataset.topItems);
+      }
     } else if (this.itemsChart) {
       this.itemsChart.destroy();
       this.itemsChart = null;
@@ -715,6 +727,14 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
     };
   }
 
+  private updateLineChart(chart: Chart<'line'>, data: { label: string; total: number }[]): void {
+    chart.data.labels = data.map(entry => entry.label);
+    if (chart.data.datasets[0]) {
+      chart.data.datasets[0].data = data.map(entry => entry.total);
+    }
+    chart.update('none');
+  }
+
   private buildDoughnutConfig(data: {
     label: string;
     count: number;
@@ -758,6 +778,21 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
         },
       },
     };
+  }
+
+  private updateDoughnutChart(
+    chart: Chart<'doughnut'>,
+    data: { label: string; count: number; total: number }[]
+  ): void {
+    chart.data.labels = data.map(entry => `${entry.label} (${entry.count})`);
+    if (chart.data.datasets[0]) {
+      const palette = ['#06c167', '#0f7b6c', '#ec950f', '#ea5a4f', '#4d64ff'];
+      chart.data.datasets[0].data = data.map(entry => entry.total);
+      chart.data.datasets[0].backgroundColor = data.map(
+        (_, index) => palette[index % palette.length]
+      );
+    }
+    chart.update('none');
   }
 
   private buildBarChartConfig(data: {
@@ -806,6 +841,18 @@ export class AdminReportsPage implements AfterViewInit, OnDestroy {
         },
       },
     };
+  }
+
+  private updateBarChart(
+    chart: Chart<'bar'>,
+    data: { label: string; quantity: number; total: number }[]
+  ): void {
+    chart.data.labels = data.map(entry => entry.label);
+    if (chart.data.datasets[0]) {
+      chart.data.datasets[0].data = data.map(entry => entry.total);
+      chart.data.datasets[0].label = 'Revenue';
+    }
+    chart.update('none');
   }
 
   private formatCurrencyTick(value: unknown): string {
