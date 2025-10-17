@@ -24,6 +24,10 @@ export const appRoutes: Routes = [
         loadComponent: () => import('./admin/admin-recent-orders.page').then(m => m.AdminRecentOrdersPage),
       },
       {
+        path: 'analytics',
+        loadComponent: () => import('./admin/admin-analytics.page').then(m => m.AdminAnalyticsPage),
+      },
+      {
         path: 'photos',
         loadComponent: () => import('./admin/admin-restaurant-photos.page').then(m => m.AdminRestaurantPhotosPage),
       },

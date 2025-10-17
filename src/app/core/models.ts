@@ -346,6 +346,23 @@ export interface Order {
   updated_at?: string;
 }
 
+export interface SalesPipelineReport {
+  timeframe: {
+    start_date: string;
+    end_date: string;
+  };
+  totals: {
+    orders: number;
+    revenue_cents: number;
+    average_order_value_cents: number;
+  };
+  status_breakdown: { status: OrderStatus; order_count: number }[];
+  status_progression: { status: OrderStatus; order_count: number }[];
+  scenario_breakdown: { scenario: OrderScenario; order_count: number }[];
+  target_time_type_breakdown: { target_time_type: OrderTargetTimeType; order_count: number }[];
+  daily_totals: { date: string; order_count: number; revenue_cents: number }[];
+}
+
 export interface Payment {
   id: number;
   amount_cents: number;
