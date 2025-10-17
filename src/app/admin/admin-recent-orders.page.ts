@@ -108,32 +108,96 @@ type SelectedOrderState = {
       font-size: 0.9rem;
     }
 
-    .status-flow {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.4rem;
+    .status-current {
+      display: inline-flex;
       align-items: center;
-    }
-
-    .status-step {
+      gap: 0.4rem;
       border-radius: 999px;
-      padding: 0.25rem 0.75rem;
+      padding: 0.35rem 0.85rem;
       font-size: 0.75rem;
-      font-weight: 600;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
-      background: rgba(10, 10, 10, 0.06);
-      color: var(--text-secondary);
-      transition: background-color 150ms ease, color 150ms ease;
-    }
-
-    .status-step.active {
-      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.16);
+      letter-spacing: 0.05em;
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.18);
       color: var(--brand-green, #06c167);
+      align-self: flex-start;
     }
 
-    .status-step.current {
-      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.28);
+    .status-timeline {
+      list-style: none;
+      margin: clamp(0.75rem, 2vw, 1rem) 0 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(0.75rem, 2vw, 1rem);
+    }
+
+    .status-timeline-step {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      column-gap: 0.75rem;
+      align-items: flex-start;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .status-marker {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      width: 1rem;
+      min-height: 1rem;
+    }
+
+    .status-dot {
+      width: 0.75rem;
+      height: 0.75rem;
+      border-radius: 50%;
+      border: 2px solid var(--border-soft);
+      background: var(--surface);
+      box-sizing: border-box;
+      transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+    }
+
+    .status-connector {
+      position: absolute;
+      left: 50%;
+      top: 0.75rem;
+      bottom: calc(-1 * clamp(0.75rem, 2vw, 1rem));
+      width: 2px;
+      transform: translateX(-50%);
+      background: var(--border-soft);
+      transition: background-color 150ms ease;
+    }
+
+    .status-label {
+      display: block;
+      line-height: 1.2;
+    }
+
+    .status-timeline-step.completed .status-dot {
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.95);
+      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.65);
+    }
+
+    .status-timeline-step.completed .status-connector {
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.35);
+    }
+
+    .status-timeline-step.completed .status-label {
+      color: var(--text-primary);
+    }
+
+    .status-timeline-step.current .status-dot {
+      background: var(--brand-green, #06c167);
+      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.65);
+      box-shadow: 0 0 0 4px rgba(var(--brand-green-rgb, 6, 193, 103), 0.2);
+    }
+
+    .status-timeline-step.current .status-label {
       color: var(--brand-green, #06c167);
     }
 
@@ -291,21 +355,16 @@ type SelectedOrderState = {
                   <div class="meta">
                     {{
                       'admin.orders.meta'
-                        | translate: 'Placed {{date}} · Status: {{status}}': {
-                            date: (order.created_at | date:'medium') || '',
-                            status: formatStatus(resolveStatus(order))
+                        | translate: 'Placed {{date}}': {
+                            date: (order.created_at | date:'medium') || ''
                           }
                     }}
                   </div>
-                  <div class="status-flow" aria-label="Order status progression">
-                    <span
-                      class="status-step"
-                      *ngFor="let status of statusFlow"
-                      [class.active]="isStatusActive(resolveStatus(order), status)"
-                      [class.current]="isCurrentStatus(resolveStatus(order), status)"
-                    >
-                      {{ formatStatus(status) }}
-                    </span>
+                  <div class="status-current" aria-label="Current status">
+                    {{
+                      formatStatus(resolveStatus(order))
+                        || ('admin.orders.statusUnknown' | translate: 'Status unknown')
+                    }}
                   </div>
                   <button
                     type="button"
@@ -352,16 +411,20 @@ type SelectedOrderState = {
                                 }
                           }}
                         </div>
-                        <div class="status-flow" aria-label="Order status progression">
-                          <span
-                            class="status-step"
-                            *ngFor="let status of statusFlow"
-                            [class.active]="isStatusActive(resolveStatus(selected), status)"
+                        <ol class="status-timeline" aria-label="Order status progression">
+                          <li
+                            class="status-timeline-step"
+                            *ngFor="let status of statusFlow; let last = last"
+                            [class.completed]="isStatusCompleted(resolveStatus(selected), status)"
                             [class.current]="isCurrentStatus(resolveStatus(selected), status)"
                           >
-                            {{ formatStatus(status) }}
-                          </span>
-                        </div>
+                            <div class="status-marker">
+                              <span class="status-dot"></span>
+                              <span class="status-connector" *ngIf="!last"></span>
+                            </div>
+                            <span class="status-label">{{ formatStatus(status) }}</span>
+                          </li>
+                        </ol>
                         <button
                           type="button"
                           class="advance-status-button"
@@ -562,19 +625,20 @@ export class AdminRecentOrdersPage {
     return order.status ?? (order as { state?: string | null }).state ?? null;
   }
 
-  isStatusActive(currentStatus: string | null | undefined, status: OrderStatus): boolean {
+  isCurrentStatus(currentStatus: string | null | undefined, status: OrderStatus): boolean {
+    return this.normalizeStatus(currentStatus ?? '') === status;
+  }
+
+  isStatusCompleted(currentStatus: string | null | undefined, status: OrderStatus): boolean {
     const normalized = this.normalizeStatus(currentStatus ?? '');
     const currentIndex = this.statusFlow.findIndex(step => step === normalized);
     const stepIndex = this.statusFlow.findIndex(step => step === status);
-    if (stepIndex === -1) {
+
+    if (currentIndex === -1 || stepIndex === -1) {
       return false;
     }
 
-    return currentIndex >= stepIndex;
-  }
-
-  isCurrentStatus(currentStatus: string | null | undefined, status: OrderStatus): boolean {
-    return this.normalizeStatus(currentStatus ?? '') === status;
+    return stepIndex < currentIndex;
   }
 
   formatStatus(status: string | null | undefined): string {
