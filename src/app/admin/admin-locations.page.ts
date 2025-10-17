@@ -17,6 +17,7 @@ import { Location, LocationInput } from '../core/models';
 import { TranslationService } from '../core/translation.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { LocationService } from '../locations/location.service';
+import { AdminLocationHoursComponent } from './admin-location-hours.component';
 import { AdminRestaurantContextService } from './admin-restaurant-context.service';
 
 interface LocationFormState {
@@ -43,7 +44,7 @@ interface LocationsViewState {
 @Component({
   standalone: true,
   selector: 'app-admin-locations',
-  imports: [AsyncPipe, FormsModule, NgFor, NgIf, TranslatePipe],
+  imports: [AsyncPipe, FormsModule, NgFor, NgIf, TranslatePipe, AdminLocationHoursComponent],
   styles: [`
     section.card {
       background: var(--surface);
@@ -417,17 +418,19 @@ interface LocationsViewState {
                       <div>{{ location.latitude }}</div>
                     </div>
 
-                    <div *ngIf="location.longitude !== null && location.longitude !== undefined">
-                      <strong>{{ 'admin.locations.longitudeLabel' | translate: 'Longitude' }}:</strong>
-                      <div>{{ location.longitude }}</div>
-                    </div>
+                  <div *ngIf="location.longitude !== null && location.longitude !== undefined">
+                    <strong>{{ 'admin.locations.longitudeLabel' | translate: 'Longitude' }}:</strong>
+                    <div>{{ location.longitude }}</div>
                   </div>
+                </div>
 
-                  <div class="location-actions">
-                    <button class="action" type="button" (click)="startEdit(location)">
-                      {{ 'admin.locations.edit' | translate: 'Edit' }}
-                    </button>
-                    <button
+                <app-admin-location-hours [locationId]="location.id"></app-admin-location-hours>
+
+                <div class="location-actions">
+                  <button class="action" type="button" (click)="startEdit(location)">
+                    {{ 'admin.locations.edit' | translate: 'Edit' }}
+                  </button>
+                  <button
                       class="action danger"
                       type="button"
                       (click)="deleteLocation(location)"

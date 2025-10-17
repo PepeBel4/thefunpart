@@ -63,6 +63,42 @@ export interface LocationInput {
   longitude?: number | null;
 }
 
+export interface LocationOpeningHour {
+  id: number;
+  location_id: number;
+  day_of_week: number;
+  opens_at: string;
+  closes_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LocationOpeningHourInput {
+  day_of_week: number;
+  opens_at: string;
+  closes_at: string;
+}
+
+export interface LocationOpeningHourException {
+  id: number;
+  location_id: number;
+  date: string;
+  closed: boolean;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  reason?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LocationOpeningHourExceptionInput {
+  date: string;
+  closed: boolean;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  reason?: string | null;
+}
+
 export interface RestaurantUpdateInput {
   name?: string;
   description?: string;
