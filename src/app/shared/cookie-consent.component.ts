@@ -1,6 +1,7 @@
 import { Component, Inject, OnInit, signal } from '@angular/core';
 import { DOCUMENT, NgIf } from '@angular/common';
 import { TranslatePipe } from './translate.pipe';
+import { PushNotificationsService } from '../core/push-notifications.service';
 
 @Component({
   selector: 'app-cookie-consent',
@@ -123,7 +124,10 @@ export class CookieConsentComponent implements OnInit {
   private readonly storageKey = 'thefunpart:cookie-consent';
   private readonly visible = signal(false);
 
-  constructor(@Inject(DOCUMENT) private readonly document: Document) {}
+  constructor(
+    @Inject(DOCUMENT) private readonly document: Document,
+    private readonly pushNotifications: PushNotificationsService
+  ) {}
 
   ngOnInit(): void {
     if (!this.isBrowser()) {
@@ -141,6 +145,7 @@ export class CookieConsentComponent implements OnInit {
   accept(): void {
     this.persist('accepted');
     this.visible.set(false);
+    void this.pushNotifications.requestSubscription();
   }
 
   decline(): void {
@@ -164,3 +169,4 @@ export class CookieConsentComponent implements OnInit {
     return typeof window !== 'undefined' && this.document?.defaultView === window;
   }
 }
+
