@@ -51,6 +51,12 @@ type SelectedOrderState = {
       display: flex;
       flex-direction: column;
       gap: 1rem;
+      position: sticky;
+      top: clamp(1rem, 4vw, 2rem);
+      align-self: flex-start;
+      max-height: calc(100vh - clamp(1rem, 4vw, 2rem));
+      overflow-y: auto;
+      padding-right: 0.25rem;
     }
 
     .orders-list {
@@ -169,6 +175,10 @@ type SelectedOrderState = {
 
       .details-panel {
         order: 1;
+        position: static;
+        max-height: none;
+        overflow: visible;
+        padding-right: 0;
       }
     }
   `],
