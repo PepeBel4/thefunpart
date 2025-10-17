@@ -813,6 +813,7 @@ export class AdminLocationHoursComponent implements OnChanges {
       await firstValueFrom(
         this.locations.deleteOpeningHour(this.locationId, hour.id)
       );
+      this.removeOpeningHour(hour.id);
       this.setOpeningHourStatus(
         'success',
         this.i18n.translate('admin.locations.hours.deleted', 'Opening hours removed.')
@@ -955,6 +956,7 @@ export class AdminLocationHoursComponent implements OnChanges {
       await firstValueFrom(
         this.locations.deleteOpeningHourException(this.locationId, exception.id)
       );
+      this.removeException(exception.id);
       this.setExceptionStatus(
         'success',
         this.i18n.translate('admin.locations.exceptions.deleted', 'Exception removed.')
@@ -1192,6 +1194,16 @@ export class AdminLocationHoursComponent implements OnChanges {
   private upsertOpeningHour(hour: LocationOpeningHour) {
     const remaining = this.openingHours.filter(item => item.id !== hour.id);
     this.openingHours = this.sortOpeningHours([...remaining, hour]);
+  }
+
+  private removeOpeningHour(hourId: number) {
+    this.openingHours = this.openingHours.filter(hour => hour.id !== hourId);
+  }
+
+  private removeException(exceptionId: number) {
+    this.exceptions = this.exceptions.filter(
+      exception => exception.id !== exceptionId
+    );
   }
 
   private sortOpeningHours(hours: LocationOpeningHour[]): LocationOpeningHour[] {
