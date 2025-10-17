@@ -389,6 +389,9 @@ import { TranslatePipe } from '../shared/translate.pipe';
           <a routerLink="discounts" routerLinkActive="active">
             {{ 'admin.sections.discounts' | translate: 'Manage discounts' }}
           </a>
+          <a routerLink="reports" routerLinkActive="active">
+            {{ 'admin.sections.reports' | translate: 'Reports & analytics' }}
+          </a>
         </nav>
 
         <router-outlet></router-outlet>

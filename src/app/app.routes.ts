@@ -43,6 +43,10 @@ export const appRoutes: Routes = [
         path: 'discounts',
         loadComponent: () => import('./admin/admin-discounts.page').then(m => m.AdminDiscountsPage),
       },
+      {
+        path: 'reports',
+        loadComponent: () => import('./admin/admin-reports.page').then(m => m.AdminReportsPage),
+      },
     ],
   },
   { path: 'checkout', canActivate: [authGuard], loadComponent: () => import('./checkout/checkout.page').then(m => m.CheckoutPage) },
