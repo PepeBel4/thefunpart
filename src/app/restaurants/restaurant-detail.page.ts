@@ -24,7 +24,7 @@ import {
   RatingSummary,
   Restaurant,
   Review,
-  ReviewInput,
+  RatingInput,
 } from '../core/models';
 import {
   BehaviorSubject,
@@ -44,6 +44,7 @@ import {
 import { CartCategorySelection, CartRestaurant, CartService } from '../cart/cart.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { TranslationService } from '../core/translation.service';
+import { RatingsService } from '../core/ratings.service';
 import { MenuItemPhotoSliderComponent } from './menu-item-photo-slider.component';
 import { AllergenIconComponent } from '../shared/allergen-icon.component';
 import { CardService } from '../cards/card.service';
@@ -1440,6 +1441,7 @@ export class RestaurantDetailPage implements OnDestroy {
   private route = inject(ActivatedRoute);
   private menuSvc = inject(MenuService);
   private rSvc = inject(RestaurantService);
+  private ratingsSvc = inject(RatingsService);
   private cart = inject(CartService);
   private document = inject(DOCUMENT);
   private i18n = inject(TranslationService);
@@ -1827,12 +1829,12 @@ export class RestaurantDetailPage implements OnDestroy {
       return;
     }
 
-    const payload = this.buildReviewPayload(this.restaurantReviewForm.getRawValue());
+    const payload = this.buildRatingPayload('restaurant', this.id, this.restaurantReviewForm.getRawValue());
     this.restaurantReviewSubmitting.set(true);
     this.restaurantReviewStatus.set('');
 
-    this.rSvc
-      .createReview(this.id, payload)
+    this.ratingsSvc
+      .createRating(payload)
       .pipe(finalize(() => this.restaurantReviewSubmitting.set(false)))
       .subscribe({
         next: () => {
@@ -1857,11 +1859,11 @@ export class RestaurantDetailPage implements OnDestroy {
       return;
     }
 
-    const payload = this.buildReviewPayload(form.getRawValue());
+    const payload = this.buildRatingPayload('menu_item', item.id, form.getRawValue());
     this.updateMenuItemReviewState(item.id, { submitting: true, status: '' });
 
-    this.menuSvc
-      .createReview(item.id, payload)
+    this.ratingsSvc
+      .createRating(payload)
       .pipe(
         switchMap(() => this.menuSvc.get(item.id)),
         finalize(() => this.updateMenuItemReviewState(item.id, { submitting: false }))
@@ -1916,15 +1918,21 @@ export class RestaurantDetailPage implements OnDestroy {
     });
   }
 
-  private buildReviewPayload(value: { rating: number | null; comment: string }): ReviewInput {
-    const rating =
+  private buildRatingPayload(
+    rateableType: RatingInput['rateable_type'],
+    rateableId: number,
+    value: { rating: number | null; comment: string }
+  ): RatingInput {
+    const normalizedScore =
       typeof value.rating === 'number' && Number.isFinite(value.rating)
         ? Math.min(5, Math.max(1, Math.round(value.rating)))
-        : null;
+        : 1;
     const comment = typeof value.comment === 'string' ? value.comment.trim() : '';
 
     return {
-      rating,
+      rateable_type: rateableType,
+      rateable_id: rateableId,
+      score: normalizedScore,
       comment: comment.length ? comment : null,
     };
   }

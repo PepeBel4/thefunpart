@@ -33,8 +33,10 @@ export interface Review {
   reviewer_name?: string | null;
 }
 
-export interface ReviewInput {
-  rating?: number | null;
+export interface RatingInput {
+  rateable_type: 'restaurant' | 'menu_item';
+  rateable_id: number;
+  score: number;
   comment?: string | null;
 }
 

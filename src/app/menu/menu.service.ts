@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { ApiService } from '../core/api.service';
-import { MenuItem, MenuItemInput, Review, ReviewInput } from '../core/models';
+import { MenuItem, MenuItemInput } from '../core/models';
 import { Observable } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
@@ -27,7 +27,4 @@ export class MenuService {
     return this.api.delete<MenuItem>(`/menu_items/${menuItemId}/photos/${photoId}`);
   }
 
-  createReview(menuItemId: number, payload: ReviewInput): Observable<Review> {
-    return this.api.post<Review>(`/menu_items/${menuItemId}/reviews`, { review: payload });
-  }
 }
