@@ -451,3 +451,190 @@ app-restaurant-detail .quantity-controls .quantity-display {
   text-align: center;
 }
 
+
+app-restaurant-detail {
+  .hero-meta .hero-rating {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    font-weight: 600;
+  }
+
+  .hero-meta .hero-rating .value {
+    font-size: 1.05rem;
+  }
+
+  .hero-meta .hero-rating .count {
+    font-weight: 500;
+    opacity: 0.85;
+    font-size: 0.9rem;
+  }
+
+  .hero-meta .hero-rating.muted {
+    opacity: 0.75;
+    font-weight: 500;
+  }
+
+  .rating-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.12);
+    color: color-mix(in srgb, var(--brand-green, #06c167) 65%, #0a0a0a 35%);
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 0.01em;
+  }
+
+  .rating-chip .count {
+    font-weight: 500;
+    font-size: 0.85rem;
+    opacity: 0.8;
+  }
+
+  .rating-chip-large {
+    font-size: 1rem;
+    padding: 0.45rem 1rem;
+  }
+
+  .reviews {
+    margin-top: 2.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .reviews-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.25rem;
+  }
+
+  .review-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .review-card {
+    padding: 1rem 1.1rem;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(10, 10, 10, 0.06);
+    box-shadow: var(--shadow-soft);
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .review-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.6rem 1rem;
+  }
+
+  .review-rating {
+    font-weight: 600;
+    color: color-mix(in srgb, var(--brand-green, #06c167) 70%, #0a0a0a 30%);
+  }
+
+  .review-author {
+    font-weight: 600;
+  }
+
+  .review-date {
+    font-size: 0.85rem;
+    opacity: 0.75;
+  }
+
+  .review-comment,
+  .review-empty {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+
+  .review-empty {
+    opacity: 0.75;
+  }
+
+  .modal h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  .modal p {
+    margin: 0;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  .modal-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  .modal-button {
+    border-radius: 999px;
+    padding: 0.85rem 1.25rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  }
+
+  .modal-button.primary {
+    background: var(--brand-green);
+    color: var(--brand-on-primary);
+    border: none;
+    box-shadow: 0 16px 32px rgba(var(--brand-green-rgb, 6, 193, 103), 0.28);
+  }
+
+  .modal-button.primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 20px 40px rgba(var(--brand-green-rgb, 6, 193, 103), 0.32);
+  }
+
+  .modal-button.secondary {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid rgba(var(--brand-green-rgb, 6, 193, 103), 0.18);
+  }
+
+  .modal-button.secondary:hover {
+    background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.1);
+  }
+
+  .review-section {
+    margin-top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .review-section h4 {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 720px) {
+  app-restaurant-detail {
+    .reviews {
+      margin-top: 2rem;
+    }
+
+    .reviews-header {
+      align-items: flex-start;
+    }
+  }
+}

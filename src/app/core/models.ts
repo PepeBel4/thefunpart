@@ -11,6 +11,39 @@ export interface Chain {
   name: string;
 }
 
+export interface ReviewAuthor {
+  id?: number;
+  name?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+}
+
+export interface Review {
+  id: number;
+  rating?: number | null;
+  score?: number | null;
+  value?: number | null;
+  comment?: string | null;
+  body?: string | null;
+  text?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  user?: ReviewAuthor | null;
+  author_name?: string | null;
+  reviewer_name?: string | null;
+}
+
+export interface RatingSummary {
+  average_rating?: number | null;
+  avg_rating?: number | null;
+  rating?: number | null;
+  value?: number | null;
+  rating_count?: number;
+  ratings_count?: number;
+  total_ratings?: number;
+  count?: number;
+}
+
 export interface Restaurant {
   id: number;
   name: string;
@@ -26,6 +59,8 @@ export interface Restaurant {
   cuisines?: string[];
   primary_color?: string | null;
   locations?: Location[] | null;
+  rating_summary?: RatingSummary | null;
+  reviews?: Review[] | null;
 }
 
 export interface Location {
@@ -161,7 +196,7 @@ export interface MenuItemCategory {
   name_translations?: Record<string, string>;
 }
 
-export interface MenuItem { 
+export interface MenuItem {
   id: number;
   restaurant_id: number;
   name: string;
@@ -173,6 +208,8 @@ export interface MenuItem {
   allergens?: Allergen[];
   photos?: RestaurantPhoto[];
   option_assignments?: MenuOptionAssignment[];
+  rating_summary?: RatingSummary | null;
+  reviews?: Review[] | null;
 }
 
 export interface MenuOptionCategory {

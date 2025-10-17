@@ -2,7 +2,17 @@ import { Component, HostListener, OnDestroy, effect, inject, signal, computed } 
 import { ActivatedRoute } from '@angular/router';
 import { MenuService } from '../menu/menu.service';
 import { RestaurantService } from './restaurant.service';
-import { AsyncPipe, CurrencyPipe, NgClass, NgIf, NgFor, NgStyle, DOCUMENT, TitleCasePipe } from '@angular/common';
+import {
+  AsyncPipe,
+  CurrencyPipe,
+  DecimalPipe,
+  NgClass,
+  NgIf,
+  NgFor,
+  NgStyle,
+  DOCUMENT,
+  TitleCasePipe,
+} from '@angular/common';
 import {
   Allergen,
   Card,
@@ -10,7 +20,9 @@ import {
   LocationOpeningHour,
   LocationOpeningHourException,
   MenuItem,
+  RatingSummary,
   Restaurant,
+  Review,
 } from '../core/models';
 import {
   BehaviorSubject,
@@ -125,6 +137,7 @@ type ScheduledInterval = {
   imports: [
     AsyncPipe,
     CurrencyPipe,
+    DecimalPipe,
     NgClass,
     NgFor,
     NgIf,
@@ -293,6 +306,7 @@ type ScheduledInterval = {
       align-items: center;
       gap: 0.4rem;
     }
+
 
     .hero-hours {
       margin-top: 1.5rem;
@@ -629,55 +643,6 @@ type ScheduledInterval = {
 
 
 
-    .modal h3 {
-      margin: 0;
-      font-size: 1.5rem;
-      font-weight: 700;
-    }
-
-    .modal p {
-      margin: 0;
-      color: var(--text-secondary);
-      line-height: 1.6;
-    }
-
-    .modal-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-      flex-shrink: 0;
-    }
-
-    .modal-button {
-      border-radius: 999px;
-      padding: 0.85rem 1.25rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
-    }
-
-    .modal-button.primary {
-      background: var(--brand-green);
-      color: var(--brand-on-primary);
-      border: none;
-      box-shadow: 0 16px 32px rgba(var(--brand-green-rgb, 6, 193, 103), 0.28);
-    }
-
-    .modal-button.primary:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 20px 40px rgba(var(--brand-green-rgb, 6, 193, 103), 0.32);
-    }
-
-    .modal-button.secondary {
-      background: transparent;
-      color: var(--text-secondary);
-      border: 1px solid rgba(var(--brand-green-rgb, 6, 193, 103), 0.18);
-    }
-
-    .modal-button.secondary:hover {
-      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.1);
-    }
-
     @media (max-width: 720px) {
       .hero {
         padding: 2rem 1.5rem;
@@ -707,6 +672,7 @@ type ScheduledInterval = {
       .menu-grid {
         grid-template-columns: 1fr;
       }
+
     }
   `],
   template: `
@@ -747,7 +713,18 @@ type ScheduledInterval = {
           </ul>
           <div class="hero-meta">
             <span class="tag">{{ 'restaurantDetail.tagPopular' | translate: 'Popular' }}</span>
-            <span>⭐ 4.8</span>
+            <ng-container *ngIf="hasRatings(r.rating_summary); else heroRatingEmpty">
+              <span class="hero-rating">
+                <span aria-hidden="true">⭐</span>
+                <span class="value">{{ formatAverageRating(r.rating_summary) }}</span>
+                <span class="count">{{ getRatingCountLabel(r.rating_summary) }}</span>
+              </span>
+            </ng-container>
+            <ng-template #heroRatingEmpty>
+              <span class="hero-rating muted">
+                {{ 'restaurantDetail.ratingNoReviews' | translate: 'No reviews yet' }}
+              </span>
+            </ng-template>
             <span>{{ 'restaurants.duration' | translate: '20-30 min' }}</span>
             <span>{{ 'restaurants.freeDelivery' | translate: 'Free delivery over €15' }}</span>
           </div>
@@ -833,6 +810,42 @@ type ScheduledInterval = {
           </ng-container>
         </div>
       </section>
+      <section
+        class="reviews"
+        *ngIf="hasRatings(r.rating_summary) || hasReviews(r.reviews)"
+      >
+        <div class="reviews-header">
+          <h3>{{ 'restaurantDetail.reviewsHeading' | translate: 'What people are saying' }}</h3>
+          <span class="rating-chip rating-chip-large" *ngIf="hasRatings(r.rating_summary)">
+            <span aria-hidden="true">⭐</span>
+            <span class="value">{{ formatAverageRating(r.rating_summary) }}</span>
+            <span class="count">{{ getRatingCountLabel(r.rating_summary) }}</span>
+          </span>
+        </div>
+        <ng-container *ngIf="getDisplayableReviews(r.reviews) as restaurantReviews">
+          <ul class="review-list" *ngIf="restaurantReviews.length; else restaurantReviewsEmpty">
+            <li class="review-card" *ngFor="let review of restaurantReviews">
+              <div class="review-header">
+                <span class="review-rating" *ngIf="getReviewRating(review) as rating">
+                  ⭐ {{ rating | number:'1.0-1' }}
+                </span>
+                <span class="review-author">{{ getReviewAuthor(review) }}</span>
+                <span class="review-date" *ngIf="getFormattedReviewDate(review) as reviewDate">
+                  {{ 'restaurantDetail.reviewedOn' | translate: 'Reviewed on {{date}}' : { date: reviewDate } }}
+                </span>
+              </div>
+              <p class="review-comment" *ngIf="getReviewComment(review) as comment">
+                {{ comment }}
+              </p>
+            </li>
+          </ul>
+        </ng-container>
+        <ng-template #restaurantReviewsEmpty>
+          <p class="review-empty">
+            {{ 'restaurantDetail.reviewsEmpty' | translate: 'No comments yet.' }}
+          </p>
+        </ng-template>
+      </section>
       <ng-container *ngIf="(menuCategories$ | async) as menuCategories">
         <h3 *ngIf="menuCategories.length || searchTerm">
           {{ 'restaurants.menuHeading' | translate: 'Menu' }}
@@ -899,6 +912,11 @@ type ScheduledInterval = {
                     ('restaurantDetail.customerFavourite' | translate: 'Customer favourite')
                 }}
               </p>
+              <span class="rating-chip" *ngIf="hasRatings(m.rating_summary)">
+                <span aria-hidden="true">⭐</span>
+                <span class="value">{{ formatAverageRating(m.rating_summary) }}</span>
+                <span class="count">{{ getRatingCountLabel(m.rating_summary) }}</span>
+              </span>
               <div class="price-group" *ngIf="hasDiscount(m); else cardRegularPrice">
                 <span class="price discounted">
                   {{ (getCurrentPriceCents(m) / 100) | currency:'EUR' }}
@@ -991,6 +1009,53 @@ type ScheduledInterval = {
                   ('restaurantDetail.customerFavourite' | translate: 'Customer favourite')
               }}
             </p>
+            <span
+              class="rating-chip rating-chip-large"
+              *ngIf="hasRatings(menuItemContext.item.rating_summary)"
+            >
+              <span aria-hidden="true">⭐</span>
+              <span class="value">{{ formatAverageRating(menuItemContext.item.rating_summary) }}</span>
+              <span class="count">{{ getRatingCountLabel(menuItemContext.item.rating_summary) }}</span>
+            </span>
+            <section
+              class="review-section"
+              *ngIf="
+                hasRatings(menuItemContext.item.rating_summary) ||
+                hasReviews(menuItemContext.item.reviews)
+              "
+            >
+              <h4>{{ 'restaurantDetail.menuItemReviewsHeading' | translate: 'Guest comments' }}</h4>
+              <ng-container *ngIf="getDisplayableReviews(menuItemContext.item.reviews) as itemReviews">
+                <ul class="review-list" *ngIf="itemReviews.length; else menuItemReviewsEmpty">
+                  <li class="review-card" *ngFor="let review of itemReviews">
+                    <div class="review-header">
+                      <span class="review-rating" *ngIf="getReviewRating(review) as rating">
+                        ⭐ {{ rating | number:'1.0-1' }}
+                      </span>
+                      <span class="review-author">{{ getReviewAuthor(review) }}</span>
+                      <span class="review-date" *ngIf="getFormattedReviewDate(review) as reviewDate">
+                        {{
+                          'restaurantDetail.reviewedOn'
+                            | translate: 'Reviewed on {{date}}'
+                            : { date: reviewDate }
+                        }}
+                      </span>
+                    </div>
+                    <p class="review-comment" *ngIf="getReviewComment(review) as comment">
+                      {{ comment }}
+                    </p>
+                  </li>
+                </ul>
+              </ng-container>
+              <ng-template #menuItemReviewsEmpty>
+                <p class="review-empty">
+                  {{
+                    'restaurantDetail.menuItemReviewsEmpty'
+                      | translate: 'No comments for this item yet.'
+                  }}
+                </p>
+              </ng-template>
+            </section>
             <div *ngIf="menuItemContext.item.allergens?.length">
               <h4>{{ 'restaurantDetail.menuItemAllergensHeading' | translate: 'Allergens' }}</h4>
               <div class="allergen-badges">
@@ -1409,6 +1474,179 @@ export class RestaurantDetailPage implements OnDestroy {
     }
 
     return item.price_cents;
+  }
+
+  hasRatings(summary?: RatingSummary | null): boolean {
+    return this.resolveRatingCount(summary) > 0 && this.resolveRatingAverage(summary) !== null;
+  }
+
+  getDisplayableReviews(reviews?: Review[] | null): Review[] {
+    if (!Array.isArray(reviews)) {
+      return [];
+    }
+
+    return reviews.filter(review => this.getReviewRating(review) !== null || this.getReviewComment(review) !== null);
+  }
+
+  hasReviews(reviews?: Review[] | null): boolean {
+    return this.getDisplayableReviews(reviews).length > 0;
+  }
+
+  formatAverageRating(summary?: RatingSummary | null): string {
+    const average = this.resolveRatingAverage(summary);
+    if (average === null) {
+      return '–';
+    }
+
+    const rounded = Math.round(average * 10) / 10;
+    return rounded.toFixed(1);
+  }
+
+  getRatingCountLabel(summary?: RatingSummary | null): string {
+    const count = this.resolveRatingCount(summary);
+    if (count <= 0) {
+      return this.i18n.translate('restaurantDetail.ratingNoReviews', 'No reviews yet');
+    }
+
+    const key = count === 1 ? 'restaurantDetail.ratingCountOne' : 'restaurantDetail.ratingCountMany';
+    const fallback = count === 1 ? '{{count}} review' : '{{count}} reviews';
+    return this.i18n.translate(key, fallback, { count });
+  }
+
+  getReviewRating(review: Review): number | null {
+    if (!review || typeof review !== 'object') {
+      return null;
+    }
+
+    const candidates = [review.rating, review.score, review.value];
+    for (const candidate of candidates) {
+      if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+        return candidate;
+      }
+    }
+
+    return null;
+  }
+
+  getReviewAuthor(review: Review): string {
+    const user = review?.user;
+    const nameCandidates: Array<string | null | undefined> = [];
+
+    if (user) {
+      if (typeof user.name === 'string') {
+        nameCandidates.push(user.name);
+      }
+
+      const combined = [user.first_name, user.last_name]
+        .filter((part): part is string => typeof part === 'string' && part.trim().length > 0)
+        .join(' ')
+        .trim();
+
+      if (combined.length) {
+        nameCandidates.push(combined);
+      }
+    }
+
+    nameCandidates.push(review?.author_name, review?.reviewer_name);
+
+    for (const candidate of nameCandidates) {
+      if (typeof candidate === 'string' && candidate.trim().length > 0) {
+        return candidate.trim();
+      }
+    }
+
+    return this.i18n.translate('restaurantDetail.reviewAnonymous', 'Anonymous');
+  }
+
+  getReviewComment(review: Review): string | null {
+    if (!review || typeof review !== 'object') {
+      return null;
+    }
+
+    const candidates = [review.comment, review.body, review.text];
+    for (const candidate of candidates) {
+      if (typeof candidate === 'string') {
+        const trimmed = candidate.trim();
+        if (trimmed.length > 0) {
+          return trimmed;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  getFormattedReviewDate(review: Review): string | null {
+    if (!review || typeof review !== 'object') {
+      return null;
+    }
+
+    const candidates = [review.created_at, review.updated_at];
+    for (const candidate of candidates) {
+      const formatted = this.formatReviewDate(candidate);
+      if (formatted) {
+        return formatted;
+      }
+    }
+
+    return null;
+  }
+
+  private resolveRatingAverage(summary?: RatingSummary | null): number | null {
+    if (!summary || typeof summary !== 'object') {
+      return null;
+    }
+
+    const candidates = [
+      summary.average_rating,
+      summary.avg_rating,
+      summary.rating,
+      summary.value,
+    ];
+
+    for (const candidate of candidates) {
+      if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+        return candidate;
+      }
+    }
+
+    return null;
+  }
+
+  private resolveRatingCount(summary?: RatingSummary | null): number {
+    if (!summary || typeof summary !== 'object') {
+      return 0;
+    }
+
+    const candidates = [
+      summary.rating_count,
+      summary.ratings_count,
+      summary.total_ratings,
+      summary.count,
+    ];
+
+    for (const candidate of candidates) {
+      if (typeof candidate === 'number' && Number.isFinite(candidate) && candidate >= 0) {
+        return candidate;
+      }
+    }
+
+    return 0;
+  }
+
+  private formatReviewDate(value?: string | null): string | null {
+    if (!value || typeof value !== 'string') {
+      return null;
+    }
+
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) {
+      return null;
+    }
+
+    return new Intl.DateTimeFormat(this.i18n.currentLocale(), {
+      dateStyle: 'medium',
+    }).format(date);
   }
 
   getQuantity(itemId: number): number {
