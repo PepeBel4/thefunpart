@@ -607,7 +607,7 @@ type CartFlightAnimation = {
           </button>
           <ng-container *ngIf="selectedSuggestion() as activeSuggestion">
             <ng-container *ngIf="selectedMenuItem() as menuItem; else menuItemModalFallback">
-              <figure *ngIf="menuItem.photos?.length && menuItem.photos[0]?.url as photoUrl">
+              <figure *ngIf="menuItem.photos?.[0]?.url as photoUrl">
                 <img [src]="photoUrl" [alt]="menuItem.name" loading="lazy" />
               </figure>
               <h3 id="checkout-menu-item-modal-title">{{ menuItem.name }}</h3>
