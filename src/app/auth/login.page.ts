@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { AuthService } from '../core/auth.service';
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '../shared/translate.pipe';
@@ -132,6 +132,7 @@ interface LoginErrorState {
 })
 export class LoginPage {
   private auth = inject(AuthService);
+  private cdr = inject(ChangeDetectorRef);
   email = '';
   password = '';
   loading = false;
@@ -155,13 +156,16 @@ export class LoginPage {
 
     this.loading = true;
     this.error = null;
+    this.cdr.detectChanges();
 
     try {
       await this.auth.login(email, password);
     } catch (err) {
       this.error = this.normalizeError(err);
+      this.cdr.detectChanges();
     } finally {
       this.loading = false;
+      this.cdr.detectChanges();
     }
   }
 
