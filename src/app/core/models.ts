@@ -462,6 +462,9 @@ export interface SessionUser {
   lastName?: string | null;
   gender?: string | null;
   birthDate?: string | null;
+  roles: string[];
+  restaurantRoles: Record<number, string[]>;
+  chainRoles: Record<number, string[]>;
 }
 
 export type RestaurantUserChurnRisk = 'low' | 'medium' | 'high';
