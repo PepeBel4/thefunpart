@@ -3,6 +3,7 @@ import { Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, ValidatorFn, AbstractControl } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
+  BehaviorSubject,
   catchError,
   combineLatest,
   debounceTime,
@@ -17,17 +18,24 @@ import {
 } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AdminRestaurantContextService } from './admin-restaurant-context.service';
-import { AdminRestaurantUsersService, RestaurantUserFilters } from './admin-restaurant-users.service';
+import {
+  AdminRestaurantUsersService,
+  RestaurantUserQuery,
+  RestaurantUserSort,
+} from './admin-restaurant-users.service';
 import { MenuService } from '../menu/menu.service';
 import { MenuItem, RestaurantUser, RestaurantUserChurnRisk } from '../core/models';
 import { TranslatePipe } from '../shared/translate.pipe';
 
 interface RestaurantUserFilterFormValue {
+  searchTerm: string;
   orderedFrom: string;
   orderedTo: string;
   menuItemId: string;
   churnRisk: string;
 }
+
+type SortableColumn = RestaurantUserSort['column'];
 
 interface UsersState {
   users: RestaurantUser[];
@@ -125,6 +133,10 @@ interface UsersState {
       color: var(--text-primary);
     }
 
+    .filters label.search-field {
+      grid-column: 1 / -1;
+    }
+
     .filters input,
     .filters select {
       padding: 0.55rem 0.75rem;
@@ -215,6 +227,43 @@ interface UsersState {
       font-weight: 600;
       color: var(--text-secondary);
       background: rgba(10, 10, 10, 0.04);
+    }
+
+    .users-table thead th.sortable {
+      padding: 0;
+    }
+
+    .users-table thead th.sortable button {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      width: 100%;
+      padding: 0.9rem 1rem;
+      border: none;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+      justify-content: flex-start;
+    }
+
+    .users-table thead th.churn-cell.sortable button {
+      justify-content: center;
+    }
+
+    .users-table thead th.sortable button:focus-visible {
+      outline: 2px solid rgba(var(--brand-green-rgb, 6, 193, 103), 0.55);
+      outline-offset: 2px;
+    }
+
+    .users-table thead th.sortable button .sort-indicator {
+      font-size: 0.75rem;
+      opacity: 0.55;
+    }
+
+    .users-table thead th.sortable button.sorted .sort-indicator,
+    .users-table thead th.sortable button:hover .sort-indicator {
+      opacity: 0.95;
     }
 
     .users-table tbody td {
@@ -359,6 +408,17 @@ interface UsersState {
 
         <form [formGroup]="filterForm" class="filters" novalidate>
           <div class="filters-grid">
+            <label class="search-field">
+              <span>{{ 'admin.users.filters.search' | translate: 'Search' }}</span>
+              <input
+                type="search"
+                formControlName="searchTerm"
+                [placeholder]="
+                  'admin.users.filters.searchPlaceholder'
+                    | translate: 'Search by name or email'
+                "
+              />
+            </label>
             <label>
               <span>{{ 'admin.users.filters.timeframeFrom' | translate: 'Ordered from' }}</span>
               <input type="datetime-local" formControlName="orderedFrom" />
@@ -422,8 +482,40 @@ interface UsersState {
                 <table class="users-table">
                   <thead>
                     <tr>
-                      <th scope="col">{{ 'admin.users.table.name' | translate: 'Name' }}</th>
-                      <th scope="col">{{ 'admin.users.table.email' | translate: 'Email' }}</th>
+                      <th
+                        scope="col"
+                        class="sortable"
+                        [attr.aria-sort]="ariaSort('name')"
+                      >
+                        <button
+                          type="button"
+                          class="sort-button"
+                          (click)="toggleSort('name')"
+                          [class.sorted]="isSorted('name')"
+                        >
+                          {{ 'admin.users.table.name' | translate: 'Name' }}
+                          <span class="sort-indicator" aria-hidden="true">
+                            {{ sortSymbol('name') }}
+                          </span>
+                        </button>
+                      </th>
+                      <th
+                        scope="col"
+                        class="sortable"
+                        [attr.aria-sort]="ariaSort('email')"
+                      >
+                        <button
+                          type="button"
+                          class="sort-button"
+                          (click)="toggleSort('email')"
+                          [class.sorted]="isSorted('email')"
+                        >
+                          {{ 'admin.users.table.email' | translate: 'Email' }}
+                          <span class="sort-indicator" aria-hidden="true">
+                            {{ sortSymbol('email') }}
+                          </span>
+                        </button>
+                      </th>
                       <th scope="col">{{ 'admin.users.details.lastOrder' | translate: 'Last order' }}</th>
                       <th scope="col" class="numeric">
                         {{ 'admin.users.details.orderCount' | translate: 'Total orders' }}
@@ -434,8 +526,22 @@ interface UsersState {
                       <th scope="col" class="numeric">
                         {{ 'admin.users.details.credit' | translate: 'Account credit' }}
                       </th>
-                      <th scope="col" class="churn-cell">
-                        {{ 'admin.users.table.churnRisk' | translate: 'Churn risk' }}
+                      <th
+                        scope="col"
+                        class="churn-cell sortable"
+                        [attr.aria-sort]="ariaSort('churn_risk')"
+                      >
+                        <button
+                          type="button"
+                          class="sort-button"
+                          (click)="toggleSort('churn_risk')"
+                          [class.sorted]="isSorted('churn_risk')"
+                        >
+                          {{ 'admin.users.table.churnRisk' | translate: 'Churn risk' }}
+                          <span class="sort-indicator" aria-hidden="true">
+                            {{ sortSymbol('churn_risk') }}
+                          </span>
+                        </button>
                       </th>
                     </tr>
                   </thead>
@@ -577,6 +683,7 @@ export class AdminRestaurantUsersPage {
   };
 
   private readonly defaultFilters: RestaurantUserFilterFormValue = {
+    searchTerm: '',
     orderedFrom: '',
     orderedTo: '',
     menuItemId: '',
@@ -585,6 +692,7 @@ export class AdminRestaurantUsersPage {
 
   filterForm = this.fb.group(
     {
+      searchTerm: [''],
       orderedFrom: [''],
       orderedTo: [''],
       menuItemId: [''],
@@ -592,6 +700,9 @@ export class AdminRestaurantUsersPage {
     },
     { validators: this.dateRangeValidator }
   );
+
+  private readonly sortState$ = new BehaviorSubject<RestaurantUserSort | null>(null);
+  currentSort: RestaurantUserSort | null = null;
 
   readonly churnRiskOptions: {
     value: RestaurantUserChurnRisk;
@@ -628,29 +739,32 @@ export class AdminRestaurantUsersPage {
     shareReplay({ bufferSize: 1, refCount: true })
   );
 
-  private readonly filters$ = this.filterForm.valueChanges.pipe(
+  private readonly formFilters$ = this.filterForm.valueChanges.pipe(
     startWith(this.getFormValue()),
     map(() => this.getFormValue()),
     debounceTime(250),
-    filter(() => this.filterForm.valid),
-    map(formValue => {
-      const filters = this.normalizeFilters(formValue);
-      return { filters, key: JSON.stringify(filters) };
+    filter(() => this.filterForm.valid)
+  );
+
+  private readonly query$ = combineLatest([this.formFilters$, this.sortState$]).pipe(
+    map(([formValue, sort]) => {
+      const query = this.normalizeQuery(formValue, sort);
+      return { query, key: this.serializeQueryKey(query) };
     }),
     distinctUntilChanged((a, b) => a.key === b.key),
     tap(() => {
       this.currentPage = 1;
     }),
-    map(result => result.filters)
+    map(result => result.query)
   );
 
-  readonly usersState$ = combineLatest([this.restaurantContext.selectedRestaurantId$, this.filters$]).pipe(
-    switchMap(([restaurantId, filters]) => {
+  readonly usersState$ = combineLatest([this.restaurantContext.selectedRestaurantId$, this.query$]).pipe(
+    switchMap(([restaurantId, query]) => {
       if (restaurantId === null) {
         return of<UsersState>({ users: [], loading: false, error: null });
       }
 
-      return this.usersService.list(restaurantId, filters).pipe(
+      return this.usersService.list(restaurantId, query).pipe(
         map(users => ({ users, loading: false, error: null }) as UsersState),
         startWith<UsersState>({ users: [], loading: true, error: null }),
         catchError(error =>
@@ -679,6 +793,8 @@ export class AdminRestaurantUsersPage {
         if (id !== this.previousRestaurantId) {
           this.previousRestaurantId = id;
           this.filterForm.reset(this.defaultFilters);
+          this.currentSort = null;
+          this.sortState$.next(null);
         }
       });
 
@@ -686,6 +802,8 @@ export class AdminRestaurantUsersPage {
 
   resetFilters(): void {
     this.filterForm.reset(this.defaultFilters);
+    this.currentSort = null;
+    this.sortState$.next(null);
   }
 
   paginate(users: RestaurantUser[]): RestaurantUser[] {
@@ -729,6 +847,60 @@ export class AdminRestaurantUsersPage {
 
   trackByUserId(_: number, user: RestaurantUser): number {
     return user.id;
+  }
+
+  toggleSort(column: SortableColumn): void {
+    const current = this.currentSort;
+    let next: RestaurantUserSort | null;
+
+    if (!current || current.column !== column) {
+      next = { column, direction: 'asc' };
+    } else if (current.direction === 'asc') {
+      next = { column, direction: 'desc' };
+    } else {
+      next = null;
+    }
+
+    this.currentSort = next;
+    this.sortState$.next(next);
+  }
+
+  isSorted(column: SortableColumn): boolean {
+    return this.currentSort?.column === column;
+  }
+
+  sortDirectionFor(column: SortableColumn): 'asc' | 'desc' | null {
+    if (!this.isSorted(column) || !this.currentSort) {
+      return null;
+    }
+
+    return this.currentSort.direction;
+  }
+
+  ariaSort(column: SortableColumn): 'ascending' | 'descending' | 'none' {
+    const direction = this.sortDirectionFor(column);
+    if (direction === 'asc') {
+      return 'ascending';
+    }
+
+    if (direction === 'desc') {
+      return 'descending';
+    }
+
+    return 'none';
+  }
+
+  sortSymbol(column: SortableColumn): string {
+    const direction = this.sortDirectionFor(column);
+    if (direction === 'asc') {
+      return '↑';
+    }
+
+    if (direction === 'desc') {
+      return '↓';
+    }
+
+    return '↕';
   }
 
   formatUserName(user: RestaurantUser): string {
@@ -805,6 +977,7 @@ export class AdminRestaurantUsersPage {
   private getFormValue(): RestaurantUserFilterFormValue {
     const raw = this.filterForm.value as Partial<RestaurantUserFilterFormValue>;
     return {
+      searchTerm: raw.searchTerm ?? '',
       orderedFrom: raw.orderedFrom ?? '',
       orderedTo: raw.orderedTo ?? '',
       menuItemId: raw.menuItemId ?? '',
@@ -812,29 +985,65 @@ export class AdminRestaurantUsersPage {
     };
   }
 
-  private normalizeFilters(value: RestaurantUserFilterFormValue): RestaurantUserFilters {
-    const filters: RestaurantUserFilters = {};
+  private normalizeQuery(
+    value: RestaurantUserFilterFormValue,
+    sort: RestaurantUserSort | null
+  ): RestaurantUserQuery {
+    const filters: NonNullable<RestaurantUserQuery['filters']> = {};
+
+    const searchTerm = value.searchTerm.trim();
+    if (searchTerm) {
+      filters.searchTerm = searchTerm;
+    }
 
     if (value.orderedFrom) {
-      filters.ordered_from = this.toIsoString(value.orderedFrom);
+      filters.orderedFrom = this.toIsoString(value.orderedFrom);
     }
 
     if (value.orderedTo) {
-      filters.ordered_to = this.toIsoString(value.orderedTo);
+      filters.orderedTo = this.toIsoString(value.orderedTo);
     }
 
     if (value.menuItemId) {
       const parsed = Number(value.menuItemId);
       if (!Number.isNaN(parsed)) {
-        filters.menu_item_id = parsed;
+        filters.menuItemId = parsed;
       }
     }
 
     if (value.churnRisk) {
-      filters.churn_risk = value.churnRisk as RestaurantUserChurnRisk;
+      filters.churnRisk = value.churnRisk as RestaurantUserChurnRisk;
     }
 
-    return filters;
+    const query: RestaurantUserQuery = {};
+
+    if (Object.keys(filters).length > 0) {
+      query.filters = filters;
+    }
+
+    if (sort) {
+      query.sort = sort;
+    }
+
+    return query;
+  }
+
+  private serializeQueryKey(query: RestaurantUserQuery): string {
+    const filters = query.filters ?? {};
+    const serialized = {
+      filters: {
+        searchTerm: filters.searchTerm ?? null,
+        orderedFrom: filters.orderedFrom ?? null,
+        orderedTo: filters.orderedTo ?? null,
+        menuItemId: filters.menuItemId ?? null,
+        churnRisk: filters.churnRisk ?? null,
+      },
+      sort: query.sort
+        ? { column: query.sort.column, direction: query.sort.direction }
+        : null,
+    };
+
+    return JSON.stringify(serialized);
   }
 
   private toIsoString(value: string): string {
