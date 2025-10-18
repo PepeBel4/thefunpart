@@ -89,6 +89,14 @@ type MenuItemModalContext = {
   restaurant: Restaurant;
 };
 
+type LoyaltyHighlightState = 'redeemable' | 'almost';
+
+type LoyaltyHighlightInfo = {
+  state: LoyaltyHighlightState;
+  label: string;
+  helper: string | null;
+};
+
 type ReviewFormGroup = FormGroup<{
   rating: FormControl<number | null>;
   comment: FormControl<string>;
@@ -673,7 +681,40 @@ type ScheduledInterval = {
       gap: 1.25rem;
     }
 
+    .menu-grid .card.loyalty-redeemable {
+      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.65);
+      box-shadow: 0 0 0 3px rgba(var(--brand-green-rgb, 6, 193, 103), 0.12);
+    }
 
+    .menu-grid .card.loyalty-almost {
+      border-color: rgba(255, 183, 77, 0.55);
+      box-shadow: 0 0 0 3px rgba(255, 183, 77, 0.18);
+    }
+
+    .menu-grid .loyalty-badge {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+      align-items: flex-start;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border-radius: 999px;
+      padding: 0.4rem 0.75rem;
+      margin-bottom: 0.5rem;
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.14);
+      color: var(--brand-green, #05683a);
+    }
+
+    .menu-grid .loyalty-badge.loyalty-almost {
+      background: rgba(255, 183, 77, 0.2);
+      color: #a25900;
+    }
+
+    .menu-grid .loyalty-badge__helper {
+      font-size: 0.7rem;
+      font-weight: 500;
+      opacity: 0.85;
+    }
 
     @media (max-width: 720px) {
       .hero {
@@ -1016,6 +1057,8 @@ type ScheduledInterval = {
               *ngFor="let m of category.items"
               [attr.id]="getMenuItemAnchor(m)"
               [class.highlighted]="shouldHighlightMenuItem(m)"
+              [class.loyalty-redeemable]="isLoyaltyRedeemable(m)"
+              [class.loyalty-almost]="isLoyaltyAlmost(m)"
             >
               <button
                 type="button"
@@ -1029,6 +1072,12 @@ type ScheduledInterval = {
               >
                 <span aria-hidden="true">i</span>
               </button>
+              <ng-container *ngIf="getLoyaltyHighlightInfo(m) as loyalty">
+                <div class="loyalty-badge" [ngClass]="{ 'loyalty-almost': loyalty.state === 'almost' }">
+                  <span class="loyalty-badge__label">{{ loyalty.label }}</span>
+                  <span class="loyalty-badge__helper" *ngIf="loyalty.helper">{{ loyalty.helper }}</span>
+                </div>
+              </ng-container>
               <div class="card-media" *ngIf="getPrimaryPhotoUrl(m) as photoUrl">
                 <img [src]="photoUrl" [alt]="m.name" loading="lazy" />
               </div>
@@ -1548,6 +1597,9 @@ export class RestaurantDetailPage implements OnDestroy {
   private highlightRetryTimeout: ReturnType<typeof setTimeout> | null = null;
   private nextCartFlightId = 0;
   private cartFlightTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
+  private loyaltyCard = signal<Card | null>(null);
+  private static readonly LOYALTY_NEAR_RATIO = 0.8;
+  private static readonly LOYALTY_NEAR_DELTA = 20;
 
   id = Number(this.route.snapshot.paramMap.get('id'));
   private restaurantReload$ = new BehaviorSubject<void>(undefined);
@@ -1636,6 +1688,7 @@ export class RestaurantDetailPage implements OnDestroy {
         )
       )
       .subscribe(({ restaurant, card }) => {
+        this.loyaltyCard.set(card ?? null);
         if (card) {
           this.cardSpotlight.set(this.presentSpotlightEntry(restaurant, card));
         } else {
@@ -1667,6 +1720,7 @@ export class RestaurantDetailPage implements OnDestroy {
   ngOnDestroy(): void {
     this.brandColor.reset();
     this.cardSpotlight.clear();
+    this.loyaltyCard.set(null);
     if (this.highlightScrollTimeout) {
       clearTimeout(this.highlightScrollTimeout);
       this.highlightScrollTimeout = null;
@@ -2671,11 +2725,107 @@ export class RestaurantDetailPage implements OnDestroy {
   }
 
   shouldHighlightMenuItem(item: MenuItem): boolean {
-    return this.highlightMenuItemId === item.id || this.isHighlightedMenuItem(item);
+    return (
+      this.highlightMenuItemId === item.id ||
+      this.isHighlightedMenuItem(item) ||
+      this.getLoyaltyHighlightState(item) !== null
+    );
   }
 
   private isHighlightedMenuItem(item: MenuItem): boolean {
     return Boolean(item.is_highlighted);
+  }
+
+  isLoyaltyRedeemable(item: MenuItem): boolean {
+    return this.getLoyaltyHighlightState(item) === 'redeemable';
+  }
+
+  isLoyaltyAlmost(item: MenuItem): boolean {
+    return this.getLoyaltyHighlightState(item) === 'almost';
+  }
+
+  getLoyaltyHighlightInfo(item: MenuItem): LoyaltyHighlightInfo | null {
+    const state = this.getLoyaltyHighlightState(item);
+    if (!state) {
+      return null;
+    }
+
+    const price = this.getLoyaltyPointsPrice(item);
+    if (price == null) {
+      return null;
+    }
+
+    if (state === 'redeemable') {
+      return {
+        state,
+        label: this.i18n.translate(
+          'restaurantDetail.loyaltyRedeemableLabel',
+          'Redeem with points'
+        ),
+        helper: this.i18n.translate(
+          'restaurantDetail.loyaltyRedeemableHelper',
+          'Costs {{points}} points',
+          { points: Math.round(price) }
+        ),
+      };
+    }
+
+    const balance = this.getLoyaltyPointsBalance() ?? 0;
+    const remaining = Math.max(price - balance, 0);
+    const formattedRemaining = Math.max(Math.ceil(remaining), 1);
+
+    return {
+      state,
+      label: this.i18n.translate('restaurantDetail.loyaltyAlmostLabel', 'Almost there'),
+      helper: this.i18n.translate(
+        'restaurantDetail.loyaltyAlmostHelper',
+        '{{points}} more points needed',
+        { points: formattedRemaining }
+      ),
+    };
+  }
+
+  private getLoyaltyHighlightState(item: MenuItem): LoyaltyHighlightState | null {
+    const price = this.getLoyaltyPointsPrice(item);
+    const balance = this.getLoyaltyPointsBalance();
+
+    if (price == null || balance == null) {
+      return null;
+    }
+
+    if (balance >= price) {
+      return 'redeemable';
+    }
+
+    const ratio = price > 0 ? balance / price : 0;
+    const difference = price - balance;
+    if (
+      ratio >= RestaurantDetailPage.LOYALTY_NEAR_RATIO ||
+      difference <= RestaurantDetailPage.LOYALTY_NEAR_DELTA
+    ) {
+      return 'almost';
+    }
+
+    return null;
+  }
+
+  private getLoyaltyPointsPrice(item: MenuItem): number | null {
+    const price = item.loyalty_points_price ?? null;
+    if (typeof price !== 'number' || Number.isNaN(price) || price <= 0) {
+      return null;
+    }
+
+    return price;
+  }
+
+  private getLoyaltyPointsBalance(): number | null {
+    const card = this.loyaltyCard();
+    const balance = card?.loyalty_points ?? null;
+    if (typeof balance !== 'number' || Number.isNaN(balance) || balance < 0) {
+      return null;
+    }
+
+    return balance;
   }
 
   private scheduleHighlightScroll(menuItemId: number) {
