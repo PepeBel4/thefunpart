@@ -4,7 +4,7 @@ import { AsyncPipe, DatePipe, CurrencyPipe, NgFor, NgIf } from '@angular/common'
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { AuthService } from '../core/auth.service';
-import { map } from 'rxjs';
+import { defer, of } from 'rxjs';
 import { Order } from '../core/models';
 
 @Component({
@@ -117,14 +117,12 @@ import { Order } from '../core/models';
 export class OrdersPage {
   private svc = inject(OrderService);
   private auth = inject(AuthService);
-  orders$ = this.svc.list().pipe(
-    map(orders => {
-      const sessionUser = this.auth.user();
-      if (!sessionUser) {
-        return [] as Order[];
-      }
+  orders$ = defer(() => {
+    const sessionUser = this.auth.user();
+    if (!sessionUser) {
+      return of<Order[]>([]);
+    }
 
-      return orders.filter(order => order.user?.id === sessionUser.id);
-    })
-  );
+    return this.svc.list({ userId: sessionUser.id });
+  });
 }
