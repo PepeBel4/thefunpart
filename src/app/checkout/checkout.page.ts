@@ -325,36 +325,6 @@ type CartFlightAnimation = {
       object-fit: cover;
     }
 
-    .modal-close-button {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      border: none;
-      background: rgba(0, 0, 0, 0.05);
-      color: var(--text-secondary);
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      font-size: 1.25rem;
-      font-weight: 600;
-      transition: background 0.2s ease, color 0.2s ease;
-    }
-
-    .modal-close-button:hover,
-    .modal-close-button:focus {
-      background: rgba(0, 0, 0, 0.12);
-      color: var(--text-primary);
-    }
-
-    .modal-close-button:focus-visible {
-      outline: 2px solid var(--brand-green);
-      outline-offset: 2px;
-    }
-
     .menu-item-modal .price-group {
       display: flex;
       align-items: baseline;
