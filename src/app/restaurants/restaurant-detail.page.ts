@@ -10,6 +10,9 @@ import {
   NgIf,
   NgFor,
   NgStyle,
+  NgSwitch,
+  NgSwitchCase,
+  NgSwitchDefault,
   DOCUMENT,
   TitleCasePipe,
 } from '@angular/common';
@@ -87,6 +90,14 @@ type MenuItemModalContext = {
   item: MenuItem;
   category: CartCategorySelection | null;
   restaurant: Restaurant;
+};
+
+type LoyaltyHighlightState = 'redeemable' | 'almost';
+
+type LoyaltyHighlightInfo = {
+  state: LoyaltyHighlightState;
+  label: string;
+  helper: string | null;
 };
 
 type ReviewFormGroup = FormGroup<{
@@ -174,6 +185,9 @@ type ScheduledInterval = {
     NgIf,
     TranslatePipe,
     NgStyle,
+    NgSwitch,
+    NgSwitchCase,
+    NgSwitchDefault,
     ReactiveFormsModule,
     MenuItemPhotoSliderComponent,
     AllergenIconComponent,
@@ -674,7 +688,6 @@ type ScheduledInterval = {
     }
 
 
-
     @media (max-width: 720px) {
       .hero {
         padding: 2rem 1.5rem;
@@ -1016,6 +1029,8 @@ type ScheduledInterval = {
               *ngFor="let m of category.items"
               [attr.id]="getMenuItemAnchor(m)"
               [class.highlighted]="shouldHighlightMenuItem(m)"
+              [class.loyalty-redeemable]="isLoyaltyRedeemable(m)"
+              [class.loyalty-almost]="isLoyaltyAlmost(m)"
             >
               <button
                 type="button"
@@ -1029,6 +1044,86 @@ type ScheduledInterval = {
               >
                 <span aria-hidden="true">i</span>
               </button>
+              <ng-container *ngIf="getLoyaltyHighlightInfo(m) as loyalty">
+                <div class="loyalty-badge" [ngClass]="{ 'loyalty-almost': loyalty.state === 'almost' }">
+                  <span class="loyalty-badge__icon" aria-hidden="true">
+                    <ng-container [ngSwitch]="loyalty.state">
+                      <svg
+                        *ngSwitchCase="'redeemable'"
+                        viewBox="0 0 24 24"
+                        role="presentation"
+                        focusable="false"
+                      >
+                        <path
+                          d="M12 3.2l1.86 3.77 4.16.6-3.01 2.94.71 4.14L12 12.9l-3.72 1.95.71-4.14-3.01-2.94 4.16-.6Z"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          stroke-linejoin="round"
+                        ></path>
+                        <path
+                          d="M8.8 20.4 12 18.4l3.2 2"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        ></path>
+                      </svg>
+                      <svg
+                        *ngSwitchCase="'almost'"
+                        viewBox="0 0 24 24"
+                        role="presentation"
+                        focusable="false"
+                      >
+                        <path
+                          d="M7 4h10m-10 16h10M8.5 4v3.1a3.4 3.4 0 001.32 2.68L12 11.5l2.18-1.72A3.4 3.4 0 0015.5 7.1V4M8.5 20v-3.05c0-1.1.52-2.13 1.32-2.79L12 12.5l2.18 1.66c.8.66 1.32 1.69 1.32 2.79V20"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        ></path>
+                        <circle cx="12" cy="7.5" r="0.7" fill="currentColor"></circle>
+                        <path
+                          d="M10.9 16.75h2.2"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                        ></path>
+                      </svg>
+                      <svg
+                        *ngSwitchDefault
+                        viewBox="0 0 24 24"
+                        role="presentation"
+                        focusable="false"
+                      >
+                        <circle
+                          cx="12"
+                          cy="12"
+                          r="5.5"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                        ></circle>
+                        <path
+                          d="M12 8.8v3l1.85 1.85"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        ></path>
+                      </svg>
+                    </ng-container>
+                  </span>
+                  <span class="loyalty-badge__content">
+                    <span class="loyalty-badge__label">{{ loyalty.label }}</span>
+                    <span class="loyalty-badge__helper" *ngIf="loyalty.helper">{{ loyalty.helper }}</span>
+                  </span>
+                </div>
+              </ng-container>
               <div class="card-media" *ngIf="getPrimaryPhotoUrl(m) as photoUrl">
                 <img [src]="photoUrl" [alt]="m.name" loading="lazy" />
               </div>
@@ -1548,6 +1643,9 @@ export class RestaurantDetailPage implements OnDestroy {
   private highlightRetryTimeout: ReturnType<typeof setTimeout> | null = null;
   private nextCartFlightId = 0;
   private cartFlightTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
+  private loyaltyCard = signal<Card | null>(null);
+  private static readonly LOYALTY_NEAR_RATIO = 0.8;
+  private static readonly LOYALTY_NEAR_DELTA = 20;
 
   private readonly restaurantIdentifier = this.resolveRouteIdentifier();
   id: number | null = null;
@@ -1646,6 +1744,7 @@ export class RestaurantDetailPage implements OnDestroy {
         )
       )
       .subscribe(({ restaurant, card }) => {
+        this.loyaltyCard.set(card ?? null);
         if (card) {
           this.cardSpotlight.set(this.presentSpotlightEntry(restaurant, card));
         } else {
@@ -1677,6 +1776,7 @@ export class RestaurantDetailPage implements OnDestroy {
   ngOnDestroy(): void {
     this.brandColor.reset();
     this.cardSpotlight.clear();
+    this.loyaltyCard.set(null);
     if (this.highlightScrollTimeout) {
       clearTimeout(this.highlightScrollTimeout);
       this.highlightScrollTimeout = null;
@@ -2713,11 +2813,107 @@ export class RestaurantDetailPage implements OnDestroy {
   }
 
   shouldHighlightMenuItem(item: MenuItem): boolean {
-    return this.highlightMenuItemId === item.id || this.isHighlightedMenuItem(item);
+    return this.highlightMenuItemId === item.id || this.isHighlightCategoryCandidate(item);
+  }
+
+  private isHighlightCategoryCandidate(item: MenuItem): boolean {
+    return this.isHighlightedMenuItem(item) || this.getLoyaltyHighlightState(item) !== null;
   }
 
   private isHighlightedMenuItem(item: MenuItem): boolean {
     return Boolean(item.is_highlighted);
+  }
+
+  isLoyaltyRedeemable(item: MenuItem): boolean {
+    return this.getLoyaltyHighlightState(item) === 'redeemable';
+  }
+
+  isLoyaltyAlmost(item: MenuItem): boolean {
+    return this.getLoyaltyHighlightState(item) === 'almost';
+  }
+
+  getLoyaltyHighlightInfo(item: MenuItem): LoyaltyHighlightInfo | null {
+    const state = this.getLoyaltyHighlightState(item);
+    if (!state) {
+      return null;
+    }
+
+    const price = this.getLoyaltyPointsPrice(item);
+    if (price == null) {
+      return null;
+    }
+
+    if (state === 'redeemable') {
+      return {
+        state,
+        label: this.i18n.translate(
+          'restaurantDetail.loyaltyRedeemableLabel',
+          'Redeem with points'
+        ),
+        helper: this.i18n.translate(
+          'restaurantDetail.loyaltyRedeemableHelper',
+          'Costs {{points}} points',
+          { points: Math.round(price) }
+        ),
+      };
+    }
+
+    const balance = this.getLoyaltyPointsBalance() ?? 0;
+    const remaining = Math.max(price - balance, 0);
+    const formattedRemaining = Math.max(Math.ceil(remaining), 1);
+
+    return {
+      state,
+      label: this.i18n.translate('restaurantDetail.loyaltyAlmostLabel', 'Almost there'),
+      helper: this.i18n.translate(
+        'restaurantDetail.loyaltyAlmostHelper',
+        '{{points}} more points needed',
+        { points: formattedRemaining }
+      ),
+    };
+  }
+
+  private getLoyaltyHighlightState(item: MenuItem): LoyaltyHighlightState | null {
+    const price = this.getLoyaltyPointsPrice(item);
+    const balance = this.getLoyaltyPointsBalance();
+
+    if (price == null || balance == null) {
+      return null;
+    }
+
+    if (balance >= price) {
+      return 'redeemable';
+    }
+
+    const ratio = price > 0 ? balance / price : 0;
+    const difference = price - balance;
+    if (
+      ratio >= RestaurantDetailPage.LOYALTY_NEAR_RATIO ||
+      difference <= RestaurantDetailPage.LOYALTY_NEAR_DELTA
+    ) {
+      return 'almost';
+    }
+
+    return null;
+  }
+
+  private getLoyaltyPointsPrice(item: MenuItem): number | null {
+    const price = item.loyalty_points_price ?? null;
+    if (typeof price !== 'number' || Number.isNaN(price) || price <= 0) {
+      return null;
+    }
+
+    return price;
+  }
+
+  private getLoyaltyPointsBalance(): number | null {
+    const card = this.loyaltyCard();
+    const balance = card?.loyalty_points ?? null;
+    if (typeof balance !== 'number' || Number.isNaN(balance) || balance < 0) {
+      return null;
+    }
+
+    return balance;
   }
 
   private scheduleHighlightScroll(menuItemId: number) {
@@ -2961,7 +3157,7 @@ export class RestaurantDetailPage implements OnDestroy {
       });
     }
 
-    const highlightedItems = items.filter(item => this.isHighlightedMenuItem(item));
+    const highlightedItems = items.filter(item => this.isHighlightCategoryCandidate(item));
     
     if (highlightedItems.length) {
       const cartCategoriesByItemId: Record<number, CartCategorySelection | null> = {};
