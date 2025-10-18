@@ -13,6 +13,10 @@ interface RegisterPayload {
   last_name?: string;
 }
 
+interface PasswordResetPayload {
+  email: string;
+}
+
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -96,6 +100,22 @@ export class AuthService {
 
     this._user.set(sessionUser);
     await this.router.navigateByUrl('/');
+  }
+
+
+  async requestPasswordReset(email: string) {
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail) {
+      return;
+    }
+
+    const payload: PasswordResetPayload = { email: normalizedEmail };
+
+    await firstValueFrom(
+      this.api.post('/auth/password', {
+        user: payload,
+      })
+    );
   }
 
 

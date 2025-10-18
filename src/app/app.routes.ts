@@ -5,6 +5,10 @@ export const appRoutes: Routes = [
   { path: '', loadComponent: () => import('./restaurants/restaurant-list.page').then(m => m.RestaurantListPage) },
   { path: 'b2b', loadComponent: () => import('./b2b/b2b.page').then(m => m.B2bPage) },
   { path: 'login', loadComponent: () => import('./auth/login.page').then(m => m.LoginPage) },
+  {
+    path: 'forgot-password',
+    loadComponent: () => import('./auth/password-reset.page').then(m => m.PasswordResetPage),
+  },
   { path: 'register', loadComponent: () => import('./auth/register.page').then(m => m.RegisterPage) },
   { path: 'restaurants/:id', loadComponent: () => import('./restaurants/restaurant-detail.page').then(m => m.RestaurantDetailPage) },
   { path: 'chains/:id', loadComponent: () => import('./chains/chain-detail.page').then(m => m.ChainDetailPage) },
