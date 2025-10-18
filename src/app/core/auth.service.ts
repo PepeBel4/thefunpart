@@ -25,6 +25,9 @@ export class AuthService {
   user = computed(() => this._user());
   isLoggedIn = computed(() => !!this._user());
   canAccessAdmin = computed(() => this.userHasAdminAccess(this._user()));
+  canAccessRestaurantAdmin = computed(() => this.userHasRestaurantAdminAccess(this._user()));
+  canAccessChainAdmin = computed(() => this.userHasChainAdminAccess(this._user()));
+  isSuperAdmin = computed(() => this.userHasRole(this._user(), 'super_admin'));
 
 
   constructor() {
@@ -209,19 +212,109 @@ export class AuthService {
     };
   }
 
-  private userHasAdminAccess(user: SessionUser | null): boolean {
+  getChainAdminChainIds(): number[] {
+    const user = this._user();
+    if (!user) {
+      return [];
+    }
+
+    return Object.entries(user.chainRoles)
+      .filter(([, roles]) => roles.some(role => this.isAdminRole(role)))
+      .map(([id]) => Number.parseInt(id, 10))
+      .filter(id => Number.isFinite(id));
+  }
+
+  hasChainAdminAccessForChain(chainId: number): boolean {
+    if (!Number.isFinite(chainId)) {
+      return false;
+    }
+
+    const user = this._user();
     if (!user) {
       return false;
     }
 
-    if (user.roles.some(role => this.isAdminRole(role))) {
+    if (this.userHasRole(user, 'super_admin')) {
       return true;
     }
 
-    const hasScopedAdminRole = (scopedRoles: Record<number, string[]>) =>
-      Object.values(scopedRoles).some(roles => roles.some(role => this.isAdminRole(role)));
+    const roles = user.chainRoles?.[chainId];
+    if (!roles) {
+      return false;
+    }
 
-    return hasScopedAdminRole(user.restaurantRoles) || hasScopedAdminRole(user.chainRoles);
+    return roles.some(role => this.isAdminRole(role));
+  }
+
+  private userHasAdminAccess(user: SessionUser | null): boolean {
+    return this.userHasRestaurantAdminAccess(user) || this.userHasChainAdminAccess(user);
+  }
+
+  private userHasRestaurantAdminAccess(user: SessionUser | null): boolean {
+    if (!user) {
+      return false;
+    }
+
+    const normalizedRoles = user.roles
+      .map(role => (typeof role === 'string' ? role.trim().toLowerCase() : ''))
+      .filter(role => !!role);
+
+    if (normalizedRoles.includes('super_admin')) {
+      return true;
+    }
+
+    if (normalizedRoles.includes('restaurant_admin')) {
+      return true;
+    }
+
+    const hasGeneralAdminRole = normalizedRoles.some(role => role !== 'chain_admin' && this.isAdminRole(role));
+    if (hasGeneralAdminRole) {
+      return true;
+    }
+
+    return this.hasScopedAdminRole(user.restaurantRoles);
+  }
+
+  private userHasChainAdminAccess(user: SessionUser | null): boolean {
+    if (!user) {
+      return false;
+    }
+
+    const normalizedRoles = user.roles
+      .map(role => (typeof role === 'string' ? role.trim().toLowerCase() : ''))
+      .filter(role => !!role);
+
+    if (normalizedRoles.includes('super_admin')) {
+      return true;
+    }
+
+    if (normalizedRoles.includes('chain_admin')) {
+      return true;
+    }
+
+    return this.hasScopedAdminRole(user.chainRoles);
+  }
+
+  private hasScopedAdminRole(scopedRoles: Record<number, string[]>): boolean {
+    return Object.values(scopedRoles).some(roles => roles.some(role => this.isAdminRole(role)));
+  }
+
+  private userHasRole(user: SessionUser | null, role: string): boolean {
+    if (!user) {
+      return false;
+    }
+
+    const normalizedTarget = role.trim().toLowerCase();
+    if (!normalizedTarget) {
+      return false;
+    }
+
+    return user.roles.some(candidate => {
+      if (typeof candidate !== 'string') {
+        return false;
+      }
+      return candidate.trim().toLowerCase() === normalizedTarget;
+    });
   }
 
   private normalizeId(value: unknown): number | null {
