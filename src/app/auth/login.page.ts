@@ -63,6 +63,22 @@ import { RouterLink } from '@angular/router';
       box-shadow: 0 22px 40px rgba(var(--brand-green-rgb, 6, 193, 103), 0.32);
     }
 
+    .forgot-password {
+      text-align: right;
+      margin: -0.5rem 0 0.5rem;
+    }
+
+    .forgot-password a {
+      color: var(--brand-green);
+      font-weight: 600;
+      text-decoration: none;
+      font-size: 0.95rem;
+    }
+
+    .forgot-password a:hover {
+      text-decoration: underline;
+    }
+
     .auth-switch {
       margin: 0;
       text-align: center;
@@ -91,6 +107,9 @@ import { RouterLink } from '@angular/router';
         <input [(ngModel)]="email" name="email" type="email" required />
         <label>{{ 'login.password' | translate: 'Password' }}</label>
         <input [(ngModel)]="password" name="password" type="password" required />
+        <p class="forgot-password">
+          <a routerLink="/forgot-password">{{ 'login.forgotPassword' | translate: 'Forgot password?' }}</a>
+        </p>
         <button type="submit">{{ 'login.submit' | translate: 'Log in' }}</button>
       </form>
       <p class="auth-switch">
