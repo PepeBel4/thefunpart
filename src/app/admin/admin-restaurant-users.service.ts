@@ -12,7 +12,13 @@ export interface RestaurantUserFilters {
   churnRisk?: RestaurantUserChurnRisk;
 }
 
-export type RestaurantUserSortColumn = 'name' | 'email' | 'created_at' | 'churn_risk';
+export type RestaurantUserSortColumn =
+  | 'name'
+  | 'email'
+  | 'created_at'
+  | 'first_order_at'
+  | 'last_order_at'
+  | 'churn_risk';
 
 export interface RestaurantUserSort {
   column: RestaurantUserSortColumn;
@@ -81,6 +87,10 @@ export class AdminRestaurantUsersService {
         return `email ${direction}`;
       case 'created_at':
         return `created_at ${direction}`;
+      case 'first_order_at':
+        return `first_order_at ${direction}`;
+      case 'last_order_at':
+        return `last_order_at ${direction}`;
       case 'churn_risk':
         return `churn_risk ${direction}`;
       default:

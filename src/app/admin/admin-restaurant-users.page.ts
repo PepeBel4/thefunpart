@@ -516,7 +516,40 @@ interface UsersState {
                           </span>
                         </button>
                       </th>
-                      <th scope="col">{{ 'admin.users.details.lastOrder' | translate: 'Last order' }}</th>
+                      <th
+                        scope="col"
+                        class="sortable"
+                        [attr.aria-sort]="ariaSort('first_order_at')"
+                      >
+                        <button
+                          type="button"
+                          class="sort-button"
+                          (click)="toggleSort('first_order_at')"
+                          [class.sorted]="isSorted('first_order_at')"
+                        >
+                          {{ 'admin.users.details.firstOrder' | translate: 'First order' }}
+                          <span class="sort-indicator" aria-hidden="true">
+                            {{ sortSymbol('first_order_at') }}
+                          </span>
+                        </button>
+                      </th>
+                      <th
+                        scope="col"
+                        class="sortable"
+                        [attr.aria-sort]="ariaSort('last_order_at')"
+                      >
+                        <button
+                          type="button"
+                          class="sort-button"
+                          (click)="toggleSort('last_order_at')"
+                          [class.sorted]="isSorted('last_order_at')"
+                        >
+                          {{ 'admin.users.details.lastOrder' | translate: 'Last order' }}
+                          <span class="sort-indicator" aria-hidden="true">
+                            {{ sortSymbol('last_order_at') }}
+                          </span>
+                        </button>
+                      </th>
                       <th scope="col" class="numeric">
                         {{ 'admin.users.details.orderCount' | translate: 'Total orders' }}
                       </th>
@@ -556,7 +589,12 @@ interface UsersState {
                         </ng-container>
                       </td>
                       <td>
-                        <ng-container *ngIf="user.last_order_at as lastOrder; else noLastOrder">
+                        <ng-container *ngIf="getFirstOrderAt(user) as firstOrder; else noValue">
+                          {{ firstOrder | date: 'medium' }}
+                        </ng-container>
+                      </td>
+                      <td>
+                        <ng-container *ngIf="getLastOrderAt(user) as lastOrder; else noValue">
                           {{ lastOrder | date: 'medium' }}
                         </ng-container>
                       </td>
@@ -632,10 +670,6 @@ interface UsersState {
           <span class="muted">
             {{ 'admin.users.details.fallbackEmail' | translate: 'Not provided' }}
           </span>
-        </ng-template>
-
-        <ng-template #noLastOrder>
-          <span class="muted">—</span>
         </ng-template>
 
         <ng-template #noValue>
@@ -922,6 +956,14 @@ export class AdminRestaurantUsersPage {
   getOrderCount(user: RestaurantUser): number | null {
     const count = user.order_count ?? user.orders_count ?? user.total_orders;
     return typeof count === 'number' ? count : null;
+  }
+
+  getFirstOrderAt(user: RestaurantUser): string | null {
+    return user.first_order_at ?? user.firstOrderAt ?? null;
+  }
+
+  getLastOrderAt(user: RestaurantUser): string | null {
+    return user.last_order_at ?? user.lastOrderAt ?? null;
   }
 
   getLoyaltyPointsInfo(user: RestaurantUser): { value: number } | null {

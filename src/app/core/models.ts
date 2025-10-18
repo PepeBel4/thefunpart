@@ -474,7 +474,10 @@ export interface RestaurantUser {
   firstName?: string | null;
   lastName?: string | null;
   churn_risk?: RestaurantUserChurnRisk | null;
+  first_order_at?: string | null;
+  firstOrderAt?: string | null;
   last_order_at?: string | null;
+  lastOrderAt?: string | null;
   order_count?: number | null;
   orders_count?: number | null;
   total_orders?: number | null;
