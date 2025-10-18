@@ -3,6 +3,7 @@ import { Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AdminRestaurantContextService } from './admin-restaurant-context.service';
+import { AdminUserRolesService } from './admin-user-roles.service';
 import { TranslatePipe } from '../shared/translate.pipe';
 
 @Component({
@@ -377,6 +378,9 @@ import { TranslatePipe } from '../shared/translate.pipe';
           <a routerLink="users" routerLinkActive="active">
             {{ 'admin.sections.users' | translate: 'Restaurant users' }}
           </a>
+          <a *ngIf="showUserRoleManagement" routerLink="user-roles" routerLinkActive="active">
+            {{ 'admin.sections.userRoles' | translate: 'User roles' }}
+          </a>
           <a routerLink="analytics" routerLinkActive="active">
             {{ 'admin.sections.analytics' | translate: 'Reports & analytics' }}
           </a>
@@ -418,6 +422,7 @@ import { TranslatePipe } from '../shared/translate.pipe';
 })
 export class AdminDashboardPage {
   private context = inject(AdminRestaurantContextService);
+  private userRolesService = inject(AdminUserRolesService);
 
   restaurants$ = this.context.restaurants$;
   selectedRestaurantId$ = this.context.selectedRestaurantId$;
@@ -426,11 +431,22 @@ export class AdminDashboardPage {
   creatingRestaurant = false;
   creationError = false;
   showCreateModal = false;
+  showUserRoleManagement = false;
 
   constructor() {
     void this.context.loadRestaurants().finally(() => {
       this.loading = false;
     });
+
+    void this.userRolesService
+      .isCurrentUserSuperAdmin()
+      .then(isSuperAdmin => {
+        this.showUserRoleManagement = isSuperAdmin;
+      })
+      .catch(error => {
+        console.error('Failed to determine user role permissions', error);
+        this.showUserRoleManagement = false;
+      });
   }
 
   onRestaurantChange(value: string | number) {

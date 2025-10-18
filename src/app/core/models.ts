@@ -464,6 +464,21 @@ export interface SessionUser {
   birthDate?: string | null;
 }
 
+export interface UserSummary {
+  id: number;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+}
+
+export interface UserRole {
+  id: number;
+  userId: number;
+  role: string;
+  resourceType: string | null;
+  resourceId: number | null;
+}
+
 export type RestaurantUserChurnRisk = 'low' | 'medium' | 'high';
 
 export interface RestaurantUser {
