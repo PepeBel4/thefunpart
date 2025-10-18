@@ -329,23 +329,30 @@ type CartFlightAnimation = {
       position: absolute;
       top: 1rem;
       right: 1rem;
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
       border: none;
-      background: rgba(255, 255, 255, 0.85);
-      box-shadow: 0 12px 24px rgba(4, 24, 16, 0.12);
-      font-size: 1.5rem;
-      font-weight: 600;
+      background: rgba(0, 0, 0, 0.05);
+      color: var(--text-secondary);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       cursor: pointer;
-      color: rgba(4, 24, 16, 0.7);
+      font-size: 1.25rem;
+      font-weight: 600;
+      transition: background 0.2s ease, color 0.2s ease;
     }
 
     .modal-close-button:hover,
+    .modal-close-button:focus {
+      background: rgba(0, 0, 0, 0.12);
+      color: var(--text-primary);
+    }
+
     .modal-close-button:focus-visible {
-      background: #fff;
-      color: var(--brand-green, #06c167);
-      outline: none;
+      outline: 2px solid var(--brand-green);
+      outline-offset: 2px;
     }
 
     .menu-item-modal .price-group {
@@ -403,28 +410,44 @@ type CartFlightAnimation = {
       display: inline-flex;
       align-items: center;
       gap: 0.65rem;
-      padding: 0.35rem;
+      padding: 0.45rem 0.7rem;
+      border: 1px solid var(--border-soft);
       border-radius: 999px;
-      background: rgba(10, 10, 10, 0.04);
+      backdrop-filter: blur(18px) saturate(140%);
+      color: var(--text-primary);
+      font-weight: 600;
     }
 
     .menu-item-modal .quantity-button {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      border: none;
-      background: #fff;
-      box-shadow: 0 6px 14px rgba(4, 24, 16, 0.12);
-      font-size: 1.35rem;
-      line-height: 1;
+      background: transparent;
+      border: 0;
+      color: inherit;
+      font-size: 1.25rem;
       font-weight: 600;
       cursor: pointer;
+      width: 1.75rem;
+      height: 1.75rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background 0.2s ease;
     }
 
     .menu-item-modal .quantity-button:disabled {
-      opacity: 0.5;
+      opacity: 0.4;
       cursor: not-allowed;
-      box-shadow: none;
+    }
+
+    .menu-item-modal .quantity-button:not(:disabled):hover,
+    .menu-item-modal .quantity-button:not(:disabled):focus {
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.18);
+      outline: none;
+    }
+
+    .menu-item-modal .quantity-button:focus-visible {
+      outline: 2px solid var(--brand-green);
+      outline-offset: 2px;
     }
 
     .menu-item-modal .quantity-display {
