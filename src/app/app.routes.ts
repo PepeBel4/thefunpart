@@ -1,6 +1,8 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth.guard';
 import { adminGuard } from './core/admin.guard';
+import { chainAdminGuard } from './core/chain-admin.guard';
+import { restaurantAdminGuard } from './core/restaurant-admin.guard';
 
 export const appRoutes: Routes = [
   { path: '', loadComponent: () => import('./restaurants/restaurant-list.page').then(m => m.RestaurantListPage) },
@@ -13,49 +15,85 @@ export const appRoutes: Routes = [
   {
     path: 'admin',
     canActivate: [authGuard, adminGuard],
-    loadComponent: () => import('./admin/admin-dashboard.page').then(m => m.AdminDashboardPage),
+    loadComponent: () => import('./admin/admin-shell.page').then(m => m.AdminShellPage),
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'details' },
       {
-        path: 'details',
+        path: '',
+        pathMatch: 'full',
         loadComponent: () =>
-          import('./admin/admin-restaurant-details.page').then(m => m.AdminRestaurantDetailsPage),
+          import('./admin/admin-default-redirect.component').then(m => m.AdminDefaultRedirectComponent),
       },
       {
-        path: 'orders',
-        loadComponent: () => import('./admin/admin-recent-orders.page').then(m => m.AdminRecentOrdersPage),
+        path: 'restaurants',
+        canActivate: [restaurantAdminGuard],
+        loadComponent: () => import('./admin/admin-dashboard.page').then(m => m.AdminDashboardPage),
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'details' },
+          {
+            path: 'details',
+            loadComponent: () =>
+              import('./admin/admin-restaurant-details.page').then(m => m.AdminRestaurantDetailsPage),
+          },
+          {
+            path: 'orders',
+            loadComponent: () => import('./admin/admin-recent-orders.page').then(m => m.AdminRecentOrdersPage),
+          },
+          {
+            path: 'users',
+            loadComponent: () => import('./admin/admin-restaurant-users.page').then(m => m.AdminRestaurantUsersPage),
+          },
+          {
+            path: 'user-roles',
+            loadComponent: () => import('./admin/admin-user-roles.page').then(m => m.AdminUserRolesPage),
+          },
+          {
+            path: 'analytics',
+            loadComponent: () => import('./admin/admin-analytics.page').then(m => m.AdminAnalyticsPage),
+          },
+          {
+            path: 'photos',
+            loadComponent: () => import('./admin/admin-restaurant-photos.page').then(m => m.AdminRestaurantPhotosPage),
+          },
+          {
+            path: 'locations',
+            loadComponent: () => import('./admin/admin-locations.page').then(m => m.AdminLocationsPage),
+          },
+          {
+            path: 'menu',
+            loadComponent: () => import('./admin/admin-menu.page').then(m => m.AdminMenuPage),
+          },
+          {
+            path: 'options',
+            loadComponent: () => import('./admin/admin-options.page').then(m => m.AdminOptionsPage),
+          },
+          {
+            path: 'discounts',
+            loadComponent: () => import('./admin/admin-discounts.page').then(m => m.AdminDiscountsPage),
+          },
+        ],
       },
       {
-        path: 'users',
-        loadComponent: () => import('./admin/admin-restaurant-users.page').then(m => m.AdminRestaurantUsersPage),
-      },
-      {
-        path: 'user-roles',
-        loadComponent: () => import('./admin/admin-user-roles.page').then(m => m.AdminUserRolesPage),
-      },
-      {
-        path: 'analytics',
-        loadComponent: () => import('./admin/admin-analytics.page').then(m => m.AdminAnalyticsPage),
-      },
-      {
-        path: 'photos',
-        loadComponent: () => import('./admin/admin-restaurant-photos.page').then(m => m.AdminRestaurantPhotosPage),
-      },
-      {
-        path: 'locations',
-        loadComponent: () => import('./admin/admin-locations.page').then(m => m.AdminLocationsPage),
-      },
-      {
-        path: 'menu',
-        loadComponent: () => import('./admin/admin-menu.page').then(m => m.AdminMenuPage),
-      },
-      {
-        path: 'options',
-        loadComponent: () => import('./admin/admin-options.page').then(m => m.AdminOptionsPage),
-      },
-      {
-        path: 'discounts',
-        loadComponent: () => import('./admin/admin-discounts.page').then(m => m.AdminDiscountsPage),
+        path: 'chains',
+        canActivate: [chainAdminGuard],
+        loadComponent: () =>
+          import('./admin/admin-chain-dashboard.page').then(m => m.AdminChainDashboardPage),
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'details' },
+          {
+            path: 'details',
+            loadComponent: () => import('./admin/admin-chain-details.page').then(m => m.AdminChainDetailsPage),
+          },
+          {
+            path: 'restaurants',
+            loadComponent: () =>
+              import('./admin/admin-chain-restaurants.page').then(m => m.AdminChainRestaurantsPage),
+          },
+          {
+            path: 'analytics',
+            loadComponent: () =>
+              import('./admin/admin-chain-analytics.page').then(m => m.AdminChainAnalyticsPage),
+          },
+        ],
       },
     ],
   },
