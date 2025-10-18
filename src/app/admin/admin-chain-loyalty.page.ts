@@ -337,8 +337,21 @@ export class AdminChainLoyaltyPage {
     }
   }
 
-  private parseEarnAmount(value: string): { valid: boolean; value: number } {
-    const trimmed = value.trim();
+  private parseEarnAmount(value: string | number | null | undefined): { valid: boolean; value: number } {
+    if (typeof value === 'number') {
+      if (!Number.isFinite(value) || value <= 0) {
+        return { valid: false, value: 0 };
+      }
+
+      const cents = Math.round(value * 100);
+      return cents > 0 ? { valid: true, value: cents } : { valid: false, value: 0 };
+    }
+
+    if (value == null) {
+      return { valid: false, value: 0 };
+    }
+
+    const trimmed = String(value).trim();
     if (!trimmed) {
       return { valid: false, value: 0 };
     }
