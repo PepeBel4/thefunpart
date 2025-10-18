@@ -1,5 +1,5 @@
 import { NgIf } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { NavbarComponent } from './shared/navbar.component';
 import { CartSidebarComponent } from './cart/card-sidebar.component';
@@ -8,7 +8,6 @@ import { CardSpotlightComponent } from './cards/card-spotlight.component';
 import { CardSpotlightService } from './cards/card-spotlight.service';
 import { filter } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { PushNotificationsService } from './core/push-notifications.service';
 
 @Component({
   selector: 'app-root',
@@ -153,10 +152,9 @@ import { PushNotificationsService } from './core/push-notifications.service';
     <app-cookie-consent />
   `
 })
-export class AppComponent implements OnInit {
+export class AppComponent {
   private router = inject(Router);
   private cardSpotlight = inject(CardSpotlightService);
-  private pushNotifications = inject(PushNotificationsService);
 
   readonly currentYear = new Date().getFullYear();
   readonly showCartSidebar = signal(this.shouldShowCart(this.router.url));
@@ -173,10 +171,6 @@ export class AppComponent implements OnInit {
       .subscribe(event => {
         this.showCartSidebar.set(this.shouldShowCart(event.urlAfterRedirects));
       });
-  }
-
-  ngOnInit(): void {
-    void this.pushNotifications.initialize();
   }
 
   private shouldShowCart(url: string): boolean {
