@@ -152,6 +152,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
           <a routerLink="restaurants" routerLinkActive="active">
             {{ 'admin.chain.sections.restaurants' | translate: 'Restaurants' }}
           </a>
+          <a routerLink="loyalty" routerLinkActive="active">
+            {{ 'admin.chain.sections.loyalty' | translate: 'Loyalty program' }}
+          </a>
           <a routerLink="analytics" routerLinkActive="active">
             {{ 'admin.chain.sections.analytics' | translate: 'Analytics' }}
           </a>

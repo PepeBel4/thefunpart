@@ -91,6 +91,11 @@ export const appRoutes: Routes = [
             path: 'discounts',
             loadComponent: () => import('./admin/admin-discounts.page').then(m => m.AdminDiscountsPage),
           },
+          {
+            path: 'loyalty',
+            loadComponent: () =>
+              import('./admin/admin-restaurant-loyalty.page').then(m => m.AdminRestaurantLoyaltyPage),
+          },
         ],
       },
       {
@@ -108,6 +113,11 @@ export const appRoutes: Routes = [
             path: 'restaurants',
             loadComponent: () =>
               import('./admin/admin-chain-restaurants.page').then(m => m.AdminChainRestaurantsPage),
+          },
+          {
+            path: 'loyalty',
+            loadComponent: () =>
+              import('./admin/admin-chain-loyalty.page').then(m => m.AdminChainLoyaltyPage),
           },
           {
             path: 'analytics',
