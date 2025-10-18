@@ -6,6 +6,12 @@ import { firstValueFrom } from 'rxjs';
 
 
 interface LoginPayload { email: string; password: string; }
+interface RegisterPayload {
+  email: string;
+  password: string;
+  first_name?: string;
+  last_name?: string;
+}
 
 
 @Injectable({ providedIn: 'root' })
@@ -55,6 +61,39 @@ export class AuthService {
     if (!sessionUser) {
       throw new Error('Unexpected login response shape');
     }
+    this._user.set(sessionUser);
+    await this.router.navigateByUrl('/');
+  }
+
+
+  async register(input: { email: string; password: string; firstName?: string; lastName?: string }) {
+    const payload: RegisterPayload = {
+      email: input.email.trim(),
+      password: input.password,
+    };
+
+    const firstName = input.firstName?.trim();
+    const lastName = input.lastName?.trim();
+
+    if (firstName) {
+      payload.first_name = firstName;
+    }
+
+    if (lastName) {
+      payload.last_name = lastName;
+    }
+
+    const response = await firstValueFrom(
+      this.api.post<SessionUser | { user: SessionUser }>('/auth/register', {
+        user: payload,
+      })
+    );
+
+    const sessionUser = this.normalizeSessionUser(response);
+    if (!sessionUser) {
+      throw new Error('Unexpected register response shape');
+    }
+
     this._user.set(sessionUser);
     await this.router.navigateByUrl('/');
   }

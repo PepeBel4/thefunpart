@@ -2,11 +2,12 @@ import { Component, inject } from '@angular/core';
 import { AuthService } from '../core/auth.service';
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '../shared/translate.pipe';
+import { RouterLink } from '@angular/router';
 
 @Component({
   standalone: true,
   selector: 'app-login',
-  imports: [FormsModule, TranslatePipe],
+  imports: [FormsModule, TranslatePipe, RouterLink],
   styles: [`
     .card {
       max-width: 420px;
@@ -61,6 +62,23 @@ import { TranslatePipe } from '../shared/translate.pipe';
       transform: translateY(-1px);
       box-shadow: 0 22px 40px rgba(var(--brand-green-rgb, 6, 193, 103), 0.32);
     }
+
+    .auth-switch {
+      margin: 0;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+
+    .auth-switch a {
+      color: var(--brand-green);
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .auth-switch a:hover {
+      text-decoration: underline;
+    }
   `],
   template: `
     <div class="card">
@@ -75,6 +93,10 @@ import { TranslatePipe } from '../shared/translate.pipe';
         <input [(ngModel)]="password" name="password" type="password" required />
         <button type="submit">{{ 'login.submit' | translate: 'Log in' }}</button>
       </form>
+      <p class="auth-switch">
+        {{ 'login.noAccount' | translate: "Don't have an account?" }}
+        <a routerLink="/register">{{ 'login.registerCta' | translate: 'Create one' }}</a>
+      </p>
     </div>
   `
 })
