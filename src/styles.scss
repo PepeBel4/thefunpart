@@ -415,6 +415,75 @@ app-restaurant-detail .card.highlighted {
   box-shadow: 0 0 0 3px rgba(var(--brand-green-rgb, 6, 193, 103), 0.14), var(--shadow-soft);
 }
 
+app-restaurant-detail .card.loyalty-redeemable,
+app-restaurant-detail .card.loyalty-almost {
+  --loyalty-card-border: rgba(var(--brand-green-rgb, 6, 193, 103), 0.65);
+  --loyalty-card-glow: rgba(var(--brand-green-rgb, 6, 193, 103), 0.12);
+  border-color: var(--loyalty-card-border);
+  box-shadow: 0 0 0 3px var(--loyalty-card-glow);
+}
+
+app-restaurant-detail .card.loyalty-almost {
+  --loyalty-card-border: rgba(255, 183, 77, 0.55);
+  --loyalty-card-glow: rgba(255, 183, 77, 0.18);
+}
+
+app-restaurant-detail .loyalty-badge {
+  --loyalty-badge-bg: rgba(var(--brand-green-rgb, 6, 193, 103), 0.12);
+  --loyalty-badge-color: var(--brand-green, #045d35);
+  --loyalty-badge-border: rgba(var(--brand-green-rgb, 6, 193, 103), 0.3);
+  --loyalty-icon-bg: rgba(var(--brand-green-rgb, 6, 193, 103), 0.2);
+  --loyalty-icon-color: var(--brand-green, #045d35);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.2rem 0.55rem;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  margin-bottom: 0.6rem;
+  background: var(--loyalty-badge-bg);
+  color: var(--loyalty-badge-color);
+  border: 1px solid var(--loyalty-badge-border);
+}
+
+app-restaurant-detail .loyalty-badge__icon {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--loyalty-icon-bg);
+  color: var(--loyalty-icon-color);
+}
+
+app-restaurant-detail .loyalty-badge__icon svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  display: block;
+}
+
+app-restaurant-detail .loyalty-badge__content {
+  display: grid;
+  gap: 0.1rem;
+  line-height: 1.1;
+}
+
+app-restaurant-detail .loyalty-badge__helper {
+  font-size: 0.7rem;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+app-restaurant-detail .loyalty-badge.loyalty-almost {
+  --loyalty-badge-bg: rgba(255, 183, 77, 0.18);
+  --loyalty-badge-color: #925100;
+  --loyalty-badge-border: rgba(255, 183, 77, 0.36);
+  --loyalty-icon-bg: rgba(255, 183, 77, 0.26);
+  --loyalty-icon-color: #8b4700;
+}
+
 app-restaurant-detail .card:hover::after {
   opacity: 1;
 }

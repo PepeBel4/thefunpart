@@ -10,6 +10,9 @@ import {
   NgIf,
   NgFor,
   NgStyle,
+  NgSwitch,
+  NgSwitchCase,
+  NgSwitchDefault,
   DOCUMENT,
   TitleCasePipe,
 } from '@angular/common';
@@ -182,6 +185,9 @@ type ScheduledInterval = {
     NgIf,
     TranslatePipe,
     NgStyle,
+    NgSwitch,
+    NgSwitchCase,
+    NgSwitchDefault,
     ReactiveFormsModule,
     MenuItemPhotoSliderComponent,
     AllergenIconComponent,
@@ -681,40 +687,6 @@ type ScheduledInterval = {
       gap: 1.25rem;
     }
 
-    .menu-grid .card.loyalty-redeemable {
-      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.65);
-      box-shadow: 0 0 0 3px rgba(var(--brand-green-rgb, 6, 193, 103), 0.12);
-    }
-
-    .menu-grid .card.loyalty-almost {
-      border-color: rgba(255, 183, 77, 0.55);
-      box-shadow: 0 0 0 3px rgba(255, 183, 77, 0.18);
-    }
-
-    .menu-grid .loyalty-badge {
-      display: flex;
-      flex-direction: column;
-      gap: 0.15rem;
-      align-items: flex-start;
-      font-size: 0.75rem;
-      font-weight: 600;
-      border-radius: 999px;
-      padding: 0.4rem 0.75rem;
-      margin-bottom: 0.5rem;
-      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.14);
-      color: var(--brand-green, #05683a);
-    }
-
-    .menu-grid .loyalty-badge.loyalty-almost {
-      background: rgba(255, 183, 77, 0.2);
-      color: #a25900;
-    }
-
-    .menu-grid .loyalty-badge__helper {
-      font-size: 0.7rem;
-      font-weight: 500;
-      opacity: 0.85;
-    }
 
     @media (max-width: 720px) {
       .hero {
@@ -1074,8 +1046,82 @@ type ScheduledInterval = {
               </button>
               <ng-container *ngIf="getLoyaltyHighlightInfo(m) as loyalty">
                 <div class="loyalty-badge" [ngClass]="{ 'loyalty-almost': loyalty.state === 'almost' }">
-                  <span class="loyalty-badge__label">{{ loyalty.label }}</span>
-                  <span class="loyalty-badge__helper" *ngIf="loyalty.helper">{{ loyalty.helper }}</span>
+                  <span class="loyalty-badge__icon" aria-hidden="true">
+                    <ng-container [ngSwitch]="loyalty.state">
+                      <svg
+                        *ngSwitchCase="'redeemable'"
+                        viewBox="0 0 24 24"
+                        role="presentation"
+                        focusable="false"
+                      >
+                        <path
+                          d="M12 3.2l1.86 3.77 4.16.6-3.01 2.94.71 4.14L12 12.9l-3.72 1.95.71-4.14-3.01-2.94 4.16-.6Z"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          stroke-linejoin="round"
+                        ></path>
+                        <path
+                          d="M8.8 20.4 12 18.4l3.2 2"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        ></path>
+                      </svg>
+                      <svg
+                        *ngSwitchCase="'almost'"
+                        viewBox="0 0 24 24"
+                        role="presentation"
+                        focusable="false"
+                      >
+                        <path
+                          d="M7 4h10m-10 16h10M8.5 4v3.1a3.4 3.4 0 001.32 2.68L12 11.5l2.18-1.72A3.4 3.4 0 0015.5 7.1V4M8.5 20v-3.05c0-1.1.52-2.13 1.32-2.79L12 12.5l2.18 1.66c.8.66 1.32 1.69 1.32 2.79V20"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        ></path>
+                        <circle cx="12" cy="7.5" r="0.7" fill="currentColor"></circle>
+                        <path
+                          d="M10.9 16.75h2.2"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                        ></path>
+                      </svg>
+                      <svg
+                        *ngSwitchDefault
+                        viewBox="0 0 24 24"
+                        role="presentation"
+                        focusable="false"
+                      >
+                        <circle
+                          cx="12"
+                          cy="12"
+                          r="5.5"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                        ></circle>
+                        <path
+                          d="M12 8.8v3l1.85 1.85"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        ></path>
+                      </svg>
+                    </ng-container>
+                  </span>
+                  <span class="loyalty-badge__content">
+                    <span class="loyalty-badge__label">{{ loyalty.label }}</span>
+                    <span class="loyalty-badge__helper" *ngIf="loyalty.helper">{{ loyalty.helper }}</span>
+                  </span>
                 </div>
               </ng-container>
               <div class="card-media" *ngIf="getPrimaryPhotoUrl(m) as photoUrl">
