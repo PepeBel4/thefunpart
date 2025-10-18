@@ -65,7 +65,7 @@ import { RouterLink } from '@angular/router';
 
     .forgot-password {
       text-align: right;
-      margin: -0.5rem 0 0.5rem;
+      margin: 0.35rem 0 0.5rem;
     }
 
     .forgot-password a {
