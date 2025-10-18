@@ -1,10 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { TranslatePipe } from '../shared/translate.pipe';
 import { AuthService } from '../core/auth.service';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subscription } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 
 @Component({
@@ -218,9 +218,10 @@ import { HttpErrorResponse } from '@angular/common/http';
     </div>
   `,
 })
-export class PasswordUpdatePage implements OnInit {
+export class PasswordUpdatePage implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(AuthService);
+  private queryParamSub?: Subscription;
 
   token = '';
   password = '';
@@ -229,7 +230,7 @@ export class PasswordUpdatePage implements OnInit {
   status: 'idle' | 'missingToken' | 'missingPassword' | 'mismatch' | 'invalidToken' | 'error' | 'success' = 'idle';
 
   ngOnInit(): void {
-    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe(params => {
+    this.queryParamSub = this.route.queryParamMap.subscribe(params => {
       this.token = params.get('token') ?? params.get('reset_password_token') ?? '';
       if (!this.token) {
         this.status = 'missingToken';
@@ -237,6 +238,10 @@ export class PasswordUpdatePage implements OnInit {
         this.status = 'idle';
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.queryParamSub?.unsubscribe();
   }
 
   async submit() {
