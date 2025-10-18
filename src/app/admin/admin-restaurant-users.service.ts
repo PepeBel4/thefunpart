@@ -1,4 +1,3 @@
-import { HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from '../core/api.service';
@@ -35,14 +34,14 @@ export class AdminRestaurantUsersService {
   private api = inject(ApiService);
 
   list(restaurantId: number, query: RestaurantUserQuery = {}): Observable<RestaurantUser[]> {
-    let params = new HttpParams();
+    const params: Record<string, string> = {};
 
     const { filters = {}, sort = null } = query;
 
     const ransackParams: Record<string, string> = {};
 
     if (filters.searchTerm) {
-      ransackParams['first_name_or_last_name_or_email_cont'] = filters.searchTerm;
+      ransackParams['email_or_first_name_or_last_name_i_cont'] = filters.searchTerm;
     }
 
     if (filters.orderedFrom) {
@@ -67,7 +66,7 @@ export class AdminRestaurantUsersService {
     }
 
     Object.entries(ransackParams).forEach(([key, value]) => {
-      params = params.set(`q[${key}]`, value);
+      params[`q[${key}]`] = value;
     });
 
     return this.api.get<RestaurantUser[]>(`/restaurants/${restaurantId}/users`, { params });
