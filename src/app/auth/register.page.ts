@@ -13,6 +13,11 @@ interface RegisterFormState {
   confirmPassword: string;
 }
 
+interface RegisterErrorState {
+  key?: string;
+  fallback: string;
+}
+
 @Component({
   standalone: true,
   selector: 'app-register',
@@ -180,11 +185,6 @@ interface RegisterFormState {
     </div>
   `,
 })
-interface RegisterErrorState {
-  key?: string;
-  fallback: string;
-}
-
 export class RegisterPage {
   private auth = inject(AuthService);
 
