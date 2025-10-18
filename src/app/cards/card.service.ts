@@ -1,14 +1,31 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, effect, inject } from '@angular/core';
 import { Observable, map, of, shareReplay } from 'rxjs';
 import { ApiService } from '../core/api.service';
 import { Card } from '../core/models';
+import { AuthService } from '../core/auth.service';
 
 @Injectable({ providedIn: 'root' })
 export class CardService {
   private api = inject(ApiService);
-  private cards$ = this.api.get<Card[]>('/cards').pipe(shareReplay({ bufferSize: 1, refCount: true }));
+  private auth = inject(AuthService);
+  private cards$?: Observable<Card[]>;
+
+  constructor() {
+    effect(() => {
+      // Re-compute when the authenticated user changes so we don't leak
+      // loyalty card data between sessions.
+      this.auth.user();
+      this.invalidate();
+    });
+  }
 
   list(): Observable<Card[]> {
+    if (!this.cards$) {
+      this.cards$ = this.api
+        .get<Card[]>('/cards')
+        .pipe(shareReplay({ bufferSize: 1, refCount: true }));
+    }
+
     return this.cards$;
   }
 
@@ -46,5 +63,9 @@ export class CardService {
         return targetChainId === chainId;
       }) ?? null
     );
+  }
+
+  private invalidate() {
+    this.cards$ = undefined;
   }
 }
