@@ -293,28 +293,100 @@ export class AuthService {
   }
 
   private normalizeRoleArray(value: unknown): string[] | null {
-    if (Array.isArray(value)) {
-      const normalized = value
-        .map(role => (typeof role === 'string' ? role.trim().toLowerCase() : null))
-        .filter((role): role is string => !!role);
-      return normalized.length ? Array.from(new Set(normalized)) : null;
-    }
+    const collected = new Set<string>();
 
-    if (typeof value === 'string') {
-      const trimmed = value.trim().toLowerCase();
-      return trimmed ? [trimmed] : null;
-    }
+    const addRole = (role: unknown) => {
+      if (typeof role === 'string') {
+        const normalized = role.trim().toLowerCase();
+        if (normalized) {
+          collected.add(normalized);
+        }
+        return true;
+      }
 
-    if (typeof value === 'number') {
-      const converted = String(value).trim().toLowerCase();
-      return converted ? [converted] : null;
-    }
+      if (typeof role === 'number') {
+        const normalized = String(role).trim().toLowerCase();
+        if (normalized) {
+          collected.add(normalized);
+        }
+        return true;
+      }
 
-    if (typeof value === 'boolean') {
-      return value ? ['admin'] : null;
-    }
+      if (typeof role === 'boolean') {
+        if (role) {
+          collected.add('admin');
+        }
+        return true;
+      }
 
-    return null;
+      return false;
+    };
+
+    const visit = (input: unknown) => {
+      if (input == null) {
+        return;
+      }
+
+      if (Array.isArray(input)) {
+        for (const entry of input) {
+          visit(entry);
+        }
+        return;
+      }
+
+      if (addRole(input)) {
+        return;
+      }
+
+      if (typeof input === 'object') {
+        const record = input as Record<string, unknown>;
+
+        let foundCandidate = false;
+
+        const arrayKeys = ['roles', 'user_roles', 'userRoles', 'role_names', 'roleNames'];
+        for (const key of arrayKeys) {
+          if (key in record) {
+            foundCandidate = true;
+            visit(record[key]);
+          }
+        }
+
+        const explicitKeys = ['role', 'role_name', 'roleName'];
+        for (const key of explicitKeys) {
+          if (key in record) {
+            foundCandidate = true;
+            visit(record[key]);
+          }
+        }
+
+        if (!foundCandidate) {
+          const secondaryKeys = ['name', 'value', 'type', 'code'];
+          for (const key of secondaryKeys) {
+            if (key in record) {
+              foundCandidate = true;
+              visit(record[key]);
+            }
+          }
+        }
+
+        if (this.readBoolean(record['admin'] ?? record['is_admin'] ?? record['isAdmin'])) {
+          collected.add('admin');
+          foundCandidate = true;
+        }
+
+        if (!foundCandidate) {
+          for (const [key, flag] of Object.entries(record)) {
+            if (typeof flag === 'boolean' && flag) {
+              addRole(key);
+            }
+          }
+        }
+      }
+    };
+
+    visit(value);
+
+    return collected.size ? Array.from(collected) : null;
   }
 
   private normalizeScopedRoles(value: unknown): Record<number, string[]> {
