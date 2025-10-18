@@ -159,6 +159,8 @@ export class AuthService {
     const globalRoles = new Set<string>();
     const globalRoleSources = [
       userRecord['roles'],
+      userRecord['user_roles'],
+      userRecord['userRoles'],
       userRecord['role'],
       userRecord['role_names'],
       userRecord['roleNames'],
@@ -349,6 +351,8 @@ export class AuthService {
 
         const roles =
           this.normalizeRoleArray(record['roles']) ??
+          this.normalizeRoleArray(record['user_roles']) ??
+          this.normalizeRoleArray(record['userRoles']) ??
           this.normalizeRoleArray(record['role']) ??
           this.normalizeRoleArray(record['role_names']) ??
           this.normalizeRoleArray(record['roleNames']);
@@ -399,6 +403,8 @@ export class AuthService {
           const nested = rawRoles as Record<string, unknown>;
           const roles =
             this.normalizeRoleArray(nested['roles']) ??
+            this.normalizeRoleArray(nested['user_roles']) ??
+            this.normalizeRoleArray(nested['userRoles']) ??
             this.normalizeRoleArray(nested['role']) ??
             this.normalizeRoleArray(nested['role_names']) ??
             this.normalizeRoleArray(nested['roleNames']);
