@@ -3,6 +3,7 @@ import { ApiService } from './api.service';
 import { Router } from '@angular/router';
 import { SessionUser } from './models';
 import { firstValueFrom } from 'rxjs';
+import { CartService } from '../cart/cart.service';
 
 
 interface LoginPayload { email: string; password: string; }
@@ -18,6 +19,7 @@ interface RegisterPayload {
 export class AuthService {
   private api = inject(ApiService);
   private router = inject(Router);
+  private cart = inject(CartService);
   private readonly storageKey = 'thefunpart:sessionUser';
 
 
@@ -105,6 +107,7 @@ export class AuthService {
 
   async logout() {
     await firstValueFrom(this.api.delete('/auth/logout', {}));
+    this.cart.clear();
     this._user.set(null);
     await this.router.navigateByUrl('/login');
   }
