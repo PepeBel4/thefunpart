@@ -17,6 +17,11 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
   selector: 'app-admin-restaurant-details',
   imports: [AsyncPipe, FormsModule, NgFor, NgIf, TitleCasePipe, TranslatePipe],
   styles: [`
+    :host {
+      display: grid;
+      gap: clamp(1.5rem, 3vw, 2.5rem);
+    }
+
     section.card {
       background: var(--surface);
       border-radius: var(--radius-card);
@@ -432,8 +437,9 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
     }
   `],
   template: `
-    <section class="card" *ngIf="selectedRestaurant$ | async as restaurant">
-      <header>
+    <ng-container *ngIf="selectedRestaurant$ | async as restaurant">
+      <section class="card">
+        <header>
         <h3>{{ 'admin.details.heading' | translate: 'Restaurant details' }}</h3>
         <p>
           {{
@@ -657,7 +663,9 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
           {{ detailsMessage }}
         </div>
       </form>
-    </section>
+      </section>
+
+    </ng-container>
   `,
 })
 export class AdminRestaurantDetailsPage {

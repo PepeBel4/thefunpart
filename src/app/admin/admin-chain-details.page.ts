@@ -8,14 +8,10 @@ import { TranslatePipe } from '../shared/translate.pipe';
   selector: 'app-admin-chain-details',
   imports: [AsyncPipe, NgIf, TranslatePipe],
   styles: [`
-    :host {
-      display: block;
-    }
-
-    .card {
+    section.card {
       background: var(--surface);
       border-radius: var(--radius-card);
-      padding: clamp(1.75rem, 3vw, 2.25rem);
+      padding: 2rem clamp(1.5rem, 3vw, 2.5rem);
       box-shadow: var(--shadow-soft);
       border: 1px solid rgba(10, 10, 10, 0.05);
       display: flex;
@@ -23,12 +19,28 @@ import { TranslatePipe } from '../shared/translate.pipe';
       gap: 1.25rem;
     }
 
+    header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    header h3 {
+      margin: 0;
+      font-size: clamp(1.35rem, 3vw, 1.6rem);
+      letter-spacing: -0.02em;
+    }
+
+    header p {
+      margin: 0;
+      color: var(--text-secondary);
+      max-width: 520px;
+    }
+
     dl {
       margin: 0;
       display: grid;
-      grid-template-columns: minmax(0, 160px) 1fr;
-      row-gap: 0.5rem;
-      column-gap: 1.25rem;
+      gap: 0.75rem;
     }
 
     dt {
