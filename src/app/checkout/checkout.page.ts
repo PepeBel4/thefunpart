@@ -1,4 +1,4 @@
-import { CurrencyPipe, NgFor, NgIf } from '@angular/common';
+import { CurrencyPipe, DecimalPipe, NgFor, NgIf } from '@angular/common';
 import { Component, OnDestroy, effect, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -13,7 +13,7 @@ import { TranslatePipe } from '../shared/translate.pipe';
 @Component({
   standalone: true,
   selector: 'app-checkout',
-  imports: [CurrencyPipe, TranslatePipe, NgFor, NgIf],
+  imports: [CurrencyPipe, DecimalPipe, TranslatePipe, NgFor, NgIf],
   styles: [`
     .card {
       max-width: 720px;
@@ -41,6 +41,19 @@ import { TranslatePipe } from '../shared/translate.pipe';
       align-items: center;
       font-size: 1.1rem;
       font-weight: 600;
+    }
+
+    .loyalty-points {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.95rem;
+      color: rgba(10, 10, 10, 0.7);
+    }
+
+    .loyalty-points-value {
+      font-weight: 600;
+      color: rgba(10, 10, 10, 0.85);
     }
 
     .order-remark-field {
@@ -218,6 +231,10 @@ import { TranslatePipe } from '../shared/translate.pipe';
       <div class="summary">
         <span>{{ 'checkout.total' | translate: 'Total' }}</span>
         <span>{{ (cart.subtotalCents()/100) | currency:'EUR' }}</span>
+      </div>
+      <div class="loyalty-points" *ngIf="cart.loyaltyPoints() > 0">
+        <span>{{ 'checkout.loyaltyPoints.label' | translate: 'Loyalty points earned' }}</span>
+        <span class="loyalty-points-value">{{ cart.loyaltyPoints() | number:'1.0-2' }}</span>
       </div>
       <button
         (click)="placeOrder()"

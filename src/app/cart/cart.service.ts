@@ -30,6 +30,25 @@ export class CartService {
   subtotalCents = computed(() =>
     this._lines().reduce((a, l) => a + this.getPriceCents(l.item) * l.quantity, 0)
   );
+  loyaltyPoints = computed(() => {
+    const basePoints = this.subtotalCents() / 100;
+    const bonusPoints = this._lines().reduce((total, line) => {
+      const quantity = Math.max(0, Math.floor(line.quantity ?? 0));
+      if (!quantity) {
+        return total;
+      }
+
+      const reward = this.getLoyaltyPointsReward(line.item);
+      return total + reward * quantity;
+    }, 0);
+
+    const totalPoints = basePoints + bonusPoints;
+    if (!Number.isFinite(totalPoints) || totalPoints <= 0) {
+      return 0;
+    }
+
+    return Math.round(totalPoints * 100) / 100;
+  });
 
   private _restaurant = signal<CartRestaurant | null>(null);
   restaurant = computed(() => this._restaurant());
@@ -241,6 +260,15 @@ export class CartService {
     }
 
     return item.price_cents;
+  }
+
+  private getLoyaltyPointsReward(item: MenuItem): number {
+    const rawReward = item.loyalty_points_reward ?? item.loyaltyPointsReward;
+    if (typeof rawReward !== 'number' || Number.isNaN(rawReward) || rawReward <= 0) {
+      return 0;
+    }
+
+    return rawReward;
   }
 
   private normalizeCategory(category?: CartCategorySelection | null): CartCategorySelection | null {
