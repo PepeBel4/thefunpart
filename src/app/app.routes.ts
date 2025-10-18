@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth.guard';
+import { adminGuard } from './core/admin.guard';
 
 export const appRoutes: Routes = [
   { path: '', loadComponent: () => import('./restaurants/restaurant-list.page').then(m => m.RestaurantListPage) },
@@ -11,7 +12,7 @@ export const appRoutes: Routes = [
   { path: 'profile', canActivate: [authGuard], loadComponent: () => import('./profile/profile.page').then(m => m.ProfilePage) },
   {
     path: 'admin',
-    canActivate: [authGuard],
+    canActivate: [authGuard, adminGuard],
     loadComponent: () => import('./admin/admin-dashboard.page').then(m => m.AdminDashboardPage),
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'details' },
