@@ -16,15 +16,11 @@ export class OrderService {
   private api = inject(ApiService);
 
   list(params: { userId?: number } = {}): Observable<Order[]> {
-    const query: Record<string, string | number | boolean> = {};
-
     if (typeof params.userId === 'number') {
-      query['user_id'] = params.userId;
+      return this.api.get<Order[]>(`/users/${params.userId}/orders`);
     }
 
-    const options = Object.keys(query).length ? { params: query } : undefined;
-
-    return this.api.get<Order[]>('/orders', options);
+    return this.api.get<Order[]>('/orders');
   }
 
   listForRestaurant(
