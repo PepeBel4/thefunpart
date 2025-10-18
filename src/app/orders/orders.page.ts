@@ -3,6 +3,9 @@ import { OrderService } from './order.service';
 import { AsyncPipe, DatePipe, CurrencyPipe, NgFor, NgIf } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '../shared/translate.pipe';
+import { AuthService } from '../core/auth.service';
+import { defer, of } from 'rxjs';
+import { Order } from '../core/models';
 
 @Component({
   standalone: true,
@@ -113,5 +116,13 @@ import { TranslatePipe } from '../shared/translate.pipe';
 })
 export class OrdersPage {
   private svc = inject(OrderService);
-  orders$ = this.svc.list();
+  private auth = inject(AuthService);
+  orders$ = defer(() => {
+    const sessionUser = this.auth.user();
+    if (!sessionUser) {
+      return of<Order[]>([]);
+    }
+
+    return this.svc.list({ userId: sessionUser.id });
+  });
 }

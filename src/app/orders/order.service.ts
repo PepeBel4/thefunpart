@@ -15,7 +15,11 @@ import {
 export class OrderService {
   private api = inject(ApiService);
 
-  list(): Observable<Order[]> {
+  list(params: { userId?: number } = {}): Observable<Order[]> {
+    if (typeof params.userId === 'number') {
+      return this.api.get<Order[]>(`/users/${params.userId}/orders`);
+    }
+
     return this.api.get<Order[]>('/orders');
   }
 
