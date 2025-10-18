@@ -82,7 +82,7 @@ export class AdminRestaurantUsersService {
 
     switch (sort.column) {
       case 'name':
-        return `last_name ${direction}, first_name ${direction}`;
+        return `last_name ${direction}`;
       case 'email':
         return `email ${direction}`;
       case 'created_at':
