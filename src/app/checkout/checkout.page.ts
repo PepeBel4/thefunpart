@@ -1,4 +1,4 @@
-import { CurrencyPipe, NgFor, NgIf } from '@angular/common';
+import { CurrencyPipe, DecimalPipe, NgFor, NgIf } from '@angular/common';
 import { Component, OnDestroy, effect, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -13,7 +13,7 @@ import { TranslatePipe } from '../shared/translate.pipe';
 @Component({
   standalone: true,
   selector: 'app-checkout',
-  imports: [CurrencyPipe, TranslatePipe, NgFor, NgIf],
+  imports: [CurrencyPipe, DecimalPipe, TranslatePipe, NgFor, NgIf],
   styles: [`
     .card {
       max-width: 720px;
@@ -41,6 +41,70 @@ import { TranslatePipe } from '../shared/translate.pipe';
       align-items: center;
       font-size: 1.1rem;
       font-weight: 600;
+    }
+
+    .loyalty-card-earned {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      padding: 1.35rem 1.4rem 1.45rem;
+      border-radius: var(--radius-card);
+      background: linear-gradient(
+        135deg,
+        rgba(var(--brand-green-rgb, 6, 193, 103), 0.18),
+        rgba(var(--brand-green-rgb, 6, 193, 103), 0.04)
+      );
+      border: 1px solid rgba(var(--brand-green-rgb, 6, 193, 103), 0.22);
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+    }
+
+    .loyalty-card-earned__label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #045530;
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.18);
+      border-radius: 999px;
+      padding: 0.25rem 0.65rem;
+      align-self: flex-start;
+    }
+
+    .loyalty-card-earned__content {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      color: rgba(4, 24, 16, 0.85);
+    }
+
+    .loyalty-card-earned__points {
+      display: flex;
+      align-items: baseline;
+      gap: 0.35rem;
+    }
+
+    .loyalty-card-earned__value {
+      font-size: clamp(1.8rem, 4vw, 2.4rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .loyalty-card-earned__unit {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(4, 24, 16, 0.65);
+    }
+
+    .loyalty-card-earned__hint {
+      margin: 0;
+      font-size: 0.9rem;
+      color: rgba(4, 24, 16, 0.7);
     }
 
     .order-remark-field {
@@ -218,6 +282,20 @@ import { TranslatePipe } from '../shared/translate.pipe';
       <div class="summary">
         <span>{{ 'checkout.total' | translate: 'Total' }}</span>
         <span>{{ (cart.subtotalCents()/100) | currency:'EUR' }}</span>
+      </div>
+      <div class="loyalty-card-earned" *ngIf="cart.loyaltyPoints() > 0">
+        <span class="loyalty-card-earned__label">
+          {{ 'checkout.loyaltyPoints.label' | translate: 'Loyalty rewards' }}
+        </span>
+        <div class="loyalty-card-earned__content">
+          <div class="loyalty-card-earned__points">
+            <span class="loyalty-card-earned__value">{{ cart.loyaltyPoints() | number:'1.0-0' }}</span>
+            <span class="loyalty-card-earned__unit">{{ 'checkout.loyaltyPoints.unit' | translate: 'points' }}</span>
+          </div>
+          <p class="loyalty-card-earned__hint">
+            {{ 'checkout.loyaltyPoints.hint' | translate: 'Earn these rewards when this order is completed.' }}
+          </p>
+        </div>
       </div>
       <button
         (click)="placeOrder()"

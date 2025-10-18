@@ -214,6 +214,7 @@ export interface MenuItem {
   discounted_price_cents?: number | null;
   loyalty_points_price?: number | null;
   loyalty_points_reward?: number | null;
+  loyaltyPointsReward?: number | null;
   is_highlighted?: boolean | null;
   description?: string;
   categories?: MenuItemCategory[];
