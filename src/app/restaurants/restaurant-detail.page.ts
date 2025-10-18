@@ -2725,11 +2725,11 @@ export class RestaurantDetailPage implements OnDestroy {
   }
 
   shouldHighlightMenuItem(item: MenuItem): boolean {
-    return (
-      this.highlightMenuItemId === item.id ||
-      this.isHighlightedMenuItem(item) ||
-      this.getLoyaltyHighlightState(item) !== null
-    );
+    return this.highlightMenuItemId === item.id || this.isHighlightCategoryCandidate(item);
+  }
+
+  private isHighlightCategoryCandidate(item: MenuItem): boolean {
+    return this.isHighlightedMenuItem(item) || this.getLoyaltyHighlightState(item) !== null;
   }
 
   private isHighlightedMenuItem(item: MenuItem): boolean {
@@ -3058,7 +3058,7 @@ export class RestaurantDetailPage implements OnDestroy {
       });
     }
 
-    const highlightedItems = items.filter(item => this.isHighlightedMenuItem(item));
+    const highlightedItems = items.filter(item => this.isHighlightCategoryCandidate(item));
     
     if (highlightedItems.length) {
       const cartCategoriesByItemId: Record<number, CartCategorySelection | null> = {};
