@@ -203,6 +203,10 @@ export class TranslationService {
       'login.submit': 'Log in',
       'login.noAccount': "Don't have an account?",
       'login.registerCta': 'Create one',
+      'login.loading': 'Signing you in…',
+      'login.missingFields': 'Please enter your email and password.',
+      'login.invalidCredentials': 'Incorrect email or password. Please try again.',
+      'login.error': 'We could not sign you in. Please check your details and try again.',
 
       'register.title': 'Create your account',
       'register.subtitle': 'Join us and start ordering from your favourite restaurants.',
@@ -793,6 +797,10 @@ export class TranslationService {
       'login.submit': 'Inloggen',
       'login.noAccount': 'Nog geen account?',
       'login.registerCta': 'Maak er een aan',
+      'login.loading': 'Bezig met inloggen…',
+      'login.missingFields': 'Vul je e-mailadres en wachtwoord in.',
+      'login.invalidCredentials': 'Onjuist e-mailadres of wachtwoord. Probeer het opnieuw.',
+      'login.error': 'We konden je niet aanmelden. Controleer je gegevens en probeer het opnieuw.',
 
       'register.title': 'Maak je account aan',
       'register.subtitle': 'Doe mee en begin met bestellen bij je favoriete restaurants.',
@@ -1368,6 +1376,10 @@ export class TranslationService {
       'login.submit': 'Se connecter',
       'login.noAccount': 'Pas encore de compte ?',
       'login.registerCta': 'Créez-en un',
+      'login.loading': 'Connexion en cours…',
+      'login.missingFields': 'Veuillez saisir votre e-mail et votre mot de passe.',
+      'login.invalidCredentials': 'Adresse e-mail ou mot de passe incorrect. Veuillez réessayer.',
+      'login.error': "Nous n'avons pas pu vous connecter. Vérifiez vos informations et réessayez.",
 
       'register.title': 'Créez votre compte',
       'register.subtitle': 'Rejoignez-nous et commencez à commander auprès de vos restaurants préférés.',
@@ -1907,6 +1919,10 @@ export class TranslationService {
       'login.submit': 'Anmelden',
       'login.noAccount': 'Noch kein Konto?',
       'login.registerCta': 'Jetzt registrieren',
+      'login.loading': 'Anmeldung wird durchgeführt…',
+      'login.missingFields': 'Bitte geben Sie Ihre E-Mail-Adresse und Ihr Passwort ein.',
+      'login.invalidCredentials': 'Falsche E-Mail-Adresse oder falsches Passwort. Bitte versuchen Sie es erneut.',
+      'login.error': 'Wir konnten Sie nicht anmelden. Bitte überprüfen Sie Ihre Angaben und versuchen Sie es erneut.',
 
       'register.title': 'Erstelle dein Konto',
       'register.subtitle': 'Mach mit und beginne, bei deinen Lieblingsrestaurants zu bestellen.',
