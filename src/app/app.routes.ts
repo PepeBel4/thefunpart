@@ -13,6 +13,10 @@ export const appRoutes: Routes = [
     path: 'password/edit',
     loadComponent: () => import('./auth/password-update.page').then(m => m.PasswordUpdatePage),
   },
+  {
+    path: 'auth/reset-password',
+    loadComponent: () => import('./auth/password-update.page').then(m => m.PasswordUpdatePage),
+  },
   { path: 'register', loadComponent: () => import('./auth/register.page').then(m => m.RegisterPage) },
   {
     path: 'api',

@@ -230,7 +230,7 @@ export class PasswordUpdatePage implements OnInit {
 
   ngOnInit(): void {
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe(params => {
-      this.token = params.get('reset_password_token') ?? '';
+      this.token = params.get('token') ?? params.get('reset_password_token') ?? '';
       if (!this.token) {
         this.status = 'missingToken';
       } else if (this.status === 'missingToken') {
