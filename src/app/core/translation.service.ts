@@ -212,6 +212,25 @@ export class TranslationService {
       'passwordReset.error': 'We could not send the reset instructions. Please try again.',
       'passwordReset.backToLogin': 'Remembered your password?',
       'passwordReset.loginCta': 'Back to login',
+      'passwordResetConfirm.title': 'Choose a new password',
+      'passwordResetConfirm.subtitle': 'Enter your new password below to finish resetting your account.',
+      'passwordResetConfirm.password': 'New password',
+      'passwordResetConfirm.confirmPassword': 'Confirm new password',
+      'passwordResetConfirm.submit': 'Update password',
+      'passwordResetConfirm.loading': 'Updating password…',
+      'passwordResetConfirm.missingToken':
+        'The reset link is missing or invalid. Please request a new password reset email.',
+      'passwordResetConfirm.missingPassword': 'Enter your new password and confirm it to continue.',
+      'passwordResetConfirm.mismatch': 'The passwords do not match. Please try again.',
+      'passwordResetConfirm.invalidToken':
+        'This reset link has expired or was already used. Request a new one to continue.',
+      'passwordResetConfirm.error': 'We could not update your password. Please try again later.',
+      'passwordResetConfirm.requestAgain': 'Need a new link?',
+      'passwordResetConfirm.requestAgainCta': 'Request another reset email',
+      'passwordResetConfirm.successTitle': 'Password updated',
+      'passwordResetConfirm.successMessage':
+        'Your password has been changed. You can now sign in with your new credentials.',
+      'passwordResetConfirm.backToLogin': 'Back to login',
 
       'register.title': 'Create your account',
       'register.subtitle': 'Join us and start ordering from your favourite restaurants.',

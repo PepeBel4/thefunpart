@@ -17,6 +17,12 @@ interface PasswordResetPayload {
   email: string;
 }
 
+interface PasswordResetUpdatePayload {
+  reset_password_token: string;
+  password: string;
+  password_confirmation: string;
+}
+
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -113,6 +119,20 @@ export class AuthService {
 
     await firstValueFrom(
       this.api.post('/auth/password', {
+        user: payload,
+      })
+    );
+  }
+
+  async finishPasswordReset(token: string, password: string, confirmation: string) {
+    const payload: PasswordResetUpdatePayload = {
+      reset_password_token: token,
+      password,
+      password_confirmation: confirmation,
+    };
+
+    await firstValueFrom(
+      this.api.put('/auth/password', {
         user: payload,
       })
     );
