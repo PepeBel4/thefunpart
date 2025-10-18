@@ -1,14 +1,25 @@
-import { CurrencyPipe, DecimalPipe, NgFor, NgIf } from '@angular/common';
-import { Component, OnDestroy, effect, inject } from '@angular/core';
+import { CurrencyPipe, DecimalPipe, NgFor, NgIf, DOCUMENT } from '@angular/common';
+import { Component, HostListener, OnDestroy, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
-import { CartService, type CartLine } from '../cart/cart.service';
+import { CartService, type CartLine, type CartRestaurant } from '../cart/cart.service';
 import { OrderService } from '../orders/order.service';
-import { AiSuggestedMenuItem, Order } from '../core/models';
+import { AiSuggestedMenuItem, MenuItem, Order } from '../core/models';
 import { RestaurantAiSuggestionsService } from '../restaurants/restaurant-ai-suggestions.service';
 import { BrandColorService } from '../core/brand-color.service';
 import { TranslatePipe } from '../shared/translate.pipe';
+import { MenuService } from '../menu/menu.service';
+
+type CartFlightAnimation = {
+  id: number;
+  quantity: number;
+  startX: number;
+  startY: number;
+  deltaX: number;
+  deltaY: number;
+  arcHeight: number;
+};
 
 @Component({
   standalone: true,
@@ -263,6 +274,210 @@ import { TranslatePipe } from '../shared/translate.pipe';
       line-height: 1.4;
     }
 
+    .suggestion-card-button {
+      display: contents;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 24, 16, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      z-index: 1200;
+      backdrop-filter: blur(2px);
+    }
+
+    .modal {
+      background: var(--surface, #ffffff);
+      border-radius: 24px;
+      width: min(100%, 500px);
+      max-height: min(720px, calc(100vh - 3rem));
+      overflow-y: auto;
+      padding: clamp(1.6rem, 4vw, 2.4rem);
+      box-shadow: 0 24px 64px rgba(4, 30, 18, 0.35);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .menu-item-modal h3 {
+      margin: 0;
+      font-size: clamp(1.6rem, 3vw, 2rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .menu-item-modal figure {
+      margin: 0;
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .menu-item-modal figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+    }
+
+    .modal-close-button {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255, 255, 255, 0.85);
+      box-shadow: 0 12px 24px rgba(4, 24, 16, 0.12);
+      font-size: 1.5rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: rgba(4, 24, 16, 0.7);
+    }
+
+    .modal-close-button:hover,
+    .modal-close-button:focus-visible {
+      background: #fff;
+      color: var(--brand-green, #06c167);
+      outline: none;
+    }
+
+    .menu-item-modal .price-group {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+    }
+
+    .menu-item-modal .price {
+      font-weight: 700;
+      font-size: 1.35rem;
+    }
+
+    .menu-item-modal .price.discounted {
+      color: var(--brand-green, #06c167);
+    }
+
+    .menu-item-modal .price.original {
+      font-size: 1rem;
+      color: rgba(10, 10, 10, 0.55);
+      text-decoration: line-through;
+    }
+
+    .menu-item-modal .discount-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      background: rgba(6, 193, 103, 0.12);
+      color: var(--brand-green, #06c167);
+      border-radius: 999px;
+      padding: 0.2rem 0.65rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .menu-item-modal .menu-item-description {
+      margin: 0;
+      color: rgba(10, 10, 10, 0.7);
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    .menu-item-modal .menu-item-reason {
+      margin: 0;
+      background: rgba(6, 193, 103, 0.08);
+      color: rgba(4, 24, 16, 0.75);
+      border-radius: 14px;
+      padding: 0.75rem 0.9rem;
+      font-size: 0.95rem;
+    }
+
+    .menu-item-modal .quantity-controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.35rem;
+      border-radius: 999px;
+      background: rgba(10, 10, 10, 0.04);
+    }
+
+    .menu-item-modal .quantity-button {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: #fff;
+      box-shadow: 0 6px 14px rgba(4, 24, 16, 0.12);
+      font-size: 1.35rem;
+      line-height: 1;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .menu-item-modal .quantity-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .menu-item-modal .quantity-display {
+      min-width: 1.75rem;
+      text-align: center;
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+
+    .menu-item-modal .modal-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .menu-item-modal .modal-primary-button {
+      align-self: stretch;
+      background: var(--brand-green);
+      color: var(--brand-on-primary);
+      border: none;
+      border-radius: 14px;
+      padding: 0.85rem 1.2rem;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 18px 32px rgba(6, 193, 103, 0.28);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .menu-item-modal .modal-primary-button:hover:enabled {
+      transform: translateY(-2px);
+      box-shadow: 0 22px 40px rgba(6, 193, 103, 0.32);
+    }
+
+    .menu-item-modal .modal-primary-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .menu-item-modal-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 220px;
+      text-align: center;
+      color: rgba(10, 10, 10, 0.6);
+    }
+
+    .cart-flight-layer {
+      pointer-events: none;
+    }
+
     @media (max-width: 640px) {
       .card {
         padding: 1.8rem;
@@ -325,7 +540,21 @@ import { TranslatePipe } from '../shared/translate.pipe';
           {{ 'general.loading' | translate: 'Loading…' }}
         </p>
         <div class="suggestion-grid" *ngIf="!isLoadingSuggestions">
-          <article class="suggestion-card" *ngFor="let suggestion of aiSuggestions">
+          <article
+            class="suggestion-card"
+            *ngFor="let suggestion of aiSuggestions"
+            tabindex="0"
+            role="button"
+            aria-haspopup="dialog"
+            (click)="openSuggestion(suggestion, $event)"
+            (keydown)="onSuggestionKeydown($event, suggestion)"
+            [attr.aria-label]="
+              'restaurantDetail.menuItemInfoLabel'
+                | translate
+                  : 'View details for {{name}}'
+                  : { name: suggestion.name }
+            "
+          >
             <figure class="suggestion-photo" *ngIf="suggestion.photo_url as photoUrl">
               <img [src]="photoUrl" [alt]="suggestion.name" loading="lazy" />
             </figure>
@@ -343,6 +572,116 @@ import { TranslatePipe } from '../shared/translate.pipe';
         </div>
       </section>
     </div>
+
+    <div class="cart-flight-layer" aria-hidden="true">
+      <div
+        class="cart-flight"
+        *ngFor="let flight of cartFlights()"
+        [style.--start-x]="flight.startX + 'px'"
+        [style.--start-y]="flight.startY + 'px'"
+        [style.--delta-x]="flight.deltaX + 'px'"
+        [style.--delta-y]="flight.deltaY + 'px'"
+        [style.--arc-height]="flight.arcHeight + 'px'"
+      >
+        <span class="cart-flight-badge">+{{ flight.quantity }}</span>
+      </div>
+    </div>
+
+    <ng-container *ngIf="menuItemModalOpen()">
+      <div class="modal-backdrop" (click)="closeMenuItemModal()">
+        <div
+          class="modal menu-item-modal"
+          role="dialog"
+          aria-modal="true"
+          [attr.aria-labelledby]="'checkout-menu-item-modal-title'"
+          [attr.aria-describedby]="'checkout-menu-item-modal-description'"
+          (click)="$event.stopPropagation()"
+        >
+          <button
+            type="button"
+            class="modal-close-button"
+            (click)="closeMenuItemModal()"
+            [attr.aria-label]="'restaurantDetail.infoModalClose' | translate: 'Close'"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+          <ng-container *ngIf="selectedSuggestion() as activeSuggestion">
+            <ng-container *ngIf="selectedMenuItem() as menuItem; else menuItemModalFallback">
+              <figure *ngIf="menuItem.photos?.length && menuItem.photos[0]?.url as photoUrl">
+                <img [src]="photoUrl" [alt]="menuItem.name" loading="lazy" />
+              </figure>
+              <h3 id="checkout-menu-item-modal-title">{{ menuItem.name }}</h3>
+              <p class="menu-item-reason" *ngIf="activeSuggestion.reason as reason">{{ reason }}</p>
+              <div class="price-group" *ngIf="hasDiscount(menuItem); else checkoutRegularPrice">
+                <span class="price discounted">
+                  {{ (getCurrentPriceCents(menuItem) / 100) | currency:'EUR' }}
+                </span>
+                <span class="price original">
+                  {{ (menuItem.price_cents / 100) | currency:'EUR' }}
+                </span>
+                <span class="discount-pill">
+                  {{ 'restaurantDetail.discountBadge' | translate: 'Special offer' }}
+                </span>
+              </div>
+              <ng-template #checkoutRegularPrice>
+                <div class="price-group">
+                  <span class="price">{{ (menuItem.price_cents / 100) | currency:'EUR' }}</span>
+                </div>
+              </ng-template>
+              <p class="menu-item-description" id="checkout-menu-item-modal-description">
+                {{
+                  menuItem.description ||
+                    ('restaurantDetail.customerFavourite' | translate: 'Customer favourite')
+                }}
+              </p>
+              <div class="modal-actions">
+                <div
+                  class="quantity-controls"
+                  role="group"
+                  [attr.aria-label]="'cart.quantity' | translate: 'Quantity'"
+                >
+                  <button
+                    type="button"
+                    class="quantity-button"
+                    (click)="changeMenuItemQuantity(-1)"
+                    [disabled]="menuItemQuantity() === 1"
+                    [attr.aria-label]="'cart.decrease' | translate: 'Decrease quantity'"
+                  >
+                    −
+                  </button>
+                  <span class="quantity-display" aria-live="polite">{{ menuItemQuantity() }}</span>
+                  <button
+                    type="button"
+                    class="quantity-button"
+                    (click)="changeMenuItemQuantity(1)"
+                    [attr.aria-label]="'cart.increase' | translate: 'Increase quantity'"
+                  >
+                    +
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  class="modal-primary-button"
+                  (click)="addSelectedMenuItemToCart($event)"
+                >
+                  {{ 'restaurantDetail.addToCart' | translate: 'Add to cart' }}
+                </button>
+              </div>
+            </ng-container>
+          </ng-container>
+          <ng-template #menuItemModalFallback>
+            <div class="menu-item-modal-loading">
+              <p *ngIf="isLoadingMenuItemDetails">
+                {{ 'general.loading' | translate: 'Loading…' }}
+              </p>
+              <p *ngIf="!isLoadingMenuItemDetails">
+                {{ 'menu.form.error.load' | translate: 'Could not load menu items. Please try again.' }}
+              </p>
+            </div>
+          </ng-template>
+        </div>
+      </div>
+    </ng-container>
   `
 })
 export class CheckoutPage implements OnDestroy {
@@ -351,9 +690,22 @@ export class CheckoutPage implements OnDestroy {
   private router = inject(Router);
   private aiSuggestionsService = inject(RestaurantAiSuggestionsService);
   private brandColor = inject(BrandColorService);
+  private menu = inject(MenuService);
+  private document = inject(DOCUMENT);
   isPlacingOrder = false;
   aiSuggestions: AiSuggestedMenuItem[] = [];
   isLoadingSuggestions = false;
+  menuItemModalOpen = signal(false);
+  selectedSuggestion = signal<AiSuggestedMenuItem | null>(null);
+  selectedMenuItem = signal<MenuItem | null>(null);
+  menuItemQuantity = signal(1);
+  cartFlights = signal<CartFlightAnimation[]>([]);
+  isLoadingMenuItemDetails = false;
+  private menuItemRequestId = 0;
+  private nextCartFlightId = 0;
+  private cartFlightTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
+  private modalLockCount = 0;
+  private bodyOverflowBackup: string | null = null;
 
   private suggestionKey: string | null = null;
   private suggestionsRequestId = 0;
@@ -398,6 +750,18 @@ export class CheckoutPage implements OnDestroy {
 
   ngOnDestroy(): void {
     this.brandColor.reset();
+    this.clearCartFlightTimeouts();
+    while (this.modalLockCount > 0) {
+      this.unlockBodyScroll();
+    }
+  }
+
+  @HostListener('document:keydown.escape', ['$event'])
+  onEscape(event: Event) {
+    if (this.menuItemModalOpen()) {
+      event.preventDefault();
+      this.closeMenuItemModal();
+    }
   }
 
   onOrderRemarkInput(event: Event) {
@@ -466,6 +830,109 @@ export class CheckoutPage implements OnDestroy {
     }
   }
 
+  async openSuggestion(suggestion: AiSuggestedMenuItem, event?: Event) {
+    event?.preventDefault();
+    const requestId = ++this.menuItemRequestId;
+    this.selectedSuggestion.set(suggestion);
+    this.selectedMenuItem.set(null);
+    this.menuItemQuantity.set(1);
+
+    const wasOpen = this.menuItemModalOpen();
+    if (!wasOpen) {
+      this.lockBodyScroll();
+    }
+    this.menuItemModalOpen.set(true);
+    this.isLoadingMenuItemDetails = true;
+
+    try {
+      const item = await firstValueFrom(this.menu.get(suggestion.id));
+      if (this.menuItemRequestId === requestId && this.menuItemModalOpen()) {
+        this.selectedMenuItem.set(item);
+      }
+    } catch (error) {
+      if (this.menuItemRequestId === requestId) {
+        this.selectedMenuItem.set(null);
+      }
+      console.error('Failed to load menu item details', error);
+    } finally {
+      if (this.menuItemRequestId === requestId) {
+        this.isLoadingMenuItemDetails = false;
+      }
+    }
+  }
+
+  onSuggestionKeydown(event: KeyboardEvent, suggestion: AiSuggestedMenuItem) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.openSuggestion(suggestion, event);
+    }
+  }
+
+  closeMenuItemModal() {
+    if (!this.menuItemModalOpen()) {
+      return;
+    }
+
+    this.menuItemModalOpen.set(false);
+    this.selectedSuggestion.set(null);
+    this.selectedMenuItem.set(null);
+    this.menuItemQuantity.set(1);
+    this.isLoadingMenuItemDetails = false;
+    this.unlockBodyScroll();
+  }
+
+  changeMenuItemQuantity(delta: number) {
+    this.menuItemQuantity.update(current => Math.max(1, current + Math.trunc(delta)));
+  }
+
+  addSelectedMenuItemToCart(event: Event) {
+    const menuItem = this.selectedMenuItem();
+    const suggestion = this.selectedSuggestion();
+    if (!menuItem || !suggestion) {
+      return;
+    }
+
+    const quantity = this.menuItemQuantity();
+    const existingRestaurant = this.cart.restaurant();
+    const incomingRestaurant: CartRestaurant | null = existingRestaurant
+      ? { ...existingRestaurant }
+      : { id: menuItem.restaurant_id, name: null, primaryColor: null };
+
+    try {
+      this.cart.add(menuItem, null, incomingRestaurant, quantity);
+    } catch (error) {
+      console.error('Failed to add menu item to cart', error);
+      return;
+    }
+
+    const triggerRect = this.resolveTriggerRect(event);
+    if (triggerRect) {
+      this.launchCartFlight(quantity, triggerRect);
+    }
+
+    this.removeSuggestion(suggestion.id);
+    this.closeMenuItemModal();
+  }
+
+  getCurrentPriceCents(item: MenuItem): number {
+    const discounted = item.discounted_price_cents;
+    if (typeof discounted === 'number' && Number.isFinite(discounted) && discounted > 0) {
+      return discounted;
+    }
+
+    return item.price_cents;
+  }
+
+  hasDiscount(item: MenuItem): boolean {
+    const discounted = item.discounted_price_cents;
+    return (
+      typeof discounted === 'number' &&
+      Number.isFinite(discounted) &&
+      discounted > 0 &&
+      discounted < item.price_cents
+    );
+  }
+
   private buildSelectedMenuItemIds(lines: CartLine[]): number[] {
     return lines.flatMap(line => {
       const quantity = Math.max(0, Math.floor(line.quantity));
@@ -478,6 +945,10 @@ export class CheckoutPage implements OnDestroy {
     this.aiSuggestions = [];
     this.isLoadingSuggestions = false;
     this.suggestionsRequestId++;
+  }
+
+  private removeSuggestion(suggestionId: number) {
+    this.aiSuggestions = this.aiSuggestions.filter(item => item.id !== suggestionId);
   }
 
   private async fetchAiSuggestions(restaurantId: number, selectedIds: number[]) {
@@ -504,5 +975,106 @@ export class CheckoutPage implements OnDestroy {
         this.isLoadingSuggestions = false;
       }
     }
+  }
+
+  private resolveTriggerRect(event?: Event): DOMRect | null {
+    if (!event) {
+      return null;
+    }
+
+    const target = event.currentTarget;
+    if (target instanceof Element) {
+      return target.getBoundingClientRect();
+    }
+
+    return null;
+  }
+
+  private launchCartFlight(quantity: number, triggerRect: DOMRect) {
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      return;
+    }
+
+    const targetRect = this.getCartTargetRect();
+    if (!targetRect) {
+      return;
+    }
+
+    const badgeSize = 36;
+    const startX = triggerRect.left + triggerRect.width / 2 - badgeSize / 2;
+    const startY = triggerRect.top + triggerRect.height / 2 - badgeSize / 2;
+    const endX = targetRect.left + targetRect.width / 2 - badgeSize / 2;
+    const endY = targetRect.top + targetRect.height / 2 - badgeSize / 2;
+    const id = ++this.nextCartFlightId;
+    const deltaX = endX - startX;
+    const deltaY = endY - startY;
+    const distance = Math.hypot(deltaX, deltaY);
+    const arcHeight = Math.min(280, Math.max(110, distance * 0.42));
+
+    const flight: CartFlightAnimation = {
+      id,
+      quantity,
+      startX,
+      startY,
+      deltaX,
+      deltaY,
+      arcHeight,
+    };
+
+    this.cartFlights.update(current => [...current, flight]);
+
+    const timeout = setTimeout(() => {
+      this.cartFlights.update(current => current.filter(entry => entry.id !== id));
+      this.cartFlightTimeouts.delete(id);
+    }, 1150);
+
+    this.cartFlightTimeouts.set(id, timeout);
+  }
+
+  private getCartTargetRect(): DOMRect | null {
+    const cartElement = this.document.querySelector('.cart-pill');
+    if (cartElement instanceof HTMLElement) {
+      const rect = cartElement.getBoundingClientRect();
+      if (rect.width || rect.height) {
+        return rect;
+      }
+    }
+
+    return null;
+  }
+
+  private lockBodyScroll() {
+    if (this.modalLockCount === 0) {
+      const currentOverflow = this.document.body.style.overflow;
+      this.bodyOverflowBackup = currentOverflow ?? '';
+      this.document.body.style.overflow = 'hidden';
+    }
+
+    this.modalLockCount++;
+  }
+
+  private unlockBodyScroll() {
+    if (this.modalLockCount === 0) {
+      return;
+    }
+
+    this.modalLockCount--;
+
+    if (this.modalLockCount === 0) {
+      if (this.bodyOverflowBackup && this.bodyOverflowBackup.length) {
+        this.document.body.style.overflow = this.bodyOverflowBackup;
+      } else {
+        this.document.body.style.removeProperty('overflow');
+      }
+      this.bodyOverflowBackup = null;
+    }
+  }
+
+  private clearCartFlightTimeouts() {
+    for (const timeout of this.cartFlightTimeouts.values()) {
+      clearTimeout(timeout);
+    }
+    this.cartFlightTimeouts.clear();
+    this.cartFlights.set([]);
   }
 }
