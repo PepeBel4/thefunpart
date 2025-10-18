@@ -195,56 +195,63 @@ interface UsersState {
       color: var(--text-secondary);
     }
 
-    .users-list {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    li.user-row {
-      list-style: none;
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      justify-content: space-between;
-      padding: 0.85rem 1rem;
+    .users-table-wrapper {
       border: 1px solid rgba(10, 10, 10, 0.08);
-      border-radius: 0.85rem;
+      border-radius: 1rem;
+      overflow-x: auto;
       background: rgba(10, 10, 10, 0.02);
-      transition: border-color 150ms ease, box-shadow 150ms ease;
     }
 
-    li.user-row:hover {
-      border-color: rgba(var(--brand-green-rgb, 6, 193, 103), 0.35);
-      box-shadow: 0 8px 18px rgba(var(--brand-green-rgb, 6, 193, 103), 0.08);
+    table.users-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
     }
 
-    .user-main {
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-      flex: 1;
-      min-width: 0;
-    }
-
-    .user-name {
+    .users-table thead th {
+      text-align: left;
+      padding: 0.9rem 1rem;
+      font-size: 0.85rem;
       font-weight: 600;
-      font-size: 1.05rem;
-    }
-
-    .user-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1.25rem;
-      font-size: 0.9rem;
       color: var(--text-secondary);
+      background: rgba(10, 10, 10, 0.04);
     }
 
-    .user-meta span {
+    .users-table tbody td {
+      padding: 0.85rem 1rem;
+      border-top: 1px solid rgba(10, 10, 10, 0.08);
+      vertical-align: middle;
       white-space: nowrap;
+    }
+
+    .users-table tbody tr:hover td {
+      background: rgba(var(--brand-green-rgb, 6, 193, 103), 0.08);
+    }
+
+    .users-table tbody tr:first-child td {
+      border-top: none;
+    }
+
+    .users-table .user-name {
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--text-primary);
+    }
+
+    .users-table .numeric {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .users-table .churn-cell {
+      text-align: center;
+    }
+
+    .users-table .email-cell {
+      max-width: 240px;
+      display: inline-block;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .churn-pill {
@@ -411,35 +418,68 @@ interface UsersState {
             </p>
 
             <ng-container *ngIf="state.users.length as total">
-              <ul class="users-list">
-                <li class="user-row" *ngFor="let user of paginate(state.users); trackBy: trackByUserId">
-                  <div class="user-main">
-                    <span class="user-name">{{ formatUserName(user) }}</span>
-                    <p class="muted" *ngIf="user.email; else noEmail">{{ user.email }}</p>
-                    <div class="user-meta">
-                      <span *ngIf="user.last_order_at as lastOrder">
-                        {{ 'admin.users.details.lastOrder' | translate: 'Last order' }}:
-                        <strong>{{ lastOrder | date: 'medium' }}</strong>
-                      </span>
-                      <span *ngIf="getOrderCount(user) as count">
-                        {{ 'admin.users.details.orderCount' | translate: 'Total orders' }}:
-                        <strong>{{ count }}</strong>
-                      </span>
-                      <span *ngIf="getLoyaltyPointsInfo(user) as loyalty">
-                        {{ 'admin.users.details.loyaltyPoints' | translate: 'Loyalty points' }}:
-                        <strong>{{ loyalty.value }}</strong>
-                      </span>
-                      <span *ngIf="getCreditInfo(user) as credit">
-                        {{ 'admin.users.details.credit' | translate: 'Account credit' }}:
-                        <strong>{{ credit.euros | currency: 'EUR' }}</strong>
-                      </span>
-                    </div>
-                  </div>
-                  <span *ngIf="user.churn_risk as risk" class="churn-pill" [attr.data-risk]="risk">
-                    {{ ('admin.users.churnRisk.' + risk) | translate: churnRiskFallback(risk) }}
-                  </span>
-                </li>
-              </ul>
+              <div class="users-table-wrapper">
+                <table class="users-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">{{ 'admin.users.table.name' | translate: 'Name' }}</th>
+                      <th scope="col">{{ 'admin.users.table.email' | translate: 'Email' }}</th>
+                      <th scope="col">{{ 'admin.users.details.lastOrder' | translate: 'Last order' }}</th>
+                      <th scope="col" class="numeric">
+                        {{ 'admin.users.details.orderCount' | translate: 'Total orders' }}
+                      </th>
+                      <th scope="col" class="numeric">
+                        {{ 'admin.users.details.loyaltyPoints' | translate: 'Loyalty points' }}
+                      </th>
+                      <th scope="col" class="numeric">
+                        {{ 'admin.users.details.credit' | translate: 'Account credit' }}
+                      </th>
+                      <th scope="col" class="churn-cell">
+                        {{ 'admin.users.table.churnRisk' | translate: 'Churn risk' }}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let user of paginate(state.users); trackBy: trackByUserId">
+                      <td>
+                        <span class="user-name">{{ formatUserName(user) }}</span>
+                      </td>
+                      <td>
+                        <ng-container *ngIf="user.email; else noEmail">
+                          <span class="email-cell">{{ user.email }}</span>
+                        </ng-container>
+                      </td>
+                      <td>
+                        <ng-container *ngIf="user.last_order_at as lastOrder; else noLastOrder">
+                          {{ lastOrder | date: 'medium' }}
+                        </ng-container>
+                      </td>
+                      <td class="numeric">
+                        <ng-container *ngIf="getOrderCount(user) as count; else noValue">
+                          {{ count }}
+                        </ng-container>
+                      </td>
+                      <td class="numeric">
+                        <ng-container *ngIf="getLoyaltyPointsInfo(user) as loyalty; else noValue">
+                          {{ loyalty.value }}
+                        </ng-container>
+                      </td>
+                      <td class="numeric">
+                        <ng-container *ngIf="getCreditInfo(user) as credit; else noValue">
+                          {{ credit.euros | currency: 'EUR' }}
+                        </ng-container>
+                      </td>
+                      <td class="churn-cell">
+                        <ng-container *ngIf="user.churn_risk as risk; else noValue">
+                          <span class="churn-pill" [attr.data-risk]="risk">
+                            {{ ('admin.users.churnRisk.' + risk) | translate: churnRiskFallback(risk) }}
+                          </span>
+                        </ng-container>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
 
               <footer class="pagination">
                 <span class="pagination-summary">
@@ -483,9 +523,17 @@ interface UsersState {
         </ng-container>
 
         <ng-template #noEmail>
-          <p class="muted">
+          <span class="muted">
             {{ 'admin.users.details.fallbackEmail' | translate: 'Not provided' }}
-          </p>
+          </span>
+        </ng-template>
+
+        <ng-template #noLastOrder>
+          <span class="muted">—</span>
+        </ng-template>
+
+        <ng-template #noValue>
+          <span class="muted">—</span>
         </ng-template>
       </section>
     </ng-container>
