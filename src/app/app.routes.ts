@@ -30,7 +30,7 @@ export const appRoutes: Routes = [
       },
     ],
   },
-  { path: 'restaurants/:id', loadComponent: () => import('./restaurants/restaurant-detail.page').then(m => m.RestaurantDetailPage) },
+  { path: 'restaurants/:slug', loadComponent: () => import('./restaurants/restaurant-detail.page').then(m => m.RestaurantDetailPage) },
   { path: 'chains/:id', loadComponent: () => import('./chains/chain-detail.page').then(m => m.ChainDetailPage) },
   { path: 'profile', canActivate: [authGuard], loadComponent: () => import('./profile/profile.page').then(m => m.ProfilePage) },
   {

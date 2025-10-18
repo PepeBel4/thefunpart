@@ -1549,16 +1549,22 @@ export class RestaurantDetailPage implements OnDestroy {
   private nextCartFlightId = 0;
   private cartFlightTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
 
-  id = Number(this.route.snapshot.paramMap.get('id'));
+  private readonly restaurantIdentifier = this.resolveRouteIdentifier();
+  id: number | null = null;
   private restaurantReload$ = new BehaviorSubject<void>(undefined);
   private restaurantRequest$ = this.restaurantReload$.pipe(
-    switchMap(() => this.rSvc.get(this.id)),
+    switchMap(() => this.rSvc.get(this.restaurantIdentifier)),
     shareReplay({ bufferSize: 1, refCount: true })
   );
-  private restaurantRatings$ = this.restaurantReload$.pipe(
-    switchMap(() =>
+  private restaurantId$ = this.restaurantRequest$.pipe(
+    map(restaurant => restaurant.id),
+    tap(id => (this.id = id)),
+    shareReplay({ bufferSize: 1, refCount: true })
+  );
+  private restaurantRatings$ = this.restaurantId$.pipe(
+    switchMap(id =>
       this.ratingsSvc
-        .listRatings('restaurant', this.id)
+        .listRatings('restaurant', id)
         .pipe(catchError(() => of([])))
     ),
     shareReplay({ bufferSize: 1, refCount: true })
@@ -1576,12 +1582,16 @@ export class RestaurantDetailPage implements OnDestroy {
   menuItemModal = signal<MenuItemModalContext | null>(null);
   menuItemModalTab = signal<'details' | 'reviews'>('details');
   infoModalOpen = signal(false);
-  counterLocationVm$: Observable<CounterLocationViewModel | null> = this.locations.listForRestaurant(this.id).pipe(
-    map(locations => this.pickCounterLocation(locations)),
-    map(location => (location ? this.buildCounterLocationVm(location) : null)),
-    catchError(() => {
-      return of(null);
-    }),
+  counterLocationVm$: Observable<CounterLocationViewModel | null> = this.restaurantId$.pipe(
+    switchMap(id =>
+      this.locations.listForRestaurant(id).pipe(
+        map(locations => this.pickCounterLocation(locations)),
+        map(location => (location ? this.buildCounterLocationVm(location) : null)),
+        catchError(() => {
+          return of(null);
+        })
+      )
+    ),
     shareReplay({ bufferSize: 1, refCount: true })
   );
 
@@ -1705,12 +1715,17 @@ export class RestaurantDetailPage implements OnDestroy {
   async uploadPhotos() {
     if (!this.selectedPhotos.length || this.uploading) { return; }
 
+    const restaurantId = this.id;
+    if (restaurantId == null) {
+      return;
+    }
+
     this.uploading = true;
     this.statusMessage = '';
     this.statusType = '';
 
     try {
-      await firstValueFrom(this.rSvc.uploadPhotos(this.id, this.selectedPhotos));
+      await firstValueFrom(this.rSvc.uploadPhotos(restaurantId, this.selectedPhotos));
       this.selectedPhotos = [];
       this.statusMessage = this.i18n.translate(
         'restaurantDetail.photosUploaded',
@@ -1742,8 +1757,12 @@ export class RestaurantDetailPage implements OnDestroy {
   }
 
   private createMenuCategoriesStream(): Observable<MenuCategoryGroup[]> {
+    const categories$ = this.restaurantId$.pipe(
+      switchMap(id => this.menuSvc.listByRestaurant(id).pipe(map(items => this.organizeMenu(items))))
+    );
+
     return combineLatest([
-      this.menuSvc.listByRestaurant(this.id).pipe(map(items => this.organizeMenu(items))),
+      categories$,
       this.highlightMenuItemId$,
       this.searchTerm$.pipe(map(term => term.trim().toLowerCase())),
     ]).pipe(
@@ -1957,7 +1976,12 @@ export class RestaurantDetailPage implements OnDestroy {
       return;
     }
 
-    const payload = this.buildRatingPayload('restaurant', this.id, this.restaurantReviewForm.getRawValue());
+    const restaurantId = this.id;
+    if (restaurantId == null) {
+      return;
+    }
+
+    const payload = this.buildRatingPayload('restaurant', restaurantId, this.restaurantReviewForm.getRawValue());
     this.restaurantReviewSubmitting.set(true);
     this.restaurantReviewStatus.set('');
 
@@ -2142,6 +2166,24 @@ export class RestaurantDetailPage implements OnDestroy {
 
   private triggerRestaurantReload() {
     this.restaurantReload$.next(undefined);
+  }
+
+  private resolveRouteIdentifier(): string {
+    const slugParam = this.route.snapshot.paramMap.get('slug');
+    if (slugParam && slugParam.trim().length) {
+      return this.decodeRouteSegment(slugParam.trim());
+    }
+
+    const legacyId = this.route.snapshot.paramMap.get('id');
+    return legacyId?.trim() ?? '';
+  }
+
+  private decodeRouteSegment(value: string): string {
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return value;
+    }
   }
 
   private mergeRestaurantRatings(restaurant: Restaurant, ratings: Review[]): Restaurant {
@@ -2801,14 +2843,25 @@ export class RestaurantDetailPage implements OnDestroy {
     restaurant: Restaurant
   ): (string | number)[] | null {
     const restaurantId = card.restaurant_id ?? card.restaurant?.id ?? restaurant.id ?? null;
+    const restaurantSlug = card.restaurant?.slug ?? restaurant.slug ?? null;
     const chainId = card.chain_id ?? card.chain?.id ?? restaurant.chain?.id ?? restaurant.chain_id ?? null;
 
     if (type === 'chain' && chainId != null) {
       return ['/chains', chainId];
     }
 
-    if (restaurantId != null) {
-      return ['/restaurants', restaurantId];
+    if (type === 'restaurant') {
+      const segment = restaurantSlug ?? restaurantId;
+      if (segment != null) {
+        return ['/restaurants', segment];
+      }
+    }
+
+    if (restaurantSlug != null || restaurantId != null) {
+      const segment = restaurantSlug ?? restaurantId;
+      if (segment != null) {
+        return ['/restaurants', segment];
+      }
     }
 
     if (chainId != null) {

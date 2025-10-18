@@ -31,9 +31,9 @@ export class RestaurantService {
       .pipe(map(restaurants => restaurants.map(restaurant => this.normalizeRestaurant(restaurant))));
   }
 
-  get(id: number) {
+  get(identifier: number | string) {
     return this.api
-      .get<RestaurantApiResponse>(`/restaurants/${id}`)
+      .get<RestaurantApiResponse>(`/restaurants/${identifier}`)
       .pipe(map(restaurant => this.normalizeRestaurant(restaurant)));
   }
 

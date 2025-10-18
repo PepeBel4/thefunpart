@@ -434,18 +434,25 @@ export class CardOverviewComponent {
     associatedRestaurant: Restaurant | undefined
   ): (string | number)[] | null {
     const restaurantId = card.restaurant_id ?? card.restaurant?.id ?? associatedRestaurant?.id ?? null;
+    const restaurantSlug = card.restaurant?.slug ?? associatedRestaurant?.slug ?? null;
     const chainId = card.chain_id ?? card.chain?.id ?? null;
 
     if (type === 'chain' && chainId != null) {
       return ['/chains', chainId];
     }
 
-    if (type === 'restaurant' && restaurantId != null) {
-      return ['/restaurants', restaurantId];
+    if (type === 'restaurant') {
+      const segment = restaurantSlug ?? restaurantId;
+      if (segment != null) {
+        return ['/restaurants', segment];
+      }
     }
 
-    if (restaurantId != null) {
-      return ['/restaurants', restaurantId];
+    if (restaurantSlug != null || restaurantId != null) {
+      const segment = restaurantSlug ?? restaurantId;
+      if (segment != null) {
+        return ['/restaurants', segment];
+      }
     }
 
     return null;

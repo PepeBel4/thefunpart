@@ -138,7 +138,7 @@ interface ChainDetailState {
           <a
             class="restaurant-card"
             *ngFor="let restaurant of state().restaurants"
-            [routerLink]="['/restaurants', restaurant.id]"
+            [routerLink]="['/restaurants', restaurant.slug ?? restaurant.id]"
           >
             <h3>{{ restaurant.name }}</h3>
             <p *ngIf="restaurant.description as description">{{ description }}</p>
@@ -282,13 +282,22 @@ export class ChainDetailPage implements OnDestroy {
   private buildChainLinkCommands(type: 'restaurant' | 'chain', card: Card): (string | number)[] | null {
     const chainId = card.chain_id ?? card.chain?.id ?? this.currentChainId;
     const restaurantId = card.restaurant_id ?? card.restaurant?.id ?? null;
+    const restaurantSlug =
+      card.restaurant?.slug ??
+      (restaurantId != null
+        ? this.state()
+            .restaurants.find(restaurant => restaurant.id === restaurantId)?.slug ?? null
+        : null);
 
     if (type === 'chain' && chainId != null) {
       return ['/chains', chainId];
     }
 
-    if (restaurantId != null) {
-      return ['/restaurants', restaurantId];
+    if (restaurantSlug != null || restaurantId != null) {
+      const segment = restaurantSlug ?? restaurantId;
+      if (segment != null) {
+        return ['/restaurants', segment];
+      }
     }
 
     if (chainId != null) {

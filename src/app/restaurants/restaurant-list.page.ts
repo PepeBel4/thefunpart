@@ -581,7 +581,7 @@ const CUISINE_ICON_PATHS = new Map<string, string>([
           <a
             class="discount-card"
             *ngFor="let deal of discounts"
-            [routerLink]="['/restaurants', deal.restaurant.id]"
+            [routerLink]="['/restaurants', deal.restaurant.slug ?? deal.restaurant.id]"
             [queryParams]="{ highlightItem: deal.item.id }"
           >
             <span class="discount-chip">
@@ -662,7 +662,7 @@ const CUISINE_ICON_PATHS = new Map<string, string>([
       </section>
     </ng-container>
     <div class="grid" *ngIf="restaurants$ | async as restaurants">
-      <a class="card" *ngFor="let r of restaurants" [routerLink]="['/restaurants', r.id]">
+      <a class="card" *ngFor="let r of restaurants" [routerLink]="['/restaurants', r.slug ?? r.id]">
         <div class="card-media">
           <ng-container *ngIf="r.heroPhoto; else placeholder">
             <img [src]="r.heroPhoto" [alt]="getRestaurantName(r)" loading="lazy" />

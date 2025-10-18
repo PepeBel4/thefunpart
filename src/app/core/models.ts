@@ -55,6 +55,7 @@ export interface RatingSummary {
 
 export interface Restaurant {
   id: number;
+  slug?: string | null;
   name: string;
   description?: string;
   name_translations?: Record<string, string>;
@@ -195,7 +196,7 @@ export interface Card {
   credit_cents: number;
   restaurant_id?: number | null;
   chain_id?: number | null;
-  restaurant?: Pick<Restaurant, 'id' | 'name'> | null;
+  restaurant?: Pick<Restaurant, 'id' | 'name' | 'slug'> | null;
   chain?: Chain | null;
   created_at: string;
   updated_at: string;
