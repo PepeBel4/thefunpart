@@ -467,7 +467,13 @@ type LanguageOption = { code: string; label: string; flag: string };
       <div class="nav-links" id="primary-navigation" [class.open]="isMenuOpen()">
         <a routerLink="/" (click)="closeMenu()">{{ 'nav.discover' | translate: 'Discover' }}</a>
         <a routerLink="/b2b" (click)="closeMenu()">{{ 'nav.b2b' | translate: 'For restaurants' }}</a>
-        <a routerLink="/orders" (click)="closeMenu()">{{ 'nav.orders' | translate: 'Orders' }}</a>
+        <a
+          *ngIf="auth.isLoggedIn()"
+          routerLink="/orders"
+          (click)="closeMenu()"
+        >
+          {{ 'nav.orders' | translate: 'Orders' }}
+        </a>
         <a *ngIf="auth.canAccessAdmin()" routerLink="/admin" (click)="closeMenu()">{{ 'nav.manage' | translate: 'Manage' }}</a>
       </div>
       <div class="nav-actions">
