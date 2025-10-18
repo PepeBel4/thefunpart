@@ -17,6 +17,11 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
   selector: 'app-admin-restaurant-details',
   imports: [AsyncPipe, FormsModule, NgFor, NgIf, TitleCasePipe, TranslatePipe],
   styles: [`
+    :host {
+      display: grid;
+      gap: clamp(1.5rem, 3vw, 2.5rem);
+    }
+
     section.card {
       background: var(--surface);
       border-radius: var(--radius-card);
@@ -349,44 +354,106 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
       gap: 0.75rem;
     }
 
-    .loyalty-settings {
-      border-top: 1px solid rgba(10, 10, 10, 0.08);
-      padding-top: 1rem;
+    .loyalty-card {
       display: grid;
-      gap: 1rem;
+      gap: 1.5rem;
     }
 
-    .loyalty-header {
-      display: flex;
-      flex-direction: column;
+    .loyalty-card header {
+      display: grid;
       gap: 0.35rem;
     }
 
-    .loyalty-header h4 {
+    .loyalty-card header h3 {
       margin: 0;
       font-size: 1.1rem;
     }
 
-    .loyalty-header p {
+    .loyalty-card header p {
       margin: 0;
       color: var(--text-secondary);
     }
 
-    .loyalty-toggle {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      font-weight: 600;
+    .loyalty-controls {
+      display: grid;
+      gap: 1rem;
     }
 
-    .loyalty-settings label.amount-field {
+    .loyalty-toggle {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+      padding-right: 64px;
+    }
+
+    .loyalty-toggle input[type='checkbox'] {
+      position: absolute;
+      opacity: 0;
+      width: 48px;
+      height: 26px;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .toggle-visual {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 48px;
+      height: 26px;
+      border-radius: 999px;
+      background: rgba(10, 10, 10, 0.18);
+      transition: background 0.2s ease;
+      flex-shrink: 0;
+      pointer-events: none;
+    }
+
+    .toggle-visual::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      transition: transform 0.2s ease;
+    }
+
+    .loyalty-toggle input[type='checkbox']:checked + .toggle-visual {
+      background: var(--brand-green);
+    }
+
+    .loyalty-toggle input[type='checkbox']:checked + .toggle-visual::after {
+      transform: translateX(22px);
+    }
+
+    .loyalty-toggle input[type='checkbox']:focus-visible + .toggle-visual {
+      box-shadow: 0 0 0 3px rgba(var(--brand-green-rgb, 6, 193, 103), 0.35);
+    }
+
+    .toggle-text {
+      font-size: 0.95rem;
+    }
+
+    .loyalty-amount {
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
       font-weight: 600;
     }
 
-    .loyalty-settings input[type='number'] {
+    .loyalty-amount input[type='number'] {
       max-width: 200px;
       padding: 0.6rem 0.75rem;
       border-radius: 0.75rem;
@@ -489,8 +556,9 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
     }
   `],
   template: `
-    <section class="card" *ngIf="selectedRestaurant$ | async as restaurant">
-      <header>
+    <ng-container *ngIf="selectedRestaurant$ | async as restaurant">
+      <section class="card">
+        <header>
         <h3>{{ 'admin.details.heading' | translate: 'Restaurant details' }}</h3>
         <p>
           {{
@@ -624,72 +692,6 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
           </p>
         </div>
 
-        <section class="loyalty-settings">
-          <div class="loyalty-header">
-            <h4>{{ 'admin.loyalty.heading' | translate: 'Loyalty program' }}</h4>
-            <p *ngIf="!restaurantChain">
-              {{
-                'admin.loyalty.descriptionRestaurant'
-                  | translate: 'Manage how this restaurant awards loyalty points to guests.'
-              }}
-            </p>
-            <p *ngIf="restaurantChain" class="loyalty-note">
-              {{
-                'admin.loyalty.chainManaged'
-                  | translate: 'Loyalty is managed by {{chain}}.' : { chain: restaurantChain.name }
-              }}
-            </p>
-          </div>
-
-          <ng-container *ngIf="!restaurantChain; else chainManagedLoyalty">
-            <label class="loyalty-toggle">
-              <input
-                type="checkbox"
-                name="loyaltyProgramEnabled"
-                [(ngModel)]="detailsForm.loyaltyProgramEnabled"
-              />
-              <span>{{ 'admin.loyalty.enableLabel' | translate: 'Enable loyalty points' }}</span>
-            </label>
-
-            <label class="amount-field">
-              {{ 'admin.loyalty.earnAmountLabel' | translate: 'Euros spent to earn 1 point' }}
-              <input
-                type="number"
-                name="loyaltyEarnAmount"
-                min="0"
-                step="0.01"
-                [(ngModel)]="detailsForm.loyaltyPointsEarnAmount"
-                [disabled]="!detailsForm.loyaltyProgramEnabled"
-              />
-            </label>
-
-            <p class="loyalty-note" *ngIf="detailsForm.loyaltyProgramEnabled && detailsForm.loyaltyPointsEarnAmount">
-              {{
-                'admin.loyalty.earnAmountHint'
-                  | translate: 'Guests receive 1 point for every €{{amount}} they spend.' : {
-                      amount: detailsForm.loyaltyPointsEarnAmount
-                    }
-              }}
-            </p>
-          </ng-container>
-
-          <ng-template #chainManagedLoyalty>
-            <p class="loyalty-summary" *ngIf="restaurantChain?.loyalty_program_enabled; else loyaltyChainDisabled">
-              {{
-                'admin.loyalty.chainSummary'
-                  | translate: 'Guests receive 1 point for every €{{amount}} they spend chain-wide.' : {
-                      amount: formatLoyaltyAmount(restaurantChain?.loyalty_points_earn_amount_cents)
-                    }
-              }}
-            </p>
-            <ng-template #loyaltyChainDisabled>
-              <p class="loyalty-note">
-                {{ 'admin.loyalty.chainDisabled' | translate: 'The chain currently has loyalty points disabled.' }}
-              </p>
-            </ng-template>
-          </ng-template>
-        </section>
-
         <div class="language-fields">
           <div class="language-card" *ngFor="let language of languages">
             <div class="language-card-header">
@@ -780,7 +782,79 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
           {{ detailsMessage }}
         </div>
       </form>
-    </section>
+      </section>
+
+      <section class="card loyalty-card">
+        <header>
+          <h3>{{ 'admin.loyalty.heading' | translate: 'Loyalty program' }}</h3>
+          <p *ngIf="!restaurantChain">
+            {{
+              'admin.loyalty.descriptionRestaurant'
+                | translate: 'Manage how this restaurant awards loyalty points to guests.'
+            }}
+          </p>
+          <p *ngIf="restaurantChain" class="loyalty-note">
+            {{
+              'admin.loyalty.chainManaged'
+                | translate: 'Loyalty is managed by {{chain}}.' : { chain: restaurantChain.name }
+            }}
+          </p>
+        </header>
+
+        <ng-container *ngIf="!restaurantChain; else chainManagedLoyalty">
+          <div class="loyalty-controls">
+            <label class="loyalty-toggle">
+              <span class="toggle-text">
+                {{ 'admin.loyalty.enableLabel' | translate: 'Enable loyalty points' }}
+              </span>
+              <input
+                type="checkbox"
+                name="loyaltyProgramEnabled"
+                [(ngModel)]="detailsForm.loyaltyProgramEnabled"
+              />
+              <span class="toggle-visual" aria-hidden="true"></span>
+            </label>
+
+            <label class="loyalty-amount">
+              {{ 'admin.loyalty.earnAmountLabel' | translate: 'Euros spent to earn 1 point' }}
+              <input
+                type="number"
+                name="loyaltyEarnAmount"
+                min="0"
+                step="0.01"
+                [(ngModel)]="detailsForm.loyaltyPointsEarnAmount"
+                [disabled]="!detailsForm.loyaltyProgramEnabled"
+              />
+            </label>
+
+            <p class="loyalty-note" *ngIf="detailsForm.loyaltyProgramEnabled && detailsForm.loyaltyPointsEarnAmount">
+              {{
+                'admin.loyalty.earnAmountHint'
+                  | translate: 'Guests receive 1 point for every €{{amount}} they spend.' : {
+                      amount: detailsForm.loyaltyPointsEarnAmount
+                    }
+              }}
+            </p>
+          </div>
+        </ng-container>
+
+        <ng-template #chainManagedLoyalty>
+          <p class="loyalty-summary" *ngIf="restaurantChain?.loyalty_program_enabled; else loyaltyChainDisabled">
+            {{
+              'admin.loyalty.chainSummary'
+                | translate: 'Guests receive 1 point for every €{{amount}} they spend chain-wide.' : {
+                    amount: formatLoyaltyAmount(restaurantChain?.loyalty_points_earn_amount_cents)
+                  }
+            }}
+          </p>
+          <ng-template #loyaltyChainDisabled>
+            <p class="loyalty-note">
+              {{ 'admin.loyalty.chainDisabled' | translate: 'The chain currently has loyalty points disabled.' }}
+            </p>
+          </ng-template>
+        </ng-template>
+      </section>
+    </ng-container>
   `,
 })
 export class AdminRestaurantDetailsPage {
