@@ -70,6 +70,24 @@ export class AdminChainContextService {
     }
   }
 
+  get selectedChainId(): number | null {
+    return this.selectedChainIdSubject.value;
+  }
+
+  updateChainInList(updated: Chain): void {
+    const chains = this.chainsSubject.value;
+    const index = chains.findIndex(chain => chain.id === updated.id);
+
+    if (index === -1) {
+      this.chainsSubject.next(this.sortChains([...chains, updated]));
+      return;
+    }
+
+    const next = [...chains];
+    next[index] = updated;
+    this.chainsSubject.next(this.sortChains(next));
+  }
+
   private filterChainsForCurrentUser(chains: Chain[]): Chain[] {
     if (!chains.length) {
       return [];

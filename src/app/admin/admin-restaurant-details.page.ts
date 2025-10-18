@@ -349,6 +349,63 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
       gap: 0.75rem;
     }
 
+    .loyalty-settings {
+      border-top: 1px solid rgba(10, 10, 10, 0.08);
+      padding-top: 1rem;
+      display: grid;
+      gap: 1rem;
+    }
+
+    .loyalty-header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .loyalty-header h4 {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+
+    .loyalty-header p {
+      margin: 0;
+      color: var(--text-secondary);
+    }
+
+    .loyalty-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-weight: 600;
+    }
+
+    .loyalty-settings label.amount-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-weight: 600;
+    }
+
+    .loyalty-settings input[type='number'] {
+      max-width: 200px;
+      padding: 0.6rem 0.75rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(10, 10, 10, 0.12);
+      background: rgba(255, 255, 255, 0.9);
+      font: inherit;
+    }
+
+    .loyalty-note {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+
+    .loyalty-summary {
+      margin: 0;
+      font-weight: 600;
+    }
+
     .chain-select {
       display: flex;
       flex-direction: column;
@@ -567,6 +624,72 @@ import { AdminRestaurantContextService } from './admin-restaurant-context.servic
           </p>
         </div>
 
+        <section class="loyalty-settings">
+          <div class="loyalty-header">
+            <h4>{{ 'admin.loyalty.heading' | translate: 'Loyalty program' }}</h4>
+            <p *ngIf="!restaurantChain">
+              {{
+                'admin.loyalty.descriptionRestaurant'
+                  | translate: 'Manage how this restaurant awards loyalty points to guests.'
+              }}
+            </p>
+            <p *ngIf="restaurantChain" class="loyalty-note">
+              {{
+                'admin.loyalty.chainManaged'
+                  | translate: 'Loyalty is managed by {{chain}}.' : { chain: restaurantChain.name }
+              }}
+            </p>
+          </div>
+
+          <ng-container *ngIf="!restaurantChain; else chainManagedLoyalty">
+            <label class="loyalty-toggle">
+              <input
+                type="checkbox"
+                name="loyaltyProgramEnabled"
+                [(ngModel)]="detailsForm.loyaltyProgramEnabled"
+              />
+              <span>{{ 'admin.loyalty.enableLabel' | translate: 'Enable loyalty points' }}</span>
+            </label>
+
+            <label class="amount-field">
+              {{ 'admin.loyalty.earnAmountLabel' | translate: 'Euros spent to earn 1 point' }}
+              <input
+                type="number"
+                name="loyaltyEarnAmount"
+                min="0"
+                step="0.01"
+                [(ngModel)]="detailsForm.loyaltyPointsEarnAmount"
+                [disabled]="!detailsForm.loyaltyProgramEnabled"
+              />
+            </label>
+
+            <p class="loyalty-note" *ngIf="detailsForm.loyaltyProgramEnabled && detailsForm.loyaltyPointsEarnAmount">
+              {{
+                'admin.loyalty.earnAmountHint'
+                  | translate: 'Guests receive 1 point for every €{{amount}} they spend.' : {
+                      amount: detailsForm.loyaltyPointsEarnAmount
+                    }
+              }}
+            </p>
+          </ng-container>
+
+          <ng-template #chainManagedLoyalty>
+            <p class="loyalty-summary" *ngIf="restaurantChain?.loyalty_program_enabled; else loyaltyChainDisabled">
+              {{
+                'admin.loyalty.chainSummary'
+                  | translate: 'Guests receive 1 point for every €{{amount}} they spend chain-wide.' : {
+                      amount: formatLoyaltyAmount(restaurantChain?.loyalty_points_earn_amount_cents)
+                    }
+              }}
+            </p>
+            <ng-template #loyaltyChainDisabled>
+              <p class="loyalty-note">
+                {{ 'admin.loyalty.chainDisabled' | translate: 'The chain currently has loyalty points disabled.' }}
+              </p>
+            </ng-template>
+          </ng-template>
+        </section>
+
         <div class="language-fields">
           <div class="language-card" *ngFor="let language of languages">
             <div class="language-card-header">
@@ -707,11 +830,15 @@ export class AdminRestaurantDetailsPage {
     descriptions: Record<string, string>;
     cuisines: string[];
     primaryColor: string;
+    loyaltyProgramEnabled: boolean;
+    loyaltyPointsEarnAmount: string;
   } = {
     name: '',
     descriptions: {},
     cuisines: [],
     primaryColor: DEFAULT_BRAND_COLOR,
+    loyaltyProgramEnabled: false,
+    loyaltyPointsEarnAmount: '',
   };
   detailsSaving = false;
   detailsMessage = '';
@@ -800,7 +927,30 @@ export class AdminRestaurantDetailsPage {
       return;
     }
 
-    const payload = this.buildUpdatePayload(trimmedName);
+    let loyaltyAmountCents: number | null = null;
+    if (!this.restaurantChain) {
+      if (this.detailsForm.loyaltyProgramEnabled) {
+        const parsed = this.parseLoyaltyEarnAmount(this.detailsForm.loyaltyPointsEarnAmount);
+        if (!parsed.valid) {
+          this.detailsMessage = this.i18n.translate(
+            'admin.loyalty.invalidAmount',
+            'Enter a valid amount in euros.'
+          );
+          this.detailsMessageType = 'error';
+          return;
+        }
+
+        loyaltyAmountCents = parsed.value;
+        this.detailsForm = {
+          ...this.detailsForm,
+          loyaltyPointsEarnAmount: this.formatLoyaltyAmount(parsed.value),
+        };
+      } else {
+        loyaltyAmountCents = null;
+      }
+    }
+
+    const payload = this.buildUpdatePayload(trimmedName, loyaltyAmountCents);
 
     this.detailsSaving = true;
     this.detailsMessage = '';
@@ -991,6 +1141,8 @@ export class AdminRestaurantDetailsPage {
       descriptions,
       cuisines: [...(restaurant.cuisines ?? [])],
       primaryColor: coerceHexColor(restaurant.primary_color),
+      loyaltyProgramEnabled: Boolean(restaurant.loyalty_program_enabled),
+      loyaltyPointsEarnAmount: this.formatLoyaltyAmount(restaurant.loyalty_points_earn_amount_cents),
     };
 
     const primaryDescription = restaurant.description ?? '';
@@ -1071,7 +1223,7 @@ export class AdminRestaurantDetailsPage {
     };
   }
 
-  private buildUpdatePayload(trimmedName: string): RestaurantUpdateInput {
+  private buildUpdatePayload(trimmedName: string, loyaltyAmountCents: number | null): RestaurantUpdateInput {
     const descriptionTranslations: Record<string, string> = {};
 
     this.languages.forEach(language => {
@@ -1102,7 +1254,44 @@ export class AdminRestaurantDetailsPage {
       primaryColor: normalizedColor,
     };
 
+    if (!this.restaurantChain) {
+      payload.loyalty_program_enabled = this.detailsForm.loyaltyProgramEnabled;
+      payload.loyalty_points_earn_amount_cents = this.detailsForm.loyaltyProgramEnabled
+        ? loyaltyAmountCents ?? null
+        : null;
+    }
+
     return payload;
+  }
+
+  private parseLoyaltyEarnAmount(value: string): { valid: boolean; value: number } {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return { valid: false, value: 0 };
+    }
+
+    const normalized = trimmed.replace(',', '.');
+    const numeric = Number(normalized);
+
+    if (!Number.isFinite(numeric) || numeric <= 0) {
+      return { valid: false, value: 0 };
+    }
+
+    const cents = Math.round(numeric * 100);
+    if (cents <= 0) {
+      return { valid: false, value: 0 };
+    }
+
+    return { valid: true, value: cents };
+  }
+
+  formatLoyaltyAmount(cents: number | null | undefined): string {
+    if (cents == null || Number.isNaN(cents)) {
+      return '';
+    }
+
+    const euros = (cents / 100).toFixed(2);
+    return euros.replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
   }
 
   private async loadChains() {

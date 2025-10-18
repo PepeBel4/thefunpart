@@ -9,6 +9,8 @@ export interface RestaurantPhoto {
 export interface Chain {
   id: number;
   name: string;
+  loyalty_program_enabled?: boolean | null;
+  loyalty_points_earn_amount_cents?: number | null;
 }
 
 export interface ReviewAuthor {
@@ -71,6 +73,8 @@ export interface Restaurant {
   rating_count?: number | null;
   reviews?: Review[] | null;
   ratings?: Review[] | null;
+  loyalty_program_enabled?: boolean | null;
+  loyalty_points_earn_amount_cents?: number | null;
 }
 
 export interface Location {
@@ -155,6 +159,8 @@ export interface RestaurantUpdateInput {
   cuisines?: string[];
   primary_color?: string | null;
   logo_url?: string | null;
+  loyalty_program_enabled?: boolean;
+  loyalty_points_earn_amount_cents?: number | null;
 }
 
 export interface RestaurantCreateInput {
@@ -166,6 +172,8 @@ export interface RestaurantCreateInput {
   cuisines?: string[];
   primary_color?: string | null;
   logo_url?: string | null;
+  loyalty_program_enabled?: boolean;
+  loyalty_points_earn_amount_cents?: number | null;
 }
 
 export interface CardTransaction {
