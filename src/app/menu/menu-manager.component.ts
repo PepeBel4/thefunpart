@@ -45,6 +45,8 @@ interface MenuFormModel {
   name: string;
   description: string;
   price: string;
+  loyaltyPointsPrice: string;
+  loyaltyPointsReward: string;
   categories: CategoryFormModel[];
   allergens: Allergen[];
 }
@@ -576,6 +578,28 @@ interface OptionAssignmentChangeSet {
             }}
           </p>
         </div>
+        <div>
+          <label for="new-loyalty-price">
+            {{ 'menu.form.loyaltyPriceLabel' | translate: 'Loyalty points price' }}
+          </label>
+          <input
+            id="new-loyalty-price"
+            [(ngModel)]="newItem.loyaltyPointsPrice"
+            name="newLoyaltyPointsPrice"
+            inputmode="numeric"
+          />
+        </div>
+        <div>
+          <label for="new-loyalty-reward">
+            {{ 'menu.form.loyaltyRewardLabel' | translate: 'Loyalty points reward' }}
+          </label>
+          <input
+            id="new-loyalty-reward"
+            [(ngModel)]="newItem.loyaltyPointsReward"
+            name="newLoyaltyPointsReward"
+            inputmode="numeric"
+          />
+        </div>
         <div class="category-section">
           <label>Categories</label>
           <div class="category-inputs">
@@ -703,6 +727,22 @@ interface OptionAssignmentChangeSet {
               <div>
                 <label>{{ 'menu.items.price' | translate: 'Price (EUR)' }}</label>
                 <input [(ngModel)]="editItem.price" name="editPrice-{{ item.id }}" inputmode="decimal" required />
+              </div>
+              <div>
+                <label>{{ 'menu.form.loyaltyPriceLabel' | translate: 'Loyalty points price' }}</label>
+                <input
+                  [(ngModel)]="editItem.loyaltyPointsPrice"
+                  name="editLoyaltyPointsPrice-{{ item.id }}"
+                  inputmode="numeric"
+                />
+              </div>
+              <div>
+                <label>{{ 'menu.form.loyaltyRewardLabel' | translate: 'Loyalty points reward' }}</label>
+                <input
+                  [(ngModel)]="editItem.loyaltyPointsReward"
+                  name="editLoyaltyPointsReward-{{ item.id }}"
+                  inputmode="numeric"
+                />
               </div>
               <div class="category-section">
                 <label>Categories</label>
@@ -1126,6 +1166,8 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
       name: item.name,
       description: item.description ?? '',
       price: this.formatPrice(item.price_cents),
+      loyaltyPointsPrice: this.formatOptionalPoints(item.loyalty_points_price),
+      loyaltyPointsReward: this.formatOptionalPoints(item.loyalty_points_reward),
       categories: this.mapCategoriesForForm(item.categories),
       allergens: this.mapAllergensForForm(item.allergens),
     };
@@ -1153,6 +1195,24 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
       return;
     }
 
+    const loyaltyPrice = this.parseOptionalPoints(this.newItem.loyaltyPointsPrice);
+    if (!loyaltyPrice.valid) {
+      this.error = this.i18n.translate(
+        'menu.form.error.loyaltyPrice',
+        'Enter a valid loyalty points price (digits only).'
+      );
+      return;
+    }
+
+    const loyaltyReward = this.parseOptionalPoints(this.newItem.loyaltyPointsReward);
+    if (!loyaltyReward.valid) {
+      this.error = this.i18n.translate(
+        'menu.form.error.loyaltyReward',
+        'Enter a valid loyalty points reward (digits only).'
+      );
+      return;
+    }
+
     this.saving = true;
     this.error = '';
     this.creationStatus = '';
@@ -1164,6 +1224,8 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
         description: this.newItem.description || undefined,
         price_cents,
         allergen_ids: allergenIds,
+        loyalty_points_price: loyaltyPrice.value,
+        loyalty_points_reward: loyaltyReward.value,
       };
       if (categories) {
         payload.menu_item_categories = categories;
@@ -1204,6 +1266,24 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
       return;
     }
 
+    const loyaltyPrice = this.parseOptionalPoints(this.editItem.loyaltyPointsPrice);
+    if (!loyaltyPrice.valid) {
+      this.error = this.i18n.translate(
+        'menu.form.error.loyaltyPrice',
+        'Enter a valid loyalty points price (digits only).'
+      );
+      return;
+    }
+
+    const loyaltyReward = this.parseOptionalPoints(this.editItem.loyaltyPointsReward);
+    if (!loyaltyReward.valid) {
+      this.error = this.i18n.translate(
+        'menu.form.error.loyaltyReward',
+        'Enter a valid loyalty points reward (digits only).'
+      );
+      return;
+    }
+
     this.assignmentError = '';
     const assignmentChanges = this.buildOptionAssignmentChanges();
     if (!assignmentChanges) {
@@ -1224,6 +1304,8 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
         description: this.editItem.description || undefined,
         price_cents,
         allergen_ids: allergenIds,
+        loyalty_points_price: loyaltyPrice.value,
+        loyalty_points_reward: loyaltyReward.value,
       };
       if (categories) {
         payload.menu_item_categories = categories;
@@ -1388,6 +1470,27 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
 
   private formatPrice(priceCents: number): string {
     return (priceCents / 100).toFixed(2);
+  }
+
+  private formatOptionalPoints(value: number | null | undefined): string {
+    return value == null ? '' : String(value);
+  }
+
+  private parseOptionalPoints(value: string): { value: number | null; valid: boolean } {
+    const trimmed = value?.trim() ?? '';
+    if (!trimmed) {
+      return { value: null, valid: true };
+    }
+    if (!/^\d+$/.test(trimmed)) {
+      return { value: null, valid: false };
+    }
+
+    const parsed = Number.parseInt(trimmed, 10);
+    if (Number.isNaN(parsed)) {
+      return { value: null, valid: false };
+    }
+
+    return { value: parsed, valid: true };
   }
 
   private resetState() {
@@ -1795,7 +1898,15 @@ export class MenuManagerComponent implements OnChanges, OnInit, OnDestroy {
   }
 
   private createEmptyForm(): MenuFormModel {
-    return { name: '', description: '', price: '', categories: [this.createEmptyCategory()], allergens: [] };
+    return {
+      name: '',
+      description: '',
+      price: '',
+      loyaltyPointsPrice: '',
+      loyaltyPointsReward: '',
+      categories: [this.createEmptyCategory()],
+      allergens: [],
+    };
   }
 
   private getCategoryList(target: 'new' | 'edit') {

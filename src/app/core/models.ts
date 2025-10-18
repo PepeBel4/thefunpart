@@ -212,6 +212,8 @@ export interface MenuItem {
   name: string;
   price_cents: number; // integer cents from Rails
   discounted_price_cents?: number | null;
+  loyalty_points_price?: number | null;
+  loyalty_points_reward?: number | null;
   is_highlighted?: boolean | null;
   description?: string;
   categories?: MenuItemCategory[];
@@ -295,6 +297,8 @@ export interface MenuItemInput {
   price_cents: number;
   menu_item_categories?: Pick<MenuItemCategory, 'id' | 'name'>[];
   allergen_ids?: number[];
+  loyalty_points_price?: number | null;
+  loyalty_points_reward?: number | null;
 }
 
 export interface MenuItemDiscountMenuItem {
