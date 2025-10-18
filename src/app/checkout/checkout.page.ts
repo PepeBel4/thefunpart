@@ -289,7 +289,7 @@ import { TranslatePipe } from '../shared/translate.pipe';
         </span>
         <div class="loyalty-card-earned__content">
           <div class="loyalty-card-earned__points">
-            <span class="loyalty-card-earned__value">{{ cart.loyaltyPoints() | number:'1.0-2' }}</span>
+            <span class="loyalty-card-earned__value">{{ cart.loyaltyPoints() | number:'1.0-0' }}</span>
             <span class="loyalty-card-earned__unit">{{ 'checkout.loyaltyPoints.unit' | translate: 'points' }}</span>
           </div>
           <p class="loyalty-card-earned__hint">

@@ -43,11 +43,12 @@ export class CartService {
     }, 0);
 
     const totalPoints = basePoints + bonusPoints;
-    if (!Number.isFinite(totalPoints) || totalPoints <= 0) {
+    if (!Number.isFinite(totalPoints)) {
       return 0;
     }
 
-    return Math.round(totalPoints * 100) / 100;
+    const flooredTotal = Math.floor(totalPoints + 1e-9);
+    return flooredTotal > 0 ? flooredTotal : 0;
   });
 
   private _restaurant = signal<CartRestaurant | null>(null);
