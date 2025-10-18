@@ -478,6 +478,10 @@ export interface RestaurantUser {
   order_count?: number | null;
   orders_count?: number | null;
   total_orders?: number | null;
+  loyalty_points?: number | null;
+  loyaltyPoints?: number | null;
+  credit_cents?: number | null;
+  creditCents?: number | null;
 }
 
 export interface UserProfile {

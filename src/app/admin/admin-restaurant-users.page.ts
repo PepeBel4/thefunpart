@@ -1,4 +1,4 @@
-import { AsyncPipe, DatePipe, NgFor, NgIf } from '@angular/common';
+import { AsyncPipe, CurrencyPipe, DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, ValidatorFn, AbstractControl } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -38,7 +38,7 @@ interface UsersState {
 @Component({
   standalone: true,
   selector: 'app-admin-restaurant-users',
-  imports: [AsyncPipe, DatePipe, NgFor, NgIf, ReactiveFormsModule, TranslatePipe],
+  imports: [AsyncPipe, CurrencyPipe, DatePipe, NgFor, NgIf, ReactiveFormsModule, TranslatePipe],
   styles: [`
     :host {
       display: block;
@@ -425,6 +425,14 @@ interface UsersState {
                         {{ 'admin.users.details.orderCount' | translate: 'Total orders' }}:
                         <strong>{{ count }}</strong>
                       </span>
+                      <span *ngIf="getLoyaltyPointsInfo(user) as loyalty">
+                        {{ 'admin.users.details.loyaltyPoints' | translate: 'Loyalty points' }}:
+                        <strong>{{ loyalty.value }}</strong>
+                      </span>
+                      <span *ngIf="getCreditInfo(user) as credit">
+                        {{ 'admin.users.details.credit' | translate: 'Account credit' }}:
+                        <strong>{{ credit.euros | currency: 'EUR' }}</strong>
+                      </span>
                     </div>
                   </div>
                   <span *ngIf="user.churn_risk as risk" class="churn-pill" [attr.data-risk]="risk">
@@ -694,6 +702,16 @@ export class AdminRestaurantUsersPage {
   getOrderCount(user: RestaurantUser): number | null {
     const count = user.order_count ?? user.orders_count ?? user.total_orders;
     return typeof count === 'number' ? count : null;
+  }
+
+  getLoyaltyPointsInfo(user: RestaurantUser): { value: number } | null {
+    const points = user.loyalty_points ?? user.loyaltyPoints;
+    return typeof points === 'number' ? { value: points } : null;
+  }
+
+  getCreditInfo(user: RestaurantUser): { cents: number; euros: number } | null {
+    const cents = user.credit_cents ?? user.creditCents;
+    return typeof cents === 'number' ? { cents, euros: cents / 100 } : null;
   }
 
   churnRiskFallback(risk: string): string {
